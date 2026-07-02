@@ -4,6 +4,7 @@ firmware/sdkconfig
 firmware/sdkconfig.old
 firmware/managed_components/
 firmware/dependencies.lock
+firmware/.cache/
 
 # Host tests
 **/host_test/build*/
