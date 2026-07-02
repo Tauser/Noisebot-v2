@@ -242,12 +242,31 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 - Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
   build` verde compilando `__idf_app_config` (`libapp_config.a`),
   `noisebot2.bin` com 95% livre na partição app; `python3
-  tools/run_host_tests.py` verde (`config`, `event_bus`, `logger`); `python
-  tools/scan_secrets.py` verde (`secrets-scan: limpo`).
-- **Pendente:** casca do `app_config` com persistência real em NVS; núcleo e
-  casca do `boot_manager`; gate de saída da subfase (boot < 3 s, SAFE_MODE
-  testado) depende de ambos existirem e do `boot_manager` estar orquestrando
-  a inicialização real. Status permanece `EM ANDAMENTO`.
+  tools/run_host_tests.py` verde (`app_config`, `event_bus`, `logger`);
+  `python tools/scan_secrets.py` verde (`secrets-scan: limpo`).
+- Implementado `firmware/components/infra/boot_manager` como núcleo C17
+  puro, sem FreeRTOS/ESP-IDF/malloc: sequência de fases nomeadas
+  (`begin_phase`/`end_phase`) com criticidade, capacidade fixa de 16 fases,
+  relatório determinístico (fase, criticidade, sucesso, duração, duração
+  total). Outcome `BOOT_OK`/`SAFE_MODE`: qualquer fase crítica que falhe vira
+  `SAFE_MODE` com o nome da fase como motivo pegajoso (não sobrescrito por
+  falhas seguintes); falha em fase não-crítica não afeta o outcome.
+- Host-test no mesmo commit: soma de duração e outcome OK com todas as fases
+  passando, falha não-crítica não aciona SAFE_MODE, falha crítica aciona
+  SAFE_MODE com motivo correto, motivo pegajoso na segunda falha crítica,
+  `end_phase` sem `begin_phase` rejeitado, `begin_phase` sobre fase ainda
+  aberta rejeitado, overflow de capacidade rejeitado.
+- Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
+  build` verde compilando `__idf_app_config` e `__idf_boot_manager`
+  (`libapp_config.a`, `libboot_manager.a`), `noisebot2.bin` com 95% livre na
+  partição app; `python3 tools/run_host_tests.py` verde (`app_config`,
+  `boot_manager`, `event_bus`, `logger`); `python tools/scan_secrets.py`
+  verde (`secrets-scan: limpo`).
+- **Pendente:** casca do `app_config` com persistência real em NVS; casca do
+  `boot_manager` orquestrando a inicialização real (`logger`, `app_config`,
+  `event_bus`, ...) e medindo boot→idle; gate de saída da subfase (boot < 3 s,
+  SAFE_MODE testado em bancada) depende dessa casca existir e rodar em
+  hardware real. Status permanece `EM ANDAMENTO`.
 
 ### S2 — Face (o robô fica vivo, mudo)
 

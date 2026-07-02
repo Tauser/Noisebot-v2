@@ -7,6 +7,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/infra/event_bus"
     "components/infra/logger"
     "components/infra/app_config"
+    "components/infra/boot_manager"
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
