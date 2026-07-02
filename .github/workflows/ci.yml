@@ -1,0 +1,57 @@
+# NoiseBot 2 — CI único.
+# REGRA (docs/QUALITY.md §1): sem filtro de paths. Todo push/PR roda tudo.
+# Cicatriz v1: workflow filtrado por server/** deixou 20 testes de contrato
+# mortos em silêncio após uma reorganização de diretórios.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  firmware-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ESP-IDF (-Wall -Wextra -Werror)
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5
+          target: esp32s3
+          path: firmware
+
+  server-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        working-directory: server
+        run: pip install -e .[dev]
+      - name: Pytest
+        working-directory: server
+        run: pytest
+      - name: Ruff
+        working-directory: server
+        run: ruff check .
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python tools/scan_secrets.py
+
+  # ── Ativados em S1 (ver docs/ROADMAP.md) ─────────────────────────────────
+  # host-tests:        compila e roda firmware/components/**/host_test (S1.2+)
+  # protocol-golden:   codegen nbp2.yaml → compara bytes C vs Python (S1.7)
+  # budget-gates:      SRAM do .map ≤ teto; imagem ≤ partição OTA (S1.1)
+  # Regra: cada job entra no MESMO commit da primeira coisa que ele protege.

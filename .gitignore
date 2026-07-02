@@ -1,0 +1,46 @@
+# ESP-IDF
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+firmware/dependencies.lock
+
+# Host tests
+**/host_test/build*/
+*.o
+*.obj
+*.exe
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / dashboard
+node_modules/
+dist/
+
+# Codegen (gerado no build/CI a partir de protocol/nbp2.yaml)
+protocol/generated/
+
+# Bancada e scratch — nunca versionar lixo na raiz (lição v1/H10)
+scratch/
+logs/
+*.log
+*.jpg.tmp
+
+# IDE / OS
+.vscode/settings.json
+.idea/
+Thumbs.db
+.DS_Store
+
+# Segredos — provisioning é via SoftAP/NVS, nunca arquivo
+*credentials*
+*secrets*
+*.pem
+*.key

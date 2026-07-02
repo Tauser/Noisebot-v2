@@ -1,0 +1,195 @@
+# NBP/2 — NoiseBot Protocol v2 (DRAFT v0 — congela na S1.7)
+# Fonte de verdade única. Codegen: C17 + Python. Ver protocol/README.md.
+
+protocol:
+  name: nbp2
+  version: { major: 0, minor: 1 }   # v0 draft; vira 1.0 no gate S1.7
+  transport: tcp
+  port: 9100
+  framing:
+    sof: 0xAB
+    fields: [len_u16_le, type_u16_le, seq_u32_le, payload_cbor, crc32_le]
+    max_ctrl_payload: 4096
+  channels:
+    - { id: 0, name: CTRL,  policy: drain_first }
+    - { id: 1, name: MEDIA, policy: backpressure_independent }
+
+enums:
+  expression:   [NEUTRAL, HAPPY, CURIOUS, FOCUSED, ATTENTIVE, SLEEPY, SAD, SURPRISED, ERROR]
+  fsm_state:    [BOOT, IDLE, ATTENTIVE, RESPONDING, TOUCH_REACTING, SLEEPING, ERROR, SAFE_MODE]
+  touch_kind:   [TAP, LONG_PRESS, SUSTAINED, BEGIN, END]
+  stimulus_tag: [SOCIAL, PRAISE, ALERT, CALM, NOVELTY, USER_PRESENT, USER_LEFT]
+  fault_code:   [NONE, MOTION_STALL, MOTION_TEMP, MOTION_VOLTAGE, HEARTBEAT_LOST, BROWNOUT, SD_ERROR]
+  snapshot_mode: [QVGA, QQVGA]
+
+messages:
+  # ── sessão ────────────────────────────────────────────────────────────────
+  - name: HELLO            # robô → server; token obrigatório
+    id: 0x0001
+    channel: CTRL
+    fields:
+      - { name: proto_major, type: u8 }
+      - { name: proto_minor, type: u8 }
+      - { name: boot_id,     type: u32 }
+      - { name: caps,        type: u32 }        # bitfield de capabilities
+      - { name: token,       type: bytes, max: 32 }
+  - name: HELLO_ACK        # server → robô
+    id: 0x0002
+    channel: CTRL
+    fields:
+      - { name: proto_major, type: u8 }
+      - { name: proto_minor, type: u8 }
+      - { name: boot_id,     type: u32 }
+      - { name: caps,        type: u32 }
+  - name: HEARTBEAT
+    id: 0x0003
+    channel: CTRL
+    fields:
+      - { name: counter,   type: u32 }
+      - { name: uptime_ms, type: u64 }
+  - name: TIME_SYNC        # server → robô
+    id: 0x0004
+    channel: CTRL
+    fields:
+      - { name: unix_ms,      type: u64 }
+      - { name: server_mono_ms, type: u64 }
+
+  # ── mente → corpo ─────────────────────────────────────────────────────────
+  - name: STIMULUS
+    id: 0x0010
+    channel: CTRL
+    fields:
+      - { name: valence, type: f32 }   # -1..+1
+      - { name: arousal, type: f32 }   # -1..+1
+      - { name: tag,     type: enum, enum: stimulus_tag }
+  - name: EXPRESSION_HINT   # sugestão; o autonômico arbitra
+    id: 0x0011
+    channel: CTRL
+    fields:
+      - { name: expression,  type: enum, enum: expression }
+      - { name: intensity,   type: f32 }
+      - { name: duration_ms, type: u32 }
+  - name: SAY_BEGIN
+    id: 0x0012
+    channel: CTRL
+    idempotent: true
+    fields:
+      - { name: turn_id,     type: u32 }
+      - { name: sample_rate, type: u32 }
+  - name: SAY_AUDIO
+    id: 0x0013
+    channel: MEDIA
+    fields:
+      - { name: turn_id, type: u32 }
+      - { name: pcm,     type: bytes, max: 1024 }
+  - name: SAY_END
+    id: 0x0014
+    channel: CTRL
+    idempotent: true
+    fields: [ { name: turn_id, type: u32 } ]
+  - name: SAY_CANCEL
+    id: 0x0015
+    channel: CTRL
+    idempotent: true
+    fields: [ { name: turn_id, type: u32 } ]
+  - name: SNAPSHOT_REQ
+    id: 0x0016
+    channel: CTRL
+    idempotent: true
+    fields:
+      - { name: transfer_id, type: u32 }
+      - { name: mode,        type: enum, enum: snapshot_mode }
+  - name: TIMER_SET
+    id: 0x0017
+    channel: CTRL
+    idempotent: true
+    fields:
+      - { name: timer_id, type: u32 }
+      - { name: fire_at_unix_ms, type: u64 }
+      - { name: label, type: str, max: 64 }
+  - name: TIMER_CANCEL
+    id: 0x0018
+    channel: CTRL
+    idempotent: true
+    fields: [ { name: timer_id, type: u32 } ]
+
+  # ── corpo → mente ─────────────────────────────────────────────────────────
+  - name: EVENT_TOUCH
+    id: 0x0020
+    channel: CTRL
+    fields: [ { name: kind, type: enum, enum: touch_kind } ]
+  - name: EVENT_WAKE
+    id: 0x0021
+    channel: CTRL
+    fields: [ { name: score, type: f32 } ]
+  - name: EVENT_STATE
+    id: 0x0022
+    channel: CTRL
+    fields:
+      - { name: from, type: enum, enum: fsm_state }
+      - { name: to,   type: enum, enum: fsm_state }
+  - name: EVENT_FAULT
+    id: 0x0023
+    channel: CTRL
+    fields: [ { name: code, type: enum, enum: fault_code } ]
+  - name: EVENT_TIMER_FIRED
+    id: 0x0024
+    channel: CTRL
+    fields: [ { name: timer_id, type: u32 } ]
+  - name: LISTEN_START
+    id: 0x0025
+    channel: CTRL
+    fields:
+      - { name: session_id,  type: u32 }
+      - { name: sample_rate, type: u32 }
+  - name: LISTEN_AUDIO
+    id: 0x0026
+    channel: MEDIA
+    fields:
+      - { name: session_id, type: u32 }
+      - { name: pcm,        type: bytes, max: 1024 }
+  - name: LISTEN_END
+    id: 0x0027
+    channel: CTRL
+    fields: [ { name: session_id, type: u32 } ]
+  - name: SNAPSHOT_JPEG
+    id: 0x0028
+    channel: MEDIA
+    fields:
+      - { name: transfer_id, type: u32 }
+      - { name: chunk_index, type: u16 }
+      - { name: total_chunks, type: u16 }
+      - { name: data,        type: bytes, max: 1024 }
+      - { name: crc32,       type: u32 }   # do JPEG completo, no último chunk
+  - name: STATUS
+    id: 0x0029
+    channel: CTRL
+    fields:
+      - { name: state,        type: enum, enum: fsm_state }
+      - { name: valence,      type: f32 }
+      - { name: arousal,      type: f32 }
+      - { name: heap_free,    type: u32 }
+      - { name: psram_free,   type: u32 }
+      - { name: fps_x10,      type: u16 }
+      - { name: bus_dropped,  type: u32 }
+      - { name: rssi,         type: i8 }
+
+  # ── OTA (S1.8) ────────────────────────────────────────────────────────────
+  - name: OTA_BEGIN
+    id: 0x0030
+    channel: CTRL
+    idempotent: true
+    fields:
+      - { name: image_size, type: u32 }
+      - { name: version,    type: str, max: 32 }
+  - name: OTA_CHUNK
+    id: 0x0031
+    channel: MEDIA
+    fields:
+      - { name: offset, type: u32 }
+      - { name: data,   type: bytes, max: 2048 }
+  - name: OTA_END      # verificação de assinatura acontece no robô antes do boot
+    id: 0x0032
+    channel: CTRL
+    idempotent: true
+    fields: [ { name: image_crc32, type: u32 } ]
