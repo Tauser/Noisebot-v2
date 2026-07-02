@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-# NoiseBot 2 — firmware single-MCU (Freenove ESP32-S3 CAM N16R8)
+# NoiseBot 2 — firmware single-MCU (Waveshare ESP32-S3-DEV-KIT N32R16V)
 # Regra: -Wall -Wextra -Werror em todo código do projeto (ver CLAUDE.md).
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
