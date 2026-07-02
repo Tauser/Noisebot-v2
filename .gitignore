@@ -42,5 +42,6 @@ Thumbs.db
 # Segredos — provisioning é via SoftAP/NVS, nunca arquivo
 *credentials*
 *secrets*
+!tools/scan_secrets.py
 *.pem
 *.key
