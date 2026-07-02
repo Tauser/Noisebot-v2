@@ -168,21 +168,28 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   seguro de mensagem longa.
 - Gate local (sandbox, sem toolchain ESP-IDF disponível): `python3
   tools/run_host_tests.py` verde compilando `event_bus` e `logger`.
-- `tools/scan_secrets.py` e `git diff --check` **inconclusivos neste
-  sandbox** (mount do ambiente serviu uma cópia obsoleta/com fim-de-linha
-  divergente de vários arquivos pré-existentes, incluindo o próprio
-  `scan_secrets.py` — não é um problema do repositório real). Inspeção
-  manual dos arquivos novos do logger não encontrou nenhum padrão sensível;
-  rodar os dois comandos localmente antes do PR é o gate real.
-- **Gate pendente (bloqueia `FEITO`):** `idf.py build` real com o toolchain
-  do `CLAUDE.md` (não disponível neste ambiente), confirmação local de
-  `tools/scan_secrets.py`/`git diff --check`, e o gate de saída de S1.3 em
-  si — "panic forçado em bancada produz coredump legível + ring de
-  eventos" — que exige: (1) casca do logger com task/mutex, (2) worker SD
-  (depende de S0.3), (3) hook de panic validado em hardware real. Status
-  permanece `EM ANDAMENTO`; próxima fatia entra quando S0.3 destravar o
-  worker SD ou quando o hook de panic for confirmado isoladamente em
-  bancada.
+- Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
+  build` verde, compilando `logger` e gerando `noisebot2.bin` (95% livre na
+  partição app); `python tools/scan_secrets.py` verde (`secrets-scan:
+  limpo`); `git diff --check` verde (só avisos de normalização LF→CRLF, sem
+  erro de whitespace).
+- Commit `S1.3: nucleo do logger` na branch `codex/s1.2-event-bus`.
+- Casca FreeRTOS adicionada (`shell/nb_logger_shell.c/.h`): singleton
+  protegido por mutex (`xSemaphoreCreateMutex`) para uso seguro por múltiplas
+  tasks, timestamp real via `esp_timer_get_time()`. Sem task dedicada (não há
+  worker para alimentar ainda) e sem worker SD/hook de panic — deferidos por
+  P5 e pelo bloqueio abaixo.
+- Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
+  build` verde com a casca nova, gerando `noisebot2.bin` (95% livre na
+  partição app); `python tools/scan_secrets.py` verde (`secrets-scan:
+  limpo`); `python3 tools/run_host_tests.py` verde (núcleo não foi tocado).
+- **Gate pendente (bloqueia `FEITO`):** o gate de saída de S1.3 em si —
+  "panic forçado em bancada produz coredump legível + ring de eventos" —
+  que exige: (1) worker SD (depende de S0.3 — aguardando módulo microSD
+  físico), (2) hook de panic validado em hardware real. Status permanece
+  `EM ANDAMENTO`; próxima fatia entra quando o módulo microSD estiver em mãos
+  para destravar S0.3/worker SD, ou quando o hook de panic for confirmado
+  isoladamente em bancada.
 
 ### S2 — Face (o robô fica vivo, mudo)
 

@@ -1,6 +1,7 @@
 idf_component_register(
-    SRCS "logger.c"
-    INCLUDE_DIRS "."
+    SRCS "logger.c" "shell/nb_logger_shell.c"
+    INCLUDE_DIRS "." "shell"
+    REQUIRES freertos esp_timer
 )
 
 component_compile_options(
