@@ -78,8 +78,8 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
-| S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `PENDENTE` |
-| S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `PENDENTE` |
+| S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
+| S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `PENDENTE` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `PENDENTE` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `PENDENTE` |
@@ -87,6 +87,50 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
 | S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
+
+**Evidência S1.1 (2026-07-02):**
+
+- Build local: `idf.py build` verde via ambiente ESP-IDF v5.5.4 do `CLAUDE.md`
+  (`export.bat` + `idf.py build`), binário `noisebot2.bin` com 95% livre na
+  partição app.
+- CI no PR #2 (`S1.1: corrigir gates iniciais do CI`) verde em `firmware-build`,
+  `secrets-scan`, `server-tests (3.10)` e `server-tests (3.11)`; PR mergeado em
+  `main`.
+- Prova negativa no PR #1 (`S1.1: provar gate Werror`): warning proposital
+  derrubou `firmware-build` com `unused variable` tratado como erro por
+  `-Werror`; PR fechado sem merge.
+- Gates pendentes fora do escopo S1.1: budgets finais de SRAM/PSRAM/fps ficam
+  para os gates das fases que criarem carga real (`S0.3`, `S2.1`, `S2.6`).
+
+**Plano S1.2 (antes de implementar):**
+
+1. Criar `event_bus` em núcleo C17 puro (`event_bus.c/.h`) sem FreeRTOS/ESP-IDF,
+   com clock/I/O injetados quando necessário.
+2. Usar pool estático com tipos `nb_*`, slots reservados para safety, fila
+   prioritária de safety e ring de auditoria de tamanho fixo.
+3. Definir política explícita de overflow: evento safety nunca perde slot para
+   tráfego normal; não-safety deve cumprir zero drop no perfil de burst alvo.
+4. Adicionar `host_test` de burst no mesmo commit de implementação, cobrindo
+   saturação normal, reserva safety, ordem de entrega e auditoria.
+5. Integrar ao build/CI sem publicar eventos de HAL diretamente; camadas acima
+   consomem o bus conforme `ARCHITECTURE.md`.
+
+**Evidência S1.2 (2026-07-02):**
+
+- Implementado `firmware/components/infra/event_bus` como núcleo C17 puro,
+  sem FreeRTOS/ESP-IDF/malloc, com pool estático de 32 slots, 4 reservados
+  para safety, fila safety separada e ring de auditoria.
+- Host-test de burst no mesmo commit: cobre zero drop normal no perfil alvo,
+  fila normal cheia com safety aceito, prioridade safety na entrega, auditoria
+  de drop/poll e payload inválido.
+- Gate local: `python tools/run_host_tests.py` verde; `idf.py build` verde
+  compilando `event_bus`; `tools/scan_secrets.py` verde; `git diff --check`
+  verde.
+- CI no PR #3 verde em `firmware-build`, `host-tests`, `secrets-scan`,
+  `server-tests (3.10)` e `server-tests (3.11)`.
+- Gates pendentes fora do escopo S1.2: casca concorrente/task dona do bus e
+  integração com logger/panic entram em S1.3+; HAL continua proibido de
+  publicar diretamente.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
