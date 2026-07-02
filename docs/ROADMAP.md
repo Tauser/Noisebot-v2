@@ -45,11 +45,11 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
 | Campo | Decisão |
 | --- | --- |
-| Fase atual | S0 — spikes de bancada |
+| Fase atual | S1 — fundação (S1.3 em andamento: núcleo do `logger`); S0 corre em paralelo |
 | Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
 | Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
 | Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
-| Servo | UART real 17/18 via TTLinker (spike de 1 fio eliminado); cabeamento só após gate elétrico S6.1 |
+| Servo | **Perfil B inicial** (decisão 2026-07-02): MG90S PWM em 17/18 + INA219 (stall por corrente) + corte MOSFET (GPIO3); upgrade perfil A (SCS0009/TTLinker) nos mesmos pinos — ver `HARDWARE.md` §Perfis de motion |
 | Maior risco atual | S0.3 (contenção render+áudio+SD) nunca foi medido em nenhuma das gerações |
 | Regra de ouro | CI verde é pré-condição de merge desde S1.1 |
 
@@ -80,7 +80,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | --- | --- | --- | --- |
 | S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
 | S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
-| S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `PENDENTE` |
+| S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `PENDENTE` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `PENDENTE` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha/token → NVS) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `PENDENTE` |
@@ -131,6 +131,58 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 - Gates pendentes fora do escopo S1.2: casca concorrente/task dona do bus e
   integração com logger/panic entram em S1.3+; HAL continua proibido de
   publicar diretamente.
+
+**Plano S1.3 (antes de implementar):**
+
+1. Criar `logger` em núcleo C17 puro (`logger.c/.h`), mesmo padrão do
+   `event_bus`: sem FreeRTOS/ESP-IDF/malloc, pool estático, clock injetado
+   (timestamp passado pelo chamador, não lido internamente).
+2. Ring de entradas estruturadas (nível, módulo, timestamp, mensagem de
+   tamanho fixo) com número de sequência monotônico por entrada.
+3. Duas formas de leitura do ring, sem remover conceitualmente os dados:
+   snapshot completo (para dump de shutdown/panic) e leitura incremental por
+   cursor de sequência (`drain_since`, para o futuro worker SD), com detecção
+   explícita de gap quando o worker fica para trás e o ring sobrescreve
+   entradas ainda não persistidas.
+4. Filtro de nível (`min_level`) e truncamento seguro de mensagem (sem
+   estourar buffer, sempre terminada em `NUL`).
+5. `host_test` no mesmo commit cobrindo ordenação, filtro, overflow/drop,
+   `drain_since` incremental e gap, truncamento.
+6. **Fora do escopo desta fatia, registrado para não vazar silenciosamente:**
+   a casca (task FreeRTOS, mutex de serialização, worker SD, hook de dump em
+   shutdown/panic) fica para depois, porque depende de (a) S0.3 — microSD
+   ainda `PENDENTE`, sem HAL de sdmmc na árvore — e (b) confirmação em
+   bancada de qual mecanismo do ESP-IDF v5.5.4 injeta dados de aplicação no
+   coredump antes de um panic real; não implementar esse hook sem validar,
+   para não criar uma falsa sensação de gate cumprido.
+
+**Evidência S1.3 (2026-07-02, parcial):**
+
+- Implementado `firmware/components/infra/logger` como núcleo C17 puro, sem
+  FreeRTOS/ESP-IDF/malloc: ring estático de 128 entradas, sequência
+  monotônica, filtro de nível, `nb_logger_copy_all` (snapshot completo) e
+  `nb_logger_drain_since` (leitura incremental com detecção de gap).
+- Host-test no mesmo commit: ordenação oldest→newest, filtro de nível,
+  overflow com contagem de drop, `drain_since` incremental em duas chamadas,
+  detecção de gap quando o cursor fica para trás do overwrite, truncamento
+  seguro de mensagem longa.
+- Gate local (sandbox, sem toolchain ESP-IDF disponível): `python3
+  tools/run_host_tests.py` verde compilando `event_bus` e `logger`.
+- `tools/scan_secrets.py` e `git diff --check` **inconclusivos neste
+  sandbox** (mount do ambiente serviu uma cópia obsoleta/com fim-de-linha
+  divergente de vários arquivos pré-existentes, incluindo o próprio
+  `scan_secrets.py` — não é um problema do repositório real). Inspeção
+  manual dos arquivos novos do logger não encontrou nenhum padrão sensível;
+  rodar os dois comandos localmente antes do PR é o gate real.
+- **Gate pendente (bloqueia `FEITO`):** `idf.py build` real com o toolchain
+  do `CLAUDE.md` (não disponível neste ambiente), confirmação local de
+  `tools/scan_secrets.py`/`git diff --check`, e o gate de saída de S1.3 em
+  si — "panic forçado em bancada produz coredump legível + ring de
+  eventos" — que exige: (1) casca do logger com task/mutex, (2) worker SD
+  (depende de S0.3), (3) hook de panic validado em hardware real. Status
+  permanece `EM ANDAMENTO`; próxima fatia entra quando S0.3 destravar o
+  worker SD ou quando o hook de panic for confirmado isoladamente em
+  bancada.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
@@ -201,16 +253,21 @@ direto com o server.
 
 ### S6 — Movimento (servos sob safety)
 
-*Objetivo:* pescoço expressivo com a disciplina de safety do v1.
+*Objetivo:* pescoço expressivo com a disciplina de safety do v1, no
+**perfil B** (MG90S provisório — `HARDWARE.md` §Perfis de motion).
 *Dependências:* S3.6. **Bloqueio absoluto:** S6.2+ não inicia sem S6.1
-assinado. Inclui a power board do TTLinker (trilho 5V próprio, GND comum,
-nunca o 5V da placa dev).
+assinado. Trilho B com fuse, INA219 e MOSFET de corte; 5V próprio, GND
+comum, nunca o 5V da placa dev.
+*Upgrade perfil A (SCS0009 + TTLinker):* não é fase nova — é troca da casca
+do HAL (`servo_hal_scs`, núcleo do protocolo SCS herdado do v1) +
+re-execução dos gates S6.2 e S6.5 em bancada. Registrar no painel quando
+ocorrer.
 
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
 | S6.1 | **Gate elétrico assinado** (checklist de `ENERGY.md` §4: proteção reversa, fuse por trilho, isolação 5V↔3V3, GND estrela, brownout sob stall) | checklist em `docs/bringup/` com fotos e medições; assinado antes de qualquer torque no robô | `PENDENTE` |
-| S6.2 | `servo_hal` UART 1 Mbps (17/18 via TTLinker) + `motion_safety` portado do v1 (stall/temp/subtensão/heartbeat/brownout, FAULT pegajoso) **com host-test do núcleo** | host-tests de veto/fault/idempotência; em bancada: stall induzido → torque-off < 150 ms | `PENDENTE` |
-| S6.3 | `motion_service` (interpolação, primitivos de pescoço, heartbeat p/ safety, limites por config NVS) | movimento suave centro↔limites; posição fora de range vetada (log) | `PENDENTE` |
+| S6.2 | `servo_hal` como **interface dupla** (caps `has_feedback`): casca `servo_hal_pwm` (LEDC 17/18) + `motion_safety` com perfis por capability (B: stall via INA219 + corte MOSFET GPIO3; temp coberta por limite de duty) **com host-test do núcleo** | host-tests de veto/fault/idempotência/perfil; em bancada: eixo bloqueado → corte do trilho < 150 ms | `PENDENTE` |
+| S6.3 | `motion_service` (interpolação, primitivos de pescoço, heartbeat p/ safety, limites por config NVS, **detach em repouso** — zero PWM/zumbido parado) | movimento suave centro↔limites; posição fora de range vetada (log); silêncio audível em idle | `PENDENTE` |
 | S6.4 | Integração expressiva: gaze físico + gestos curtos coordenados com face (conductor mínimo) | linguagem corporal do v1 reproduzida; retorno limpo ao centro em toda entrada em IDLE (invariante estendida a pescoço) | `PENDENTE` |
 | S6.5 | Gate de movimento | soak 48 h com movimento periódico; injeção de stall/brownout → FAULT correto e recuperação por reset; zero evento de safety perdido | `PENDENTE` |
 
