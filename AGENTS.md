@@ -108,8 +108,12 @@ Testes do server: `cd server && pip install -e .[dev] && pytest`.
 - Nenhum movimento de servo antes de `motion_safety` verde **e** do gate
   elétrico da fase S6.1 assinado (o v1 perdeu uma placa por curto 5V↔3V3).
 - Toda escrita de posição passa por `motion_safety_check_position()`.
-- Stall, temperatura, subtensão, heartbeat timeout e brownout-disable são
-  inegociáveis. FAULT é pegajoso: exige reset.
+- Stall, subtensão, heartbeat timeout e brownout-disable são inegociáveis.
+  FAULT é pegajoso: exige reset. Motion tem dois perfis registrados
+  (`HARDWARE.md` §Perfis de motion): no perfil B (MG90S, sem feedback),
+  stall é proxy de corrente via INA219 + corte do trilho (GPIO3) e
+  temperatura é coberta por limite de duty — lacunas documentadas, nunca
+  relaxamento silencioso. `servo_hal` é interface dupla por capability.
 
 ### Segurança (ver `docs/SECURITY.md`)
 

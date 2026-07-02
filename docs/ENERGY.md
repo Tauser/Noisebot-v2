@@ -11,8 +11,10 @@ S6.1); viram contrato após medição registrada.
 Fonte 5V 3A (RPi4 oficial)
  ├─► Trilho A: Waveshare (USB/5V) → regulador 3V3 onboard
  │     └─ display, mic, LEDs (dado), touch, SD, câmera futura
- ├─► Trilho B (power board do TTLinker): servos SCS0009 ×2
- │     └─ **GND comum com o trilho A; 5V NUNCA compartilhado com a dev board**
+ ├─► Trilho B (servos): MG90S ×2 (perfil B) ou SCS0009 ×2 via TTLinker (A)
+ │     ├─ **GND comum com o trilho A; 5V NUNCA compartilhado com a dev board**
+ │     ├─ INA219 em série (shunt) — telemetria de corrente = proxy de stall
+ │     └─ MOSFET high-side (enable GPIO3, pull-down) — trilho nasce desligado
  └─► LEDs WS2812 (5V do trilho A com level shift de dado, ou trilho próprio)
 ```
 
@@ -34,7 +36,7 @@ Regras inegociáveis:
 | INMP441 + SD + misc | ~30 mA | ~80 mA | |
 | WS2812 ×2 + onboard | ~10 mA | ~120 mA | 60 mA/LED em branco máximo |
 | **Subtotal trilho A** | ~270 mA | ~1,1 A | dentro de 3 A com folga |
-| SCS0009 ×2 (trilho B) | ~200 mA | **~1,4 A stall (2×0,7 A)** [medir] | dimensiona fuse do trilho B |
+| Servos ×2 (trilho B, MG90S ou SCS0009) | ~200 mA | **~1,4 A stall (2×0,7 A)** [medir por perfil] | dimensiona fuse do trilho B e o threshold do INA219 |
 
 Total pico teórico simultâneo: ~2,5 A — a fonte de 3 A fecha, mas **stall
 duplo + pico de WiFi + volume alto** é exatamente o cenário do gate S6.1.
@@ -61,6 +63,11 @@ Antes de qualquer torque no robô montado:
       stall [medir]
 - [ ] Stall induzido com fonte limitada: brownout detectado → torque-off
       < 150 ms, sem reset do S3
+- [ ] Perfil B: INA219 calibrado (baseline de corrente por gesto registrado);
+      eixo bloqueado → sobrecorrente detectada → corte do trilho via GPIO3
+      < 150 ms
+- [ ] Perfil B: trilho B comprovadamente desligado durante boot/reset
+      (pull-down do enable segura o MOSFET aberto)
 - [ ] Fotos + medições arquivadas em `docs/bringup/`
 
 ## 5. Bateria (pós-v2.0)
