@@ -81,7 +81,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
 | S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
-| S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `PENDENTE` |
+| S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `EM ANDAMENTO` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `PENDENTE` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha/token → NVS) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `PENDENTE` |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
@@ -190,6 +190,64 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   `EM ANDAMENTO`; próxima fatia entra quando o módulo microSD estiver em mãos
   para destravar S0.3/worker SD, ou quando o hook de panic for confirmado
   isoladamente em bancada.
+
+**Plano S1.4 (antes de implementar):**
+
+1. `config`: núcleo C17 puro (`config.c/.h`), mesmo padrão dos componentes
+   anteriores — sem FreeRTOS/ESP-IDF/malloc. Tabela estática central de
+   chaves tipadas (`nb_config_key_t`: id, nome, tipo, default, min/max para
+   numéricos) — fonte única da verdade, nenhuma chave solta em módulo
+   separado. Cache em RAM validado contra o schema: `get`/`set` com
+   validação de tipo e faixa antes de aceitar; `set` fora de faixa é
+   rejeitado sem corromper o valor anterior.
+2. Conjunto inicial de chaves mínimo para provar o mecanismo (nível de log,
+   contador de falhas de boot consecutivas para o `boot_manager`); chaves de
+   features futuras (WiFi, etc.) entram quando a feature existir — nada de
+   chave especulativa.
+3. `host_test` no mesmo commit: get/set válido, rejeição fora de faixa,
+   valor default quando nunca setado, tipo errado rejeitado.
+4. Casca (`shell/`) fica para o commit seguinte: persistência real em NVS
+   (`nvs_flash`), leitura na inicialização, escrita só quando o valor muda.
+   Sem isso o "tipada" fica só em RAM — documentado como pendente, não
+   escondido.
+5. `boot_manager`: núcleo C17 puro (`boot_manager.c/.h`) separado, também sem
+   FreeRTOS — sequência de fases nomeadas com criticidade
+   (`CRITICAL`/`NON_CRITICAL`), clock injetado (duração por fase). Decide
+   `BOOT_OK` vs `SAFE_MODE` (qualquer fase crítica falhou) e monta relatório
+   (fase, sucesso, duração, causa). `host_test` cobrindo: soma de duração,
+   fase não-crítica falha sem acionar `SAFE_MODE`, fase crítica falha aciona
+   `SAFE_MODE` e marca a causa, relatório determinístico.
+6. Casca do `boot_manager` (orquestrar init real de `logger`/`config`/
+   `event_bus` em sequência, medir boot→idle < 3 s) fica para depois do
+   núcleo de ambos os componentes estar prontos — próxima fatia desta mesma
+   subfase, não uma nova.
+
+**Evidência S1.4 (2026-07-02, parcial):**
+
+- Implementado `firmware/components/infra/app_config` como núcleo C17 puro,
+  sem FreeRTOS/ESP-IDF/malloc/NVS: tabela central de chaves tipadas
+  (`nb_config_key_t`/`nb_config_descriptor_t`), getters/setters tipados por
+  chave (`_u32`/`_i32`) que rejeitam tipo errado ou valor fora de faixa sem
+  alterar o valor anterior, default quando a chave nunca foi setada. Chaves
+  iniciais: `NB_CONFIG_KEY_LOG_MIN_LEVEL` e `NB_CONFIG_KEY_BOOT_FAIL_STREAK`.
+- Componente nomeado `app_config` (pasta e arquivos), não `config`: o
+  ESP-IDF já tem um componente interno chamado `config` (geração de
+  `sdkconfig.h`); o build silenciosamente ignorou nossa primeira versão
+  chamada `config` sem erro, e só a renomeação para `app_config` fez o
+  `idf.py build` de fato compilar o componente próprio — registrado aqui
+  para quem for nomear componente novo não cair na mesma armadilha.
+- Host-test no mesmo commit: default sem set prévio, set válido lido de
+  volta, set fora de faixa rejeitado mantendo o valor anterior, accessor do
+  tipo errado rejeitado, chave inválida rejeitada em todas as funções.
+- Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
+  build` verde compilando `__idf_app_config` (`libapp_config.a`),
+  `noisebot2.bin` com 95% livre na partição app; `python3
+  tools/run_host_tests.py` verde (`config`, `event_bus`, `logger`); `python
+  tools/scan_secrets.py` verde (`secrets-scan: limpo`).
+- **Pendente:** casca do `app_config` com persistência real em NVS; núcleo e
+  casca do `boot_manager`; gate de saída da subfase (boot < 3 s, SAFE_MODE
+  testado) depende de ambos existirem e do `boot_manager` estar orquestrando
+  a inicialização real. Status permanece `EM ANDAMENTO`.
 
 ### S2 — Face (o robô fica vivo, mudo)
 

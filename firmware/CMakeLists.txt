@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.16)
 set(EXTRA_COMPONENT_DIRS
     "components/infra/event_bus"
     "components/infra/logger"
+    "components/infra/app_config"
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
