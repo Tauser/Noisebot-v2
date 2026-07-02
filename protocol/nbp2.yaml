@@ -15,7 +15,8 @@ protocol:
     - { id: 1, name: MEDIA, policy: backpressure_independent }
 
 enums:
-  expression:   [NEUTRAL, HAPPY, CURIOUS, FOCUSED, ATTENTIVE, SLEEPY, SAD, SURPRISED, ERROR]
+  # 10 expressões-base herdadas do v1 — spec completa em docs/VISUAL.md §2
+  expression:   [NEUTRAL, HAPPY, CURIOUS, SLEEPY, FOCUSED, SUSPICIOUS, SURPRISED, SAD, ALARMED, ANGRY]
   fsm_state:    [BOOT, IDLE, ATTENTIVE, RESPONDING, TOUCH_REACTING, SLEEPING, ERROR, SAFE_MODE]
   touch_kind:   [TAP, LONG_PRESS, SUSTAINED, BEGIN, END]
   stimulus_tag: [SOCIAL, PRAISE, ALERT, CALM, NOVELTY, USER_PRESENT, USER_LEFT]

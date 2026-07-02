@@ -1,108 +1,86 @@
-# S0 — Spikes de Bancada (bring-up)
+# S0 — Spikes de Bancada (bring-up, rota Waveshare)
 
-Os três experimentos que destravam o projeto. **Nenhuma fase posterior começa
-sem o S0 fechado**, porque o pinout congela aqui. Material: Freenove N16R8
-sobressalente (não a que roda o v1, se possível), osciloscópio/analisador
-lógico, protoboard, fonte 5 V de bancada com limite de corrente.
+Os experimentos que destravam o projeto. **Nenhuma fase posterior começa sem
+o S0 fechado**, porque o pinout congela aqui. Material: Waveshare N32R16V,
+módulo microSD, ArduCam Mega, ST7789, osciloscópio/analisador lógico,
+protoboard, fonte de bancada com limite de corrente.
 
-> Segurança de bancada (lição v1 — Waveshare morta por curto 5V↔3V3):
+> Segurança de bancada (lição v1 — uma N32R16V morreu por curto 5V↔3V3):
 > conferir com multímetro **antes de energizar** cada montagem; limite de
-> corrente da fonte em 500 mA nos spikes sem servo, 1,5 A com servo.
+> corrente em 500 mA em todos os spikes (não há servo no S0).
+> Lembrete N32R16V: **GPIO47/48 são 1.8V — nunca conectar lógica 3.3V.**
+
+O spike do servo 1-fio da rota Freenove **foi eliminado**: nesta rota o servo
+usa UART real (17/18) via FE-TTLinker — bring-up de servo é trabalho normal
+da S6, atrás do gate elétrico S6.1.
 
 ---
 
-## S0.1 — Servo SCS 1 fio no GPIO3
+## S0.1 — Health check da placa + display no SPI2
 
-**Hipótese:** o barramento SCS0009 (half-duplex TTL) funciona com UART1 TX e
-RX roteados para o **mesmo** GPIO3 via GPIO matrix, open-drain com pull-up,
-dispensando o FE-TTLinker e os pinos 19/20.
+**Hipóteses:** a unidade N32R16V atual está eletricamente sã; o ST7789 roda a
+50 MHz nos pinos IO-MUX (SCLK 12, MOSI 11, CS 10, DC 14, RST via SWRESET).
 
-**Montagem:**
+**Procedimento:**
 
-1. GPIO3 → linha de dados do servo; pull-up 4,7 kΩ a 3,3 V.
-2. TX em open-drain (`GPIO_MODE_INPUT_OUTPUT_OD`); RX ligado ao mesmo pino
-   pela matrix (`esp_rom_gpio_connect_in_signal`).
-3. Alimentação do servo: 5 V da fonte de bancada, GND comum, **nunca** do
-   regulador da placa.
-4. Echo do próprio TX chega no RX: o driver descarta os N bytes ecoados antes
-   de ler a resposta (técnica padrão de barramento 1 fio).
-
-**Procedimento:** PING (1 Mbps; fallback 500 kbps) → leitura de posição →
-leitura contínua 20 Hz por 10 min → escrita de posição com torque **somente
-com o servo solto na bancada, sem carga mecânica**.
+1. Health check: registrar MAC (`esptool chip_id`), medir 3V3 e 5V em
+   repouso e sob carga de display, boot limpo 10×. Registrar em
+   `docs/bringup/` (é a unidade substituta — a que morreu está documentada
+   no v1).
+2. Display: padrão animado 30 fps por 1 h, double buffer em PSRAM, DMA.
+3. Testar 50 MHz; se instável, degrau para 40 MHz e registrar.
 
 **Gate de saída:**
-- [ ] PING responde de forma estável (≥ 999/1000)
-- [ ] Leitura de posição/temp/load 20 Hz por 10 min sem erro de frame
-- [ ] Osciloscópio: bordas limpas, sem contenção na transição TX→RX
-- [ ] Boot normal da placa com o servo conectado (strap do GPIO3 não afetado)
-- [ ] Registrar: baud final, tempo de turnaround, config exata da matrix
-
-**Fallback documentado:** servo volta ao esquema v1 (UART em 19/20 via
-TTLinker, perde USB nativo). O blueprint sobrevive; só o mapa de pinos muda.
+- [ ] MAC e medições elétricas registradas
+- [ ] 1 h a 30 fps sem artefato, frequência final registrada
+- [ ] PSRAM octal reconhecida (16 MB) e sprites alocados nela
 
 ---
 
-## S0.2 — WS2812 externos no GPIO46
+## S0.2 — Câmera SPI no barramento compartilhado — **ADIADO**
 
-**Hipótese:** GPIO46 (strap ROM msg, pull-down fraco) dirige os 2 WS2812
-externos com RMT; dado idle-LOW é compatível com o strap; DIN em alta
-impedância não interfere no download mode.
+**Decisão 2026-07-02:** câmera fora do escopo v2.0 (form factor StackChan sem
+cavidade interna para o módulo). Este spike fica registrado e **executa
+se/quando a fase S5 voltar**, sem mudança de pinout: CS 9 e MISO 13 estão
+reservados.
 
-**Montagem:**
-
-1. GPIO46 → DIN do pixel 1. Pixel 1 alimentado a ~4,3 V (diodo 1N4007 em
-   série no 5 V) — ele regenera o sinal para o pixel 2 a 5 V pleno
-   (*pixel sacrificial* como level shifter).
-2. Capacitor 100 µF no rail dos LEDs; resistor 300 Ω em série no dado.
-
-**Procedimento:** animação de teste (fade + chase) 30 min; ciclo de 20 reboots;
-20 uploads consecutivos via esptool com os LEDs conectados; boot com LEDs
-energizados antes da placa.
-
-**Gate de saída:**
-- [ ] Cores estáveis, zero flicker/pixel fantasma em 30 min
-- [ ] 20/20 reboots normais (strap não violado)
-- [ ] 20/20 uploads esptool ok com LEDs conectados
-- [ ] LED onboard (48) permanece independente
-
-**Fallback:** dado dos LEDs em GPIO3 e servo nos 19/20 (esquema v1 completo).
+Roteiro preservado para o retorno: bring-up isolado (JPEG íntegro 100/100,
+decodificado no PC) → compartilhamento com render 30 fps (bus-lock ESP-IDF)
+→ medir tempo de captura/fps mínimo/erros SPI. Gate: fps ≥ 28 durante
+capturas, zero erro de barramento em 30 min, baseline p95 < 400 ms.
 
 ---
 
-## S0.3 — Contenção câmera + display + áudio (o teste que o v1 nunca fez)
+## S0.3 — microSD externo + contenção total
 
-**Hipótese:** um único S3 sustenta render 30 fps + I2S duplex + captura JPEG
-sob demanda sem underrun de áudio nem queda visível de fps (PSRAM octal e DMA
-dão conta; o CoreS3 comercial sugere que sim — medir, não crer).
+**Hipóteses:** SDMMC 1-bit via GPIO matrix (CLK 15, CMD 16, D0 6) funciona
+estável; o conjunto **render + I2S duplex + escrita SD** roda sem underrun de
+áudio (o teste que nenhuma geração fez completo).
 
-**Montagem:** firmware de spike (fora da árvore de produto) com: render de
-padrão animado 30 fps em double buffer PSRAM via SPI 50 MHz; tom contínuo no
-speaker + captura de mic em loopback (I2S duplex 16 kHz); captura JPEG QVGA a
-cada 2 s com `esp_camera` (driver validado no v1/DM4).
+**Procedimento:**
 
-**Procedimento:** 30 min contínuos registrando: fps médio/mínimo, underruns
-I2S, tempo de captura JPEG, heap/PSRAM livres, temperatura.
+1. Bring-up SD isolado: mount FATFS, escrita/leitura 10 MB, remount após
+   remoção a quente.
+2. Carga combinada 30 min: render 30 fps + tom contínuo/captura mic (I2S
+   duplex 16 kHz) + append de log no SD a cada 1 s.
+3. Registrar: underruns, fps mínimo, latência de escrita SD, heap/PSRAM,
+   temperatura.
 
 **Gate de saída:**
 - [ ] Zero underrun de áudio em 30 min
-- [ ] fps ≥ 28 sustentado, inclusive durante capturas
-- [ ] Captura JPEG < 300 ms p95
-- [ ] PSRAM livre ≥ 4 MB durante o teste inteiro
-- [ ] Números registrados neste doc (viram o baseline de `QUALITY.md` §4)
-
-**Fallback:** rebaixar fps para 20 durante captura (câmera é sob demanda e
-rara) — decisão registrada com a medição.
+- [ ] fps ≥ 28 sustentado; escrita SD nunca bloqueia áudio/render
+- [ ] PSRAM livre ≥ 10 MB durante o teste inteiro
+- [ ] Números registrados (viram baseline de `QUALITY.md` §4)
 
 ---
 
 ## S0.4 — Congelamento do pinout
 
 Com S0.1–S0.3 fechados (ou fallbacks decididos): atualizar `HARDWARE.md`
-removendo os marcadores `SPIKE`, registrar evidências (fotos de tela do
-osciloscópio, logs) em `docs/bringup/`, e taggear `pinout-v1.0`.
+removendo os marcadores `SPIKE`, registrar evidências (fotos do osciloscópio,
+logs, JPEGs de teste) em `docs/bringup/`, e taggear `pinout-v1.0`.
 
 **Gate de saída:**
 - [ ] `HARDWARE.md` sem pendências de spike
-- [ ] Decisões e medições registradas
+- [ ] Decisões e medições registradas em `docs/bringup/`
 - [ ] Tag criada — a partir daqui, mudança de pino exige RFC no ROADMAP

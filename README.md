@@ -11,10 +11,10 @@ firmware; a vida nunca depende do server.
 ## Topologia
 
 ```
-Freenove ESP32-S3 CAM N16R8 (robô)  ◄── NBP/2 sobre TCP/LAN ──►  Server Python (mente)
-face ST7789 · áudio I2S duplex · wake                            STT · LLM · TTS · visão
-touch · servos SCS + safety · LEDs                               persona · memória SQLite
-câmera OV2640 · microSD · autonômico                             tools · dashboard React
+Waveshare ESP32-S3 N32R16V (robô)   ◄── NBP/2 sobre TCP/LAN ──►  Server Python (mente)
+face ST7789 · áudio I2S duplex · wake                            STT · LLM · TTS
+touch · servos SCS (UART) + safety · LEDs                        persona · memória SQLite
+microSD · autonômico (câmera adiada)                             tools · dashboard React
 ```
 
 ## Documentos
@@ -23,8 +23,15 @@ câmera OV2640 · microSD · autonômico                             tools · da
 | --- | --- |
 | [`docs/PROJECT.md`](docs/PROJECT.md) | Visão, tese, princípios P1–P5 |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Camadas, fronteira corpo/mente, padrões obrigatórios |
-| [`docs/HARDWARE.md`](docs/HARDWARE.md) | Mapa de pinos single-MCU, budgets de memória |
+| [`docs/HARDWARE.md`](docs/HARDWARE.md) | Mapa de pinos single-MCU (Waveshare, ativa), budgets de memória |
+| [`docs/HARDWARE_FREENOVE.md`](docs/HARDWARE_FREENOVE.md) | Rota alternativa Freenove (não ativa) + procedimento de troca |
+| [`docs/BEHAVIOR.md`](docs/BEHAVIOR.md) | FSM, modelo emocional, reflexos, arbitragem |
+| [`docs/VISUAL.md`](docs/VISUAL.md) | Face paramétrica, 10 expressões, motifs de idle, overlays, LEDs |
+| [`docs/MEMORY.md`](docs/MEMORY.md) | Memória de curto/médio/longo prazo, privacidade, wipe |
 | [`docs/PROTOCOL.md`](docs/PROTOCOL.md) | NBP/2 — framing, semântica, schema-first |
+| [`docs/SERVER.md`](docs/SERVER.md) | A mente: atores, turno de voz, providers, tools, dashboard |
+| [`docs/VOICE.md`](docs/VOICE.md) | Pipeline de voz do corpo: wake, sessão, invariantes V-1..V-6, playback |
+| [`docs/ENERGY.md`](docs/ENERGY.md) | Orçamento de energia, trilhos, brownout, gate elétrico S6.1 |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Fases S0–S7 com subfases, gates e status — **fonte de verdade da execução** |
 | [`docs/QUALITY.md`](docs/QUALITY.md) | CI, definition of done, budgets mensuráveis |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Secure Boot, OTA assinada, tokens, provisioning |
@@ -52,3 +59,7 @@ docs/        documentação fundadora
 
 Histórico e racional das decisões: ver análise arquitetural do v1
 (2026-07-01) no repositório `noisebot` original.
+
+## Licença
+
+[MIT](LICENSE).

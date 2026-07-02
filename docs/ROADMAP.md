@@ -15,6 +15,7 @@ construção do NoiseBot 2. `CLAUDE.md` define regras de código;
 | `FEITO` | Todos os critérios de saída atendidos, com evidência registrada |
 | `BLOQUEADO` | Aguardando dependência explícita |
 | `FALLBACK` | Concluída pela alternativa documentada (registrar qual) |
+| `ADIADO` | Fora do escopo v2.0 por decisão registrada; pinos/contratos reservados |
 
 Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
@@ -46,9 +47,10 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 | --- | --- |
 | Fase atual | S0 — spikes de bancada |
 | Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
-| Hardware | Freenove N16R8 única; Waveshare fora do produto (spare) |
-| Servo | 1 fio GPIO3 (S0.1); fallback documentado: 19/20 como no v1 |
-| Maior risco atual | S0.3 (contenção câmera+render+áudio) nunca foi medido em nenhuma das gerações |
+| Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
+| Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
+| Servo | UART real 17/18 via TTLinker (spike de 1 fio eliminado); cabeamento só após gate elétrico S6.1 |
+| Maior risco atual | S0.3 (contenção render+áudio+SD) nunca foi medido em nenhuma das gerações |
 | Regra de ouro | CI verde é pré-condição de merge desde S1.1 |
 
 ## 4. Fases e subfases
@@ -62,9 +64,9 @@ morre depois; nenhuma linha dele é promovida sem reescrita pelo padrão P3.
 
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
-| S0.1 | Servo SCS 1 fio no GPIO3 (UART half-duplex via matrix, open-drain) | PING ≥ 999/1000; leitura 20 Hz/10 min sem erro; bordas limpas no osciloscópio; boot normal com servo conectado | `PENDENTE` |
-| S0.2 | WS2812 externos no GPIO46 com pixel sacrificial | 30 min sem flicker; 20/20 reboots; 20/20 uploads esptool; LED onboard independente | `PENDENTE` |
-| S0.3 | Contenção câmera+display+áudio simultâneos | zero underrun em 30 min; fps ≥ 28 durante captura; JPEG < 300 ms p95; PSRAM livre ≥ 4 MB | `PENDENTE` |
+| S0.1 | Health check da N32R16V + display ST7789 no SPI2 (IO-MUX 10/11/12/14) | MAC/medições elétricas registradas; 1 h a 30 fps sem artefato; PSRAM 16 MB reconhecida; frequência final registrada | `PENDENTE` |
+| S0.2 | Câmera SPI no barramento compartilhado (CS 9, MISO 13) | JPEG íntegro 100/100; fps ≥ 28 durante capturas; zero erro de barramento em 30 min | `ADIADO` (junto com S5; executa se/quando a câmera voltar) |
+| S0.3 | microSD externo (SDMMC 6/15/16) + contenção total render+áudio+SD | zero underrun em 30 min; fps ≥ 28; escrita SD nunca bloqueia áudio/render; PSRAM livre ≥ 10 MB | `PENDENTE` |
 | S0.4 | Pinout congelado | `HARDWARE.md` sem marcador SPIKE; evidências em `docs/bringup/`; tag `pinout-v1.0` | `PENDENTE` |
 
 ### S1 — Fundação (infra + segurança + CI)
@@ -94,10 +96,10 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
 | S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`) | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`) | `PENDENTE` |
-| S2.2 | Renderer paramétrico (9 expressões, interpolação 220 ms, AA sub-pixel) | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido | `PENDENTE` |
-| S2.3 | `tiny_fsm` (8 estados) **nascendo com o teste de invariante X→IDLE** | host-test cobre 100% das transições; invariante verde | `PENDENTE` |
-| S2.4 | `idle_engine` (blink Poisson, gaze errante/saccades, micro-behaviors, respiração) | 10 min de observação: nunca estático, nunca repetitivo óbvio; parâmetros documentados | `PENDENTE` |
-| S2.5 | `emotion_core` v0 (vetor+decaimento) modulando neutral/idle sutilmente | host-test de decaimento e integração de estímulo; efeito visível em bancada | `PENDENTE` |
+| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel) | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido | `PENDENTE` |
+| S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE** | host-test cobre 100% das transições × modos; invariante verde | `PENDENTE` |
+| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados | `PENDENTE` |
+| S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
 | S2.6 | Gate visual da fase | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline | `PENDENTE` |
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
@@ -123,21 +125,30 @@ server v1 (refactor).
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
 | S4.1 | `audio_hal` I2S full-duplex 16 kHz (mic+spk no mesmo barramento) | loopback limpo; zero underrun em 30 min com render ativo (re-valida S0.3 na árvore real) | `PENDENTE` |
-| S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com política de sessão do v1 (VAD só decide dentro de sessão aberta por wake) | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms | `PENDENTE` |
+| S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests** | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-* verdes | `PENDENTE` |
 | S4.3 | Streaming NBP/2 de áudio (LISTEN_* robô→server; SAY_* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE | `PENDENTE` |
 | S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro) | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno | `PENDENTE` |
 | S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM | `PENDENTE` |
 | S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM | intents respondem com LLM desligada; latência < 1 s | `PENDENTE` |
 | S4.7 | Gate de voz | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
 
-### S5 — Visão (presença e identidade)
+### S5 — Visão (presença e identidade) — **FASE ADIADA**
 
-*Objetivo:* câmera sob demanda + pipeline semântico na mente.
-*Dependências:* S4.7. *Referência:* DM4/13.1 do v1.
+*Decisão 2026-07-02:* câmera fora do escopo v2.0 — o form factor estilo
+StackChan não tem cavidade para o módulo (~33×33×17 mm; só a lente passa por
+um furo, mas o corpo precisa de espaço interno atrás dele). Slot elétrico
+(CS GPIO9, MISO 13), mensagens `SNAPSHOT_*` e capability no HELLO permanecem
+reservados. Presença no v2.0 degrada para som (VAD/análise), wake, touch e
+sono por inatividade. Rotas de retorno registradas: ArduCam Mega M12 atrás
+de janela, ou câmera WiFi independente (ex.: Freenove aposentada) falando
+direto com o server.
+
+*Objetivo (quando voltar):* câmera sob demanda + pipeline semântico na mente.
+*Dependências:* S4.7 + S0.2 + decisão mecânica. *Referência:* DM4/13.1 do v1.
 
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
-| S5.1 | `camera_hal` (`esp_camera`, OV2640, QVGA JPEG sob demanda — lição DM4.8: não usar esp_video) | captura estável; zero interferência em render/áudio (contadores) | `PENDENTE` |
+| S5.1 | `camera_hal` (ArduCam Mega SPI, JPEG sob demanda; driver pelo padrão núcleo/casca sobre o spike S0.2) | captura estável; zero interferência em render/áudio (contadores) | `PENDENTE` |
 | S5.2 | `SNAPSHOT_*` no NBP/2 (chunks MEDIA, transfer_id, CRC, preempção por CTRL) | JPEG íntegro no server < 400 ms p95; controle nunca atrasado por transferência (medido) | `PENDENTE` |
 | S5.3 | Server `VisionMind`: detecção (Haar/DNN) + identificação (Ollama vision) + presença | pipeline v1 DM4.9 reproduzido: PRESENT/LEFT_RECENTLY corretos em bancada | `PENDENTE` |
 | S5.4 | Gaze tracking (rosto→`STIMULUS`+gaze target) + away detection (→ sono) | olhos seguem rosto em tempo real; ausência 60 s → sono; retorno → despertar | `PENDENTE` |
@@ -147,21 +158,23 @@ server v1 (refactor).
 ### S6 — Movimento (servos sob safety)
 
 *Objetivo:* pescoço expressivo com a disciplina de safety do v1.
-*Dependências:* S0.1, S3.6. **Bloqueio absoluto:** S6.2+ não inicia sem S6.1
-assinado.
+*Dependências:* S3.6. **Bloqueio absoluto:** S6.2+ não inicia sem S6.1
+assinado. Inclui a power board do TTLinker (trilho 5V próprio, GND comum,
+nunca o 5V da placa dev).
 
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
-| S6.1 | **Gate elétrico assinado** (checklist físico: proteção reversa, fuse por trilho, isolação da trilha servo, GND, brownout sob stall com fonte limitada) | checklist em `docs/bringup/` com fotos e medições; assinado antes de qualquer torque no robô | `PENDENTE` |
-| S6.2 | `servo_hal` 1 fio (S0.1 promovido a produção pelo padrão P3) + `motion_safety` portado do v1 (stall/temp/subtensão/heartbeat/brownout, FAULT pegajoso) **com host-test do núcleo** | host-tests de veto/fault/idempotência; em bancada: stall induzido → torque-off < 150 ms | `PENDENTE` |
+| S6.1 | **Gate elétrico assinado** (checklist de `ENERGY.md` §4: proteção reversa, fuse por trilho, isolação 5V↔3V3, GND estrela, brownout sob stall) | checklist em `docs/bringup/` com fotos e medições; assinado antes de qualquer torque no robô | `PENDENTE` |
+| S6.2 | `servo_hal` UART 1 Mbps (17/18 via TTLinker) + `motion_safety` portado do v1 (stall/temp/subtensão/heartbeat/brownout, FAULT pegajoso) **com host-test do núcleo** | host-tests de veto/fault/idempotência; em bancada: stall induzido → torque-off < 150 ms | `PENDENTE` |
 | S6.3 | `motion_service` (interpolação, primitivos de pescoço, heartbeat p/ safety, limites por config NVS) | movimento suave centro↔limites; posição fora de range vetada (log) | `PENDENTE` |
 | S6.4 | Integração expressiva: gaze físico + gestos curtos coordenados com face (conductor mínimo) | linguagem corporal do v1 reproduzida; retorno limpo ao centro em toda entrada em IDLE (invariante estendida a pescoço) | `PENDENTE` |
 | S6.5 | Gate de movimento | soak 48 h com movimento periódico; injeção de stall/brownout → FAULT correto e recuperação por reset; zero evento de safety perdido | `PENDENTE` |
 
 ### S7 — Produto (paridade v1 e release)
 
-*Objetivo:* fechar paridade com o v1 e cortar a primeira release.
-*Dependências:* S5.6 (S6 pode correr em paralelo; release não bloqueia em S6
+*Objetivo:* fechar paridade com o v1 (exceto visão, adiada) e cortar a
+primeira release.
+*Dependências:* S4.7 (S6 pode correr em paralelo; release não bloqueia em S6
 se servos atrasarem — produto funciona sem pescoço).
 
 | ID | Entrega | Gate de saída | Status |
@@ -176,18 +189,23 @@ se servos atrasarem — produto funciona sem pescoço).
 ## 5. Dependências entre fases (resumo)
 
 ```
-S0 ──► S1.6+ ──► S1.9 ──► S2 ──► S3 ──► S4 ──► S5 ──► S7
- │       (S1.1–S1.5 podem                 ▲            ▲
- │        correr em paralelo a S0)        │            │
- └────────► S6.1 ──► S6.2–S6.5 ───────────┴── paralelo ┘
-            (após S3.6; nunca antes do gate elétrico)
+S0 ──► S1.6+ ──► S1.9 ──► S2 ──► S3 ──► S4 ──► S7
+        (S1.1–S1.5 podem                  ▲       ▲
+         correr em paralelo a S0)         │       │
+S3.6 ──► S6.1 ──► S6.2–S6.5 ──────────────┴─ paralelo ┘
+         (nunca antes do gate elétrico assinado)
+S5 (visão): ADIADA — retorna após v2.0 com S0.2 + decisão mecânica
 ```
 
 ## 6. Fora de escopo do v2.0 (registrado para não vazar)
 
 | Item | Condição de retorno |
 | --- | --- |
-| IMU / bateria / touchscreen / touch 3 zonas | pós-v2.0, entram por I2C sem mudar pinout |
+| Câmera / visão (fase S5) | pós-v2.0; **slot reservado** (CS GPIO9, MISO 13, `SNAPSHOT_*` no schema); exige decisão mecânica (cavidade ou câmera WiFi externa) |
+| Tela touch | pós-v2.0; **pinos já reservados** (ctrl no I2C 4/5, INT no GPIO1) |
+| IMU MPU-6050 | pós-v2.0; **pinos já reservados** (I2C 4/5, INT no GPIO8) |
+| Bateria (charger/boost/fuel gauge) | pós-v2.0; I2C + revisão do orçamento de energia na entrada |
+| Touch 3 zonas (MPR121) | pós-v2.0; I2C, custo zero de GPIO |
 | AEC / full-duplex conversacional | quando houver meta medida de conversa contínua |
 | Wake word customizada | quando o fluxo atual justificar treino próprio |
 | TLS no firmware | não retorna (decisão de arquitetura; ver SECURITY.md) |

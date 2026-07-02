@@ -53,19 +53,21 @@ suave (termina o gesto, volta ao baseline).
 
 ## Hardware
 
-Um único **Freenove ESP32-S3-WROOM CAM N16R8** com todos os periféricos do v1:
-ST7789 2", OV2640, microSD, INMP441 + MAX98357A (I2S full-duplex), 2× SCS0009
-(barramento 1 fio), 2× WS2812, touch capacitivo de cobre. USB nativo
-restaurado. Mapa completo e budgets: `HARDWARE.md`.
+Um único **Waveshare ESP32-S3-DEV-KIT N32R16V** (32 MB flash / 16 MB PSRAM)
+com: ST7789 2", microSD externo, INMP441 + MAX98357A (I2S full-duplex),
+2× SCS0009 via TTLinker (UART real), 2× WS2812, touch capacitivo de cobre.
+USB nativo livre. Form factor estilo StackChan. Câmera **adiada** (slot SPI
+reservado; sem cavidade no design atual). Mapa completo, compras e budgets:
+`HARDWARE.md`.
 
 A mente roda no PC do usuário (GPU): faster-whisper, Ollama/OpenAI, Piper,
 OpenCV — herdados do server v1 por refactor.
 
-Waveshare N32R16: fora do produto (spare; possível rig de HIL futuro, nunca
-dependência).
+Freenove N16R8 (com OV2640/SD onboard): continua rodando o NoiseBot v1 até
+S7.6; depois vira spare/referência.
 
-Adiados (entram por I2C sem mudança de pinout): IMU MPU-6050, bateria/fuel
-gauge, touch 3 zonas (MPR121), touchscreen.
+Adiados com pinos já reservados: tela touch (I2C + INT GPIO1), IMU MPU-6050
+(I2C + INT GPIO8), bateria/fuel gauge (I2C), touch 3 zonas MPR121 (I2C).
 
 ## O que o v2 explicitamente não faz
 

@@ -4,7 +4,7 @@
 
 ```
 ┌──────────────────────────────┐        WiFi (LAN local)        ┌──────────────────────────────┐
-│  ROBÔ — Freenove S3 N16R8    │◄──────── NBP/2 (TCP) ─────────►│  MENTE — server Python (PC)  │
+│  ROBÔ — Waveshare S3 N32R16V │◄──────── NBP/2 (TCP) ─────────►│  MENTE — server Python (PC)  │
 │  corpo + autonômico          │                                │  cognição                    │
 └──────────────────────────────┘                                └───────────▲──────────────────┘
                                                                             │ HTTP/WS
@@ -44,8 +44,8 @@
 │ L1 INFRA        event_bus, config (NVS), logger, watchdog, │
 │                 boot_manager, ota                          │
 ├────────────────────────────────────────────────────────────┤
-│ L0 HAL          display, audio_i2s, servo_1wire, led_rmt,  │
-│                 touch, camera, sdmmc, wifi                 │
+│ L0 HAL          display, audio_i2s, servo_uart, led_rmt,   │
+│                 touch, camera_spi, sdmmc, wifi             │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,6 +74,10 @@ em milissegundos no host, determinísticos, sem hardware. O `nb_link_engine` do
 v1 provou o padrão; no v2 ele é obrigatório (gate de review).
 
 ## 4. O autonômico (L4)
+
+> Especificações completas: estados/emoções/arbitragem em `BEHAVIOR.md`;
+> face/expressões/motifs/overlays/LED em `VISUAL.md`; camadas de memória em
+> `MEMORY.md`. Esta seção é o resumo estrutural.
 
 | Motor | Responsabilidade | Origem |
 | --- | --- | --- |
@@ -132,6 +136,9 @@ Regras de memória:
 - Budgets numéricos e enforcement: `HARDWARE.md` §3 e `QUALITY.md`.
 
 ## 7. A mente (server)
+
+> Especificação completa em `SERVER.md` (turno de voz, providers, tools,
+> dashboard, segurança operacional, testes). Este é o resumo estrutural.
 
 Cinco atores sobre o event bus interno; **nenhum ator chama outro** — só bus:
 
