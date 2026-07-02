@@ -4,4 +4,12 @@ idf_component_register(
 )
 
 # -Werror no código do projeto (componentes próprios seguem o mesmo padrão).
-target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
+component_compile_options(
+    -Wall
+    -Wextra
+    -Werror
+    -Werror=unused-function
+    -Werror=unused-variable
+    -Werror=unused-but-set-variable
+    -Werror=deprecated-declarations
+)

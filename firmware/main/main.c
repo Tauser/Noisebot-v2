@@ -16,6 +16,7 @@ static const char *TAG = "nb2";
 void app_main(void)
 {
     esp_chip_info_t chip;
+    int s1_1_werror_probe = 1;
     esp_chip_info(&chip);
 
     ESP_LOGI(TAG, "NoiseBot 2 skeleton — cores=%d rev=%d reset_reason=%d",
