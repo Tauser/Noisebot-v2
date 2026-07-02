@@ -80,7 +80,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | --- | --- | --- | --- |
 | S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
 | S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
-| S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `PENDENTE` |
+| S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `PENDENTE` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `PENDENTE` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha/token → NVS) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `PENDENTE` |
@@ -131,6 +131,19 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 - Gates pendentes fora do escopo S1.2: casca concorrente/task dona do bus e
   integração com logger/panic entram em S1.3+; HAL continua proibido de
   publicar diretamente.
+
+**Plano S1.3 (antes do gate de bancada):**
+
+1. Criar `logger` como núcleo C17 puro com ring RAM estruturado, sem FreeRTOS,
+   sem `esp_*`, sem `malloc` e com redaction de mensagens sensíveis.
+2. Expor APIs de cópia/dump cronológico para shutdown, worker SD e caminho de
+   panic sem acoplar o núcleo a FATFS ou coredump.
+3. Cobrir em host-test: wrap do ring, ordem cronológica, truncamento, redaction
+   prod/dev e cópia incremental para worker.
+4. Integrar o componente ao build ESP-IDF e manter `CONFIG_ESP_COREDUMP_*`
+   versionado em `sdkconfig.defaults`.
+5. Manter S1.3 em andamento até bancada: panic forçado deve produzir coredump
+   legível e dump do ring em `docs/bringup/`.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
