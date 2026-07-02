@@ -82,7 +82,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `EM ANDAMENTO` |
-| S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `PENDENTE` |
+| S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `EM ANDAMENTO` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha/token → NVS) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `PENDENTE` |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
@@ -287,6 +287,48 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   forçada em hardware confirmando `SAFE_MODE` — exige a placa N32R16V
   ligada rodando o binário, não só build limpo. Status permanece
   `EM ANDAMENTO` até essa medição em bancada.
+
+**Plano S1.5 (antes de implementar):**
+
+1. Criar `watchdog` em núcleo C17 puro (`watchdog.c/.h`), sem FreeRTOS,
+   ESP-IDF, NVS ou `malloc`: cadastro fixo de tasks, último feed, timeout por
+   task e causa de reset observada.
+2. Adicionar host-test no mesmo commit cobrindo feed normal, task expirada,
+   rejeição de duplicidade, limite de capacidade, argumentos inválidos e
+   armazenamento da causa de reset no núcleo.
+3. Criar casca FreeRTOS/ESP-IDF (`shell/nb_watchdog_shell.c/.h`) inicializando
+   o TWDT com panic/reset, assinando a task chamadora e incluindo as idle tasks
+   no `idle_core_mask`, para cobrir travas que impedem escalonamento.
+4. Persistir em NVS própria do watchdog (`nb_wdog`) o `esp_reset_reason()` e a
+   causa classificada no boot seguinte. A chave tipada no `app_config` fica
+   para depois de S1.4 fechar, para não acoplar duas subfases em andamento.
+5. Integrar apenas as tasks existentes hoje: `app_main` + idle tasks do ESP-IDF.
+   Cada task nova de S2+ deve entrar no watchdog no commit em que nascer.
+
+**Evidência S1.5 (2026-07-02, parcial):**
+
+- Implementado `firmware/components/infra/watchdog` como núcleo C17 puro:
+  tabela fixa de 16 tasks, nomes truncados com `NUL`, feed por `task_id`,
+  detecção determinística da primeira task expirada e causa de reset guardada
+  no estado do núcleo.
+- Casca `shell/nb_watchdog_shell.c/.h`: inicializa TWDT com `trigger_panic`,
+  monitora idle tasks dos dois cores via `idle_core_mask`, assina `app_main` e
+  grava em NVS (`nb_wdog/last_reset`, `nb_wdog/last_cause`) a causa observada
+  após reboot (`TASK_WDT`, `INT_WDT` ou `WDT` genérico).
+- Integração mínima no `app_main`: `nb_watchdog_shell_init(10000)` após o boot
+  manager e `nb_watchdog_shell_feed()` a cada 1 s no loop `alive`.
+- Host-test no mesmo commit: feed normal, expiração, duplicidade, capacidade,
+  argumentos inválidos e causa de reset.
+- Gate local confirmado: `python tools/run_host_tests.py` verde
+  (`app_config`, `boot_manager`, `event_bus`, `logger`, `watchdog`);
+  `python tools/scan_secrets.py` verde (`secrets-scan: limpo`);
+  `git diff --check` sem erro de whitespace (apenas avisos LF→CRLF no Windows);
+  `idf.py build` verde via ESP-IDF v5.5.4, compilando `__idf_watchdog` e
+  gerando `noisebot2.bin` com 94% livre na menor partição app.
+- **Gate pendente (bloqueia `FEITO`):** ensaio em bancada com task travada,
+  confirmando reset e leitura posterior da causa em NVS. Não foi executado
+  aqui para não flashear hardware sem pedido explícito e porque a Freenove
+  CAM COM12 continua proibida para v2 sem decisão explícita.
 
 ### S2 — Face (o robô fica vivo, mudo)
 

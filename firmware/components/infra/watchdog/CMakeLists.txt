@@ -1,10 +1,9 @@
 idf_component_register(
-    SRCS "main.c"
-    INCLUDE_DIRS "."
-    REQUIRES boot_manager watchdog
+    SRCS "watchdog.c" "shell/nb_watchdog_shell.c"
+    INCLUDE_DIRS "." "shell"
+    REQUIRES freertos esp_timer esp_system nvs_flash
 )
 
-# -Werror no código do projeto (componentes próprios seguem o mesmo padrão).
 component_compile_options(
     -Wall
     -Wextra
