@@ -79,7 +79,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | ID | Entrega | Gate de saída | Status |
 | --- | --- | --- | --- |
 | S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
-| S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `EM ANDAMENTO` |
+| S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `PENDENTE` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `PENDENTE` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `PENDENTE` |
@@ -114,6 +114,23 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
    saturação normal, reserva safety, ordem de entrega e auditoria.
 5. Integrar ao build/CI sem publicar eventos de HAL diretamente; camadas acima
    consomem o bus conforme `ARCHITECTURE.md`.
+
+**Evidência S1.2 (2026-07-02):**
+
+- Implementado `firmware/components/infra/event_bus` como núcleo C17 puro,
+  sem FreeRTOS/ESP-IDF/malloc, com pool estático de 32 slots, 4 reservados
+  para safety, fila safety separada e ring de auditoria.
+- Host-test de burst no mesmo commit: cobre zero drop normal no perfil alvo,
+  fila normal cheia com safety aceito, prioridade safety na entrega, auditoria
+  de drop/poll e payload inválido.
+- Gate local: `python tools/run_host_tests.py` verde; `idf.py build` verde
+  compilando `event_bus`; `tools/scan_secrets.py` verde; `git diff --check`
+  verde.
+- CI no PR #3 verde em `firmware-build`, `host-tests`, `secrets-scan`,
+  `server-tests (3.10)` e `server-tests (3.11)`.
+- Gates pendentes fora do escopo S1.2: casca concorrente/task dona do bus e
+  integração com logger/panic entram em S1.3+; HAL continua proibido de
+  publicar diretamente.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
