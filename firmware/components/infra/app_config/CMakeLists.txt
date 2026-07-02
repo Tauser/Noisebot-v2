@@ -1,6 +1,7 @@
 idf_component_register(
-    SRCS "app_config.c"
-    INCLUDE_DIRS "."
+    SRCS "app_config.c" "shell/nb_app_config_shell.c"
+    INCLUDE_DIRS "." "shell"
+    REQUIRES freertos nvs_flash
 )
 
 component_compile_options(

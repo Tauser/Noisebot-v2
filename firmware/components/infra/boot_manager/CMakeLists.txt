@@ -1,6 +1,7 @@
 idf_component_register(
-    SRCS "boot_manager.c"
-    INCLUDE_DIRS "."
+    SRCS "boot_manager.c" "shell/nb_boot_manager_shell.c"
+    INCLUDE_DIRS "." "shell"
+    REQUIRES esp_timer logger app_config
 )
 
 component_compile_options(

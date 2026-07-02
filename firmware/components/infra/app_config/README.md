@@ -25,6 +25,13 @@ Chaves atuais: `NB_CONFIG_KEY_LOG_MIN_LEVEL` (nível mínimo do `logger`,
 falha crítica, para o `boot_manager`). Chave nova só entra quando a feature
 que a usa existir.
 
-**Pendente (fora do escopo desta fatia, ver `docs/ROADMAP.md` §S1.4):** casca
-com persistência real em NVS (ler na inicialização, escrever só quando o
-valor muda) e o `boot_manager` que consome a chave de fail streak.
+Casca (`shell/nb_app_config_shell.c/.h`, FreeRTOS + NVS): singleton
+protegido por mutex. `nb_app_config_shell_init()` chama `nvs_flash_init()`
+(com erase+retry se a partição estiver corrompida/versão nova) e abre o
+namespace `nb_cfg`; carrega cada chave conhecida do NVS para o cache (chave
+ausente = mantém default). `set_*` só grava em NVS (`nvs_set_*` +
+`nvs_commit`) quando o valor validado difere do anterior.
+
+**Pendente (fora do escopo desta fatia, ver `docs/ROADMAP.md` §S1.4):** nada
+pendente neste componente — a persistência está completa. O que falta é o
+`boot_manager` orquestrando tudo em bancada e o gate de saída da subfase.

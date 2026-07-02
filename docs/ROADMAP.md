@@ -262,11 +262,31 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   partição app; `python3 tools/run_host_tests.py` verde (`app_config`,
   `boot_manager`, `event_bus`, `logger`); `python tools/scan_secrets.py`
   verde (`secrets-scan: limpo`).
-- **Pendente:** casca do `app_config` com persistência real em NVS; casca do
-  `boot_manager` orquestrando a inicialização real (`logger`, `app_config`,
-  `event_bus`, ...) e medindo boot→idle; gate de saída da subfase (boot < 3 s,
-  SAFE_MODE testado em bancada) depende dessa casca existir e rodar em
-  hardware real. Status permanece `EM ANDAMENTO`.
+- Casca do `app_config` adicionada (`shell/nb_app_config_shell.c/.h`):
+  singleton com mutex, `nvs_flash_init()` (erase+retry se corrompida/versão
+  nova), namespace `nb_cfg`; carrega cada chave do NVS na inicialização
+  (ausente = default) e só escreve (`nvs_set_*` + `nvs_commit`) quando o
+  valor validado muda.
+- Casca do `boot_manager` adicionada (`shell/nb_boot_manager_shell.c/.h`):
+  `nb_boot_manager_shell_run()` orquestra, em sequência, `logger` (crítico) e
+  `app_config` (crítico) com duração medida por `esp_timer`; em SAFE_MODE
+  incrementa `NB_CONFIG_KEY_BOOT_FAIL_STREAK` (melhor esforço), em BOOT_OK
+  zera o contador. `event_bus` fica de fora da sequência de propósito — a
+  casca dele só nasce quando houver serviço publicando evento (ver seu
+  README), não é esquecimento.
+- `firmware/main/main.c` chama `nb_boot_manager_shell_run()` no início do
+  `app_main` e loga outcome/fases/duração total.
+- Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
+  build` verde compilando `__idf_app_config`, `__idf_boot_manager` e
+  `__idf_main` com as cascas novas, `noisebot2.bin` com 94% livre na
+  partição app; `python3 tools/run_host_tests.py` verde (núcleos
+  inalterados: `app_config`, `boot_manager`, `event_bus`, `logger`); `python
+  tools/scan_secrets.py` verde (`secrets-scan: limpo`).
+- **Gate pendente (bloqueia `FEITO`):** o gate de saída da subfase em si —
+  boot < 3 s até task idle medido em bancada, e falha de fase crítica
+  forçada em hardware confirmando `SAFE_MODE` — exige a placa N32R16V
+  ligada rodando o binário, não só build limpo. Status permanece
+  `EM ANDAMENTO` até essa medição em bancada.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
