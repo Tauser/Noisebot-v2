@@ -146,7 +146,7 @@ def c_encode_field_lines(field: Field) -> list[str]:
         ]
     if field.type == "str":
         return [
-            f"    NBP2_CBOR_TRY(nbp2_cbor_write_text(&w, in->{n}, strnlen(in->{n}, sizeof(in->{n}) - 1u)));",
+            f"    NBP2_CBOR_TRY(nbp2_cbor_write_text(&w, in->{n}, nbp2_bounded_strlen(in->{n}, sizeof(in->{n}) - 1u)));",
         ]
     if field.type == "enum":
         return [f"    NBP2_CBOR_TRY(nbp2_cbor_write_uint(&w, (uint64_t)in->{n}));"]
@@ -411,6 +411,20 @@ nbp2_status_t nbp2_decode_{lname}(const uint8_t *data, size_t len,
             return _nbp2_status;                                            \
         }                                                                    \
     } while (0)
+
+/* strnlen() e POSIX, nao C17 padrao -- gcc com -std=c17 estrito (Linux/CI)
+ * nao a declara, diferente do MinGW/newlib usados em bancada, causando
+ * falha silenciosa so no CI. Bounded length em C17 puro evita depender de
+ * macro de feature POSIX. */
+static size_t nbp2_bounded_strlen(const char *s, size_t max_len)
+{
+    size_t len = 0;
+
+    while (len < max_len && s[len] != '\0') {
+        len++;
+    }
+    return len;
+}
 
 static void nbp2_write_u16_le(uint8_t *out, uint16_t value)
 {
