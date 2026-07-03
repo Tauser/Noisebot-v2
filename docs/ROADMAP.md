@@ -45,7 +45,7 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
 | Campo | Decisão |
 | --- | --- |
-| Fase atual | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.7 é o próximo); S0 corre em paralelo |
+| Fase atual | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.7 NBP/2 em andamento); S0 corre em paralelo |
 | Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
 | Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
 | Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
@@ -84,7 +84,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `FEITO` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `FEITO` |
-| S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
+| S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `EM ANDAMENTO` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
 | S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
 
@@ -417,6 +417,48 @@ em mãos.
   gravadas na NVS e sobrevivem a reset. **Gate de saída da subfase
   atendido.** `secrets-scan` confirma zero credencial no repo (PoP/SSID/
   senha nunca tocam o código-fonte). Status `FEITO`.
+
+**Plano S1.7 (antes de implementar):**
+
+1. Começar pelo envelope do protocolo, não pela rede: codegen a partir de
+   `protocol/nbp2.yaml` para C17 e Python, com IDs de mensagem, versão,
+   framing `SOF|len|type|seq|payload|crc32` e comparação timing-safe de token.
+2. Tratar o payload como bytes opacos nesta primeira fatia. Payloads CBOR e
+   structs por mensagem entram na próxima fatia da mesma subfase, depois que
+   o envelope estiver protegido por golden test executável.
+3. Adicionar job `protocol-golden` ao CI no mesmo commit do codegen: gerar os
+   artefatos, compilar o helper C no host, gerar os mesmos frames em Python e
+   comparar bytes reais, nunca regex sobre fonte.
+4. Manter `protocol/generated/` como saída de build ignorada pelo git; a fonte
+   de verdade versionada continua sendo o YAML + codegen.
+5. Deixar TCP/reconexão/backoff e teste de HELLO real contra server fake para
+   as próximas fatias de S1.7, porque dependem do encoder/decoder de payload.
+
+**Evidência S1.7 (2026-07-02, parcial):**
+
+- Adicionado `protocol/codegen/generate_nbp2.py`: parser mínimo do
+  `nbp2.yaml` que valida IDs duplicados e gera `protocol/generated/c/nbp2.h`,
+  `protocol/generated/c/nbp2.c` e `protocol/generated/python/nbp2.py`.
+- Artefatos gerados incluem `NBP2_PROTO_MAJOR/MINOR`, `NBP2_SOF`,
+  `NBP2_MAX_CTRL_PAYLOAD`, enum/constantes dos 26 IDs de mensagem do YAML,
+  `encode_frame`, `decode_frame`, CRC32 IEEE e comparação timing-safe de
+  token em C/Python. Núcleo C17 sem FreeRTOS, ESP-IDF ou `malloc`.
+- Adicionado `tools/check_protocol_golden.py`: regenera os artefatos,
+  compila um binário C host usando os arquivos gerados e compara contra o
+  módulo Python gerado os bytes de frames `HELLO` e `HEARTBEAT`, além dos
+  resultados de token igual, token diferente e comprimento diferente.
+- CI atualizado com job `protocol-golden` sem filtro de paths, seguindo
+  `QUALITY.md` §1.
+- Gate local confirmado: `python tools/check_protocol_golden.py` verde
+  (`nbp2-codegen: 26 mensagens geradas`, `protocol-golden: ok`);
+  `python tools/run_host_tests.py` verde; `python tools/scan_secrets.py`
+  verde; `git diff --check` sem erro de whitespace (apenas avisos LF→CRLF no
+  Windows).
+- **Pendente para `FEITO`:** codegen dos payloads CBOR/structs para
+  HELLO/HEARTBEAT/TIME_SYNC/EVENT/STATUS, persistência/leitura do token NBP/2
+  em NVS, teste dos dois lados rejeitando HELLO sem token ou token incorreto,
+  transporte TCP com reconexão/backoff e soak de 100 reconexões contra server
+  fake.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
