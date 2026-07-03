@@ -633,6 +633,19 @@ em mãos.
   whitespace (apenas avisos LF→CRLF no Windows); `idf.py build` verde via
   ESP-IDF v5.5.4, gerando `noisebot2.bin` com 78% livre na menor partição
   app.
+- **Bug real corrigido antes do commit (revisão, 2026-07-03):**
+  `nb_ota_accept_candidate` comparava `candidate_secure_version` contra
+  `NB_OTA_MAX_SECURE_VERSION_BITS` (8, a **largura em bits** do campo de
+  eFuse) como se fosse o valor máximo permitido — um campo de 8 bits
+  representa 0..255, então a checagem original rejeitava indevidamente
+  quase toda a faixa válida (9..255) como `INVALID_ARG`. O host-test original
+  até validava esse comportamento errado como se fosse o esperado. Corrigido
+  com `NB_OTA_MAX_SECURE_VERSION = (1u << bits) - 1u`; teste atualizado para
+  aceitar o teto real (255) e só rejeitar acima dele (256).
+- Gate local reconfirmado após o fix: `idf.py build` verde com `ota`
+  realmente recompilado (timestamp do `.o` conferido, não só cache);
+  `python tools/run_host_tests.py` verde; `python tools/scan_secrets.py`
+  verde.
 - **Pendente para `FEITO`:** OTA A→B→A em bancada, imagem adulterada recusada,
   dump de flash sem token em claro após flash encryption, e decisão explícita
   para queima de eFuses da N32R16V.

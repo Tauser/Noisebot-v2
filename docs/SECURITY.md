@@ -37,12 +37,29 @@ prolongado + equipamento de laboratório; TLS no firmware (mbedTLS ~250 KB SRAM
 
 - Chave de Secure Boot/assinatura de OTA: gerada offline, guardada fora do
   repo e da máquina de build cotidiana; backup físico. Perda da chave = placa
-  presa na última imagem — documentar recuperação antes de habilitar eFuse.
+  presa na última imagem.
 - Token NBP/2: gerado no provisioning (`secrets.token_hex(16)` no server),
   gravado via SoftAP na NVS cifrada do robô e em
   `~/.noisebot2/robot_token` no server (arquivo 0600). Rotação: re-provisionar.
 - Chaves de API de LLM (se usadas): somente variáveis de ambiente no server,
   lidas no ponto de uso; nunca em config serializada.
+
+Procedimento S1.8 antes de queimar eFuses:
+
+1. Gerar a chave de Secure Boot/assinatura OTA em uma máquina/offline vault
+   fora do repo. O caminho da chave nunca entra em `sdkconfig.defaults`; o
+   perfil `firmware/sdkconfig.s1_8_secure.defaults` só documenta as opções
+   seguras e a chave entra por ambiente local protegido.
+2. Fazer dois backups físicos da chave e registrar onde estão no inventário
+   privado. Se todos os backups forem perdidos, a recuperação é: manter a
+   última imagem assinada em produção, gerar nova chave apenas para placas
+   ainda não provisionadas, e tratar a placa já provisionada como presa nessa
+   cadeia de assinatura até substituição física.
+3. Antes da ativação irreversível: build assinado, OTA A→B→A em bancada,
+   imagem adulterada recusada, e leitura de flash confirmando que token NBP/2
+   não aparece em claro.
+4. Só depois desses gates: decisão explícita do usuário para habilitar Secure
+   Boot v2, anti-rollback e flash encryption na unidade N32R16V.
 
 ## 4. Privacidade (promessa de produto)
 

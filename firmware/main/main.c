@@ -7,6 +7,8 @@
  * que continua funcional offline (P1: corpo/mente separados).
  * S1.7: mind_link (sessão NBP/2 sobre TCP) — mesma regra, reconecta com
  * backoff e nunca bloqueia o boot se o server estiver offline.
+ * S1.8: confirmação local de imagem OTA pendente só depois do esqueleto subir
+ * saudável; Secure Boot/flash encryption exigem gate de bancada explícito.
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -20,6 +22,7 @@
 #include "nb_boot_manager_shell.h"
 #include "nb_watchdog_shell.h"
 #include "nb_wifi_setup_shell.h"
+#include "nb_ota_shell.h"
 #include "nb_mind_link_shell.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
@@ -55,6 +58,16 @@ void app_main(void)
     if (mind_link_err != ESP_OK) {
         ESP_LOGE(TAG, "mind_link falhou (%s) — seguindo offline",
                  esp_err_to_name(mind_link_err));
+    }
+
+    if (outcome == NB_BOOT_OUTCOME_OK) {
+        esp_err_t ota_err = nb_ota_shell_confirm_boot_if_pending();
+        if (ota_err != ESP_OK) {
+            ESP_LOGE(TAG, "confirmacao OTA falhou (%s)",
+                     esp_err_to_name(ota_err));
+        }
+    } else {
+        ESP_LOGW(TAG, "boot nao saudavel; imagem OTA pendente nao sera confirmada");
     }
 
     for (;;) {
