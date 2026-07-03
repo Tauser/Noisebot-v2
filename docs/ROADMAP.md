@@ -8,14 +8,14 @@ construção do NoiseBot 2. `CLAUDE.md` define regras de código;
 
 ## 1. Como ler
 
-| Status | Significado |
-| --- | --- |
-| `PENDENTE` | Ainda não iniciada |
-| `EM ANDAMENTO` | Trabalho ativo com ID declarado |
-| `FEITO` | Todos os critérios de saída atendidos, com evidência registrada |
-| `BLOQUEADO` | Aguardando dependência explícita |
-| `FALLBACK` | Concluída pela alternativa documentada (registrar qual) |
-| `ADIADO` | Fora do escopo v2.0 por decisão registrada; pinos/contratos reservados |
+| Status         | Significado                                                            |
+| -------------- | ---------------------------------------------------------------------- |
+| `PENDENTE`     | Ainda não iniciada                                                     |
+| `EM ANDAMENTO` | Trabalho ativo com ID declarado                                        |
+| `FEITO`        | Todos os critérios de saída atendidos, com evidência registrada        |
+| `BLOQUEADO`    | Aguardando dependência explícita                                       |
+| `FALLBACK`     | Concluída pela alternativa documentada (registrar qual)                |
+| `ADIADO`       | Fora do escopo v2.0 por decisão registrada; pinos/contratos reservados |
 
 Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
@@ -43,50 +43,50 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
 ## 3. Painel
 
-| Campo | Decisão |
-| --- | --- |
-| Fase atual | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6/S1.7 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.8 OTA em andamento); S0 corre em paralelo |
-| Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
-| Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
-| Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
-| Servo | **Perfil B inicial** (decisão 2026-07-02): MG90S PWM em 17/18 + INA219 (stall por corrente) + corte MOSFET (GPIO3); upgrade perfil A (SCS0009/TTLinker) nos mesmos pinos — ver `HARDWARE.md` §Perfis de motion |
-| Maior risco atual | S0.3 (contenção render+áudio+SD) nunca foi medido em nenhuma das gerações |
-| Regra de ouro | CI verde é pré-condição de merge desde S1.1 |
+| Campo             | Decisão                                                                                                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fase atual        | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6/S1.7 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.8 OTA em andamento); S0 corre em paralelo                                                                          |
+| Próximo marco     | Pinout congelado (S0.4, tag `pinout-v1.0`)                                                                                                                                                                     |
+| Hardware          | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md`                                                      |
+| Câmera            | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados                                                                    |
+| Servo             | **Perfil B inicial** (decisão 2026-07-02): MG90S PWM em 17/18 + INA219 (stall por corrente) + corte MOSFET (GPIO3); upgrade perfil A (SCS0009/TTLinker) nos mesmos pinos — ver `HARDWARE.md` §Perfis de motion |
+| Maior risco atual | S0.3 (contenção render+áudio+SD) nunca foi medido em nenhuma das gerações                                                                                                                                      |
+| Regra de ouro     | CI verde é pré-condição de merge desde S1.1                                                                                                                                                                    |
 
 ## 4. Fases e subfases
 
 ### S0 — Spikes de bancada e congelamento de pinout
 
-*Objetivo:* provar as três hipóteses de hardware que o design assume.
-*Dependências:* nenhuma. *Procedimentos completos:* `S0_BRINGUP.md`.
-*Regra:* código de spike vive fora da árvore de produto (`scratch/spikes/`) e
+_Objetivo:_ provar as três hipóteses de hardware que o design assume.
+_Dependências:_ nenhuma. _Procedimentos completos:_ `S0_BRINGUP.md`.
+_Regra:_ código de spike vive fora da árvore de produto (`scratch/spikes/`) e
 morre depois; nenhuma linha dele é promovida sem reescrita pelo padrão P3.
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S0.1 | Health check da N32R16V + display ST7789 no SPI2 (IO-MUX 10/11/12/14) | MAC/medições elétricas registradas; 1 h a 30 fps sem artefato; PSRAM 16 MB reconhecida; frequência final registrada | `PENDENTE` |
-| S0.2 | Câmera SPI no barramento compartilhado (CS 9, MISO 13) | JPEG íntegro 100/100; fps ≥ 28 durante capturas; zero erro de barramento em 30 min | `ADIADO` (junto com S5; executa se/quando a câmera voltar) |
-| S0.3 | microSD externo (SDMMC 6/15/16) + contenção total render+áudio+SD | zero underrun em 30 min; fps ≥ 28; escrita SD nunca bloqueia áudio/render; PSRAM livre ≥ 10 MB | `PENDENTE` |
-| S0.4 | Pinout congelado | `HARDWARE.md` sem marcador SPIKE; evidências em `docs/bringup/`; tag `pinout-v1.0` | `PENDENTE` |
+| ID   | Entrega                                                               | Gate de saída                                                                                                       | Status                                                     |
+| ---- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| S0.1 | Health check da N32R16V + display ST7789 no SPI2 (IO-MUX 10/11/12/14) | MAC/medições elétricas registradas; 1 h a 30 fps sem artefato; PSRAM 16 MB reconhecida; frequência final registrada | `PENDENTE`                                                 |
+| S0.2 | Câmera SPI no barramento compartilhado (CS 9, MISO 13)                | JPEG íntegro 100/100; fps ≥ 28 durante capturas; zero erro de barramento em 30 min                                  | `ADIADO` (junto com S5; executa se/quando a câmera voltar) |
+| S0.3 | microSD externo (SDMMC 6/15/16) + contenção total render+áudio+SD     | zero underrun em 30 min; fps ≥ 28; escrita SD nunca bloqueia áudio/render; PSRAM livre ≥ 10 MB                      | `PENDENTE`                                                 |
+| S0.4 | Pinout congelado                                                      | `HARDWARE.md` sem marcador SPIKE; evidências em `docs/bringup/`; tag `pinout-v1.0`                                  | `PENDENTE`                                                 |
 
 ### S1 — Fundação (infra + segurança + CI)
 
-*Objetivo:* esqueleto executável com toda a infraestrutura de qualidade e
+_Objetivo:_ esqueleto executável com toda a infraestrutura de qualidade e
 segurança — antes de qualquer feature de produto.
-*Dependências:* S0.4 (apenas para S1.6+; S1.1–S1.5 podem começar em paralelo
-ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
+_Dependências:_ S0.4 (apenas para S1.6+; S1.1–S1.5 podem começar em paralelo
+ao S0). _Camadas:_ L0 parcial, L1, início do mind_link.
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
-| S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
-| S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
-| S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `FEITO` |
-| S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
-| S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `FEITO` |
-| S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `FEITO` |
-| S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `EM ANDAMENTO` |
-| S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
+| ID   | Entrega                                                                                                                                             | Gate de saída                                                                                                                            | Status         |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais)                                | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho                                                          | `FEITO`        |
+| S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit**                              | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia                                                      | `FEITO`        |
+| S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition)                                             | panic forçado em bancada produz coredump legível + ring de eventos                                                                       | `EM ANDAMENTO` |
+| S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório                                                                | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado                                                                      | `FEITO`        |
+| S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes                                                                                        | task travada em bancada → reset + causa registrada em NVS                                                                                | `FEITO`        |
+| S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo)                 | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo                                          | `FEITO`        |
+| S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos            | `FEITO`        |
+| S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3)                                          | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `EM ANDAMENTO` |
+| S1.9 | Soak do esqueleto                                                                                                                                   | 10 min: zero reset, heap estável, reconexões limpas com server de teste                                                                  | `PENDENTE`     |
 
 **Evidência S1.1 (2026-07-02):**
 
@@ -167,11 +167,11 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   detecção de gap quando o cursor fica para trás do overwrite, truncamento
   seguro de mensagem longa.
 - Gate local (sandbox, sem toolchain ESP-IDF disponível): `python3
-  tools/run_host_tests.py` verde compilando `event_bus` e `logger`.
+tools/run_host_tests.py` verde compilando `event_bus` e `logger`.
 - Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
-  build` verde, compilando `logger` e gerando `noisebot2.bin` (95% livre na
+build` verde, compilando `logger` e gerando `noisebot2.bin` (95% livre na
   partição app); `python tools/scan_secrets.py` verde (`secrets-scan:
-  limpo`); `git diff --check` verde (só avisos de normalização LF→CRLF, sem
+limpo`); `git diff --check` verde (só avisos de normalização LF→CRLF, sem
   erro de whitespace).
 - Commit `S1.3: nucleo do logger` na branch `codex/s1.2-event-bus`.
 - Casca FreeRTOS adicionada (`shell/nb_logger_shell.c/.h`): singleton
@@ -180,9 +180,9 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   worker para alimentar ainda) e sem worker SD/hook de panic — deferidos por
   P5 e pelo bloqueio abaixo.
 - Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
-  build` verde com a casca nova, gerando `noisebot2.bin` (95% livre na
+build` verde com a casca nova, gerando `noisebot2.bin` (95% livre na
   partição app); `python tools/scan_secrets.py` verde (`secrets-scan:
-  limpo`); `python3 tools/run_host_tests.py` verde (núcleo não foi tocado).
+limpo`); `python3 tools/run_host_tests.py` verde (núcleo não foi tocado).
 - **Gate pendente (bloqueia `FEITO`):** o gate de saída de S1.3 em si —
   "panic forçado em bancada produz coredump legível + ring de eventos" —
   que exige: (1) worker SD (depende de S0.3 — aguardando módulo microSD
@@ -240,9 +240,9 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   volta, set fora de faixa rejeitado mantendo o valor anterior, accessor do
   tipo errado rejeitado, chave inválida rejeitada em todas as funções.
 - Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
-  build` verde compilando `__idf_app_config` (`libapp_config.a`),
+build` verde compilando `__idf_app_config` (`libapp_config.a`),
   `noisebot2.bin` com 95% livre na partição app; `python3
-  tools/run_host_tests.py` verde (`app_config`, `event_bus`, `logger`);
+tools/run_host_tests.py` verde (`app_config`, `event_bus`, `logger`);
   `python tools/scan_secrets.py` verde (`secrets-scan: limpo`).
 - Implementado `firmware/components/infra/boot_manager` como núcleo C17
   puro, sem FreeRTOS/ESP-IDF/malloc: sequência de fases nomeadas
@@ -257,7 +257,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   `end_phase` sem `begin_phase` rejeitado, `begin_phase` sobre fase ainda
   aberta rejeitado, overflow de capacidade rejeitado.
 - Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
-  build` verde compilando `__idf_app_config` e `__idf_boot_manager`
+build` verde compilando `__idf_app_config` e `__idf_boot_manager`
   (`libapp_config.a`, `libboot_manager.a`), `noisebot2.bin` com 95% livre na
   partição app; `python3 tools/run_host_tests.py` verde (`app_config`,
   `boot_manager`, `event_bus`, `logger`); `python tools/scan_secrets.py`
@@ -277,11 +277,11 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 - `firmware/main/main.c` chama `nb_boot_manager_shell_run()` no início do
   `app_main` e loga outcome/fases/duração total.
 - Gate local confirmado na máquina de desenvolvimento (2026-07-02): `idf.py
-  build` verde compilando `__idf_app_config`, `__idf_boot_manager` e
+build` verde compilando `__idf_app_config`, `__idf_boot_manager` e
   `__idf_main` com as cascas novas, `noisebot2.bin` com 94% livre na
   partição app; `python3 tools/run_host_tests.py` verde (núcleos
   inalterados: `app_config`, `boot_manager`, `event_bus`, `logger`); `python
-  tools/scan_secrets.py` verde (`secrets-scan: limpo`).
+tools/scan_secrets.py` verde (`secrets-scan: limpo`).
 - **Ensaio em bancada (2026-07-02, N32R16V via COM5):** flash real e captura
   serial (115200) confirmam boot→`app_main` em ~1,27 s e as duas fases do
   `boot_manager` somando 30 ms (`outcome=1 fases=2 duracao_total_ms=30`) —
@@ -338,7 +338,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 - **Ensaio em bancada (2026-07-02, N32R16V via COM5):** versão temporária do
   `app_main` parou de alimentar o watchdog de propósito (revertida antes do
   commit). Log real: após 10 s sem feed, `task_wdt: Task watchdog got
-  triggered ... Aborting`, coredump salvo em flash, reboot automático; no
+triggered ... Aborting`, coredump salvo em flash, reboot automático; no
   boot seguinte, `reset_reason=6` (`ESP_RST_TASK_WDT`) e
   `watchdog: TWDT ativo: ... reset_anterior=1`
   (`NB_WATCHDOG_RESET_CAUSE_TASK_TIMEOUT`) — causa persistida em NVS e lida
@@ -413,7 +413,7 @@ em mãos.
   Provisioning" (Android) contra `NoiseBot2-3D58`/PoP `nb2setup`, com SSID e
   senha da rede do usuário — sem toolchain, só o celular. Após reboot
   seguinte, log confirma persistência: `wifi_setup: ja provisionado,
-  conectando em modo estacao` — as credenciais aplicadas pelo app foram
+conectando em modo estacao` — as credenciais aplicadas pelo app foram
   gravadas na NVS e sobrevivem a reset. **Gate de saída da subfase
   atendido.** `secrets-scan` confirma zero credencial no repo (PoP/SSID/
   senha nunca tocam o código-fonte). Status `FEITO`.
@@ -468,8 +468,8 @@ em mãos.
   `nbp2_msg_<nome>_t` (não `nbp2_<nome>_t`) depois que a mensagem `STATUS`
   colidiu com o enum de erro `nbp2_status_t` já existente — mesma família de
   armadilha do `app_config`/`config`, registrada para não repetir. Campo
-  `from` (EVENT_STATE) é palavra reservada em Python: o gerador renomeia só
-  no lado Python (`from_`) via `keyword.iskeyword`, mantendo `from` no C.
+  `from` (EVENT*STATE) é palavra reservada em Python: o gerador renomeia só
+  no lado Python (`from*`) via `keyword.iskeyword`, mantendo `from` no C.
 - `tools/check_protocol_golden.py` estendido: além do frame/token já
   cobertos, agora codifica HELLO/HEARTBEAT/STATUS/TIMER_SET/EVENT_STATE em C
   com os mesmos valores usados em Python e compara os bytes CBOR; e decodifica
@@ -479,7 +479,7 @@ em mãos.
 - Gate local confirmado: `python tools/check_protocol_golden.py` verde
   (`nbp2-codegen: 26 mensagens geradas`, `protocol-golden: ok`); compilação
   do C gerado com `-Wall -Wextra -Werror` sem warning; `python3
-  tools/run_host_tests.py` verde; `python tools/scan_secrets.py` verde.
+tools/run_host_tests.py` verde; `python tools/scan_secrets.py` verde.
 - **Validação de token do HELLO (2026-07-02):** escopo decidido
   explicitamente — a validação fica no nível de protocolo (C+Python, golden
   test), sem NVS nem integração no build do ESP-IDF ainda. Persistência real
@@ -523,14 +523,14 @@ em mãos.
   chamar a action do ESP-IDF; localmente, é um passo manual documentado no
   README do componente (`python protocol/codegen/generate_nbp2.py`). Se os
   arquivos gerados não existirem, o CMake falha com `message(FATAL_ERROR
-  ...)` explicando o comando a rodar, em vez de um erro de arquivo não
+...)` explicando o comando a rodar, em vez de um erro de arquivo não
   encontrado difícil de rastrear — testado de propósito (renomeei
   `protocol/generated/` e rodei `idf.py build`: erro claro; restaurado antes
   do commit).
 - Gate local confirmado: `idf.py build` verde (`__idf_nbp2`, `noisebot2.bin`
   78% livre — nbp2 ainda não linkado no `main`, só disponível);
   `python3 tools/run_host_tests.py` verde; `python
-  tools/check_protocol_golden.py` verde; `python tools/scan_secrets.py`
+tools/check_protocol_golden.py` verde; `python tools/scan_secrets.py`
   verde.
 - **Casca do `mind_link` com TCP real (2026-07-03):** adicionado
   `shell/nb_mind_link_shell.c/.h` (task FreeRTOS, socket TCP contra
@@ -541,32 +541,32 @@ em mãos.
   descartável de bancada (não é o server real — server v2 não existe antes
   de S4) para validar o handshake sem precisar da mente.
 - **Três bugs reais achados e corrigidos em bancada (N32R16V, COM5):**
-  1. **Stack overflow.** Três buffers de ~4 KB (`NBP2_MAX_CTRL_PAYLOAD`)
-     viviam na pilha da task (6 KB): o acumulador de recepção, o frame
-     parseado e os buffers de envio de HELLO — send_hello chama send_frame,
-     os dois ficam vivos ao mesmo tempo. Sintoma real: `Guru Meditation
-     Error (Cache error)`, `InstrFetchProhibited`, `IllegalInstruction` em
-     boot loop, registradores com lixo aleatório. Corrigido tornando os
-     quatro buffers `static` (fora da pilha) — só a task usa, chamada
-     sequencial, sem problema de reentrância.
-  2. **`esp_wifi_connect()` faltando.** `nb_wifi_setup_shell_init()` chamava
-     `esp_wifi_start()` no caminho "já provisionado" mas nunca pedia pra
-     conectar — a estação nunca associava, `mind_link` ficava com
-     "network unreachable" (errno 118) para sempre, sem nenhum erro óbvio
-     apontando a causa. Corrigido registrando handler de `WIFI_EVENT_STA_START`
-     (chama `esp_wifi_connect()`) e `WIFI_EVENT_STA_DISCONNECTED` (reconecta)
-     em `wifi_setup`, mais log de `IP_EVENT_STA_GOT_IP` (útil por si só).
-  3. **`SO_RCVTIMEO` sem garantia.** O `recv()` bloqueava para sempre depois
-     do servidor ficar em silêncio por um tempo, mesmo com `SO_RCVTIMEO`
-     configurado — sintoma: heartbeat parava de vez (contador travado) sem
-     nenhum log de erro, task simplesmente presa dentro do `recv()`.
-     Corrigido trocando para socket não-bloqueante (`O_NONBLOCK` via
-     `fcntl`) com `vTaskDelay` no `EAGAIN`, mecanismo mais robusto que
-     depender do timeout do socket.
-  4. `getaddrinfo()` trocado por `inet_pton()` direto (host sempre IPv4
-     literal nesta fatia) — evita o caminho de resolução DNS do lwip, mais
-     pesado em pilha, sem necessidade real ainda (hostname/mDNS não é
-     escopo de S1.7).
+    1. **Stack overflow.** Três buffers de ~4 KB (`NBP2_MAX_CTRL_PAYLOAD`)
+       viviam na pilha da task (6 KB): o acumulador de recepção, o frame
+       parseado e os buffers de envio de HELLO — send_hello chama send_frame,
+       os dois ficam vivos ao mesmo tempo. Sintoma real: `Guru Meditation
+Error (Cache error)`, `InstrFetchProhibited`, `IllegalInstruction` em
+       boot loop, registradores com lixo aleatório. Corrigido tornando os
+       quatro buffers `static` (fora da pilha) — só a task usa, chamada
+       sequencial, sem problema de reentrância.
+    2. **`esp_wifi_connect()` faltando.** `nb_wifi_setup_shell_init()` chamava
+       `esp_wifi_start()` no caminho "já provisionado" mas nunca pedia pra
+       conectar — a estação nunca associava, `mind_link` ficava com
+       "network unreachable" (errno 118) para sempre, sem nenhum erro óbvio
+       apontando a causa. Corrigido registrando handler de `WIFI_EVENT_STA_START`
+       (chama `esp_wifi_connect()`) e `WIFI_EVENT_STA_DISCONNECTED` (reconecta)
+       em `wifi_setup`, mais log de `IP_EVENT_STA_GOT_IP` (útil por si só).
+    3. **`SO_RCVTIMEO` sem garantia.** O `recv()` bloqueava para sempre depois
+       do servidor ficar em silêncio por um tempo, mesmo com `SO_RCVTIMEO`
+       configurado — sintoma: heartbeat parava de vez (contador travado) sem
+       nenhum log de erro, task simplesmente presa dentro do `recv()`.
+       Corrigido trocando para socket não-bloqueante (`O_NONBLOCK` via
+       `fcntl`) com `vTaskDelay` no `EAGAIN`, mecanismo mais robusto que
+       depender do timeout do socket.
+    4. `getaddrinfo()` trocado por `inet_pton()` direto (host sempre IPv4
+       literal nesta fatia) — evita o caminho de resolução DNS do lwip, mais
+       pesado em pilha, sem necessidade real ainda (hostname/mDNS não é
+       escopo de S1.7).
 - **Ensaio em bancada com handshake completo (2026-07-03, N32R16V via
   COM5, `tools/nbp2_fake_server.py`):** log real dos dois lados confirma
   round-trip completo — robô: `HELLO enviado`; server:
@@ -583,7 +583,7 @@ em mãos.
   já ter passagem livre confirmada na rede do usuário.
 - Gate local confirmado: `python3 tools/run_host_tests.py` verde (núcleo
   inalterado); `idf.py build` verde com a casca nova; `python
-  tools/scan_secrets.py` verde.
+tools/scan_secrets.py` verde.
 - **Correção do diagnóstico anterior (2026-07-03):** a instabilidade de rede
   registrada acima **não era WiFi/AP/firewall** — eram processos zumbis do
   próprio `tools/nbp2_fake_server.py` acumulados na mesma porta
@@ -671,57 +671,90 @@ em mãos.
   realmente recompilado (timestamp do `.o` conferido, não só cache);
   `python tools/run_host_tests.py` verde; `python tools/scan_secrets.py`
   verde.
-- **Pendente para `FEITO`:** OTA A→B→A em bancada, imagem adulterada recusada,
-  dump de flash sem token em claro após flash encryption, e decisão explícita
-  para queima de eFuses da N32R16V.
+- **Rollback por software habilitado (2026-07-03):**
+  `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y` movido para
+  `sdkconfig.defaults` (não exige eFuse — estado fica no `otadata`, em
+  flash normal). Sem isso, `esp_ota_get_state_partition()` sempre retornava
+  `ESP_ERR_NOT_SUPPORTED` e a política de confirmação do `nb_ota_shell`
+  nunca era exercitada de verdade.
+- **Ensaio de OTA A→B→A em bancada (2026-07-03, N32R16V via COM5,
+  `otatool.py` do próprio ESP-IDF):** build v1 flashado em `ota_0`
+  (`idf.py flash`, `state=2`/VALID). Build v2 com marca visível no log
+  (`[TESTE OTA v2]`, revertida antes do commit) escrito diretamente em
+  `ota_1` via `otatool.py write_ota_partition --slot 1`. `switch_ota_partition
+  --slot 1` + reset: log real confirma `Loaded app from partition at offset
+  0x420000` e a marca da v2 aparece — **A→B confirmado**. `switch_ota_partition
+  --slot 0` + reset: log confirma `Loaded app from partition at offset
+  0x20000`, marca da v2 sumiu, `state=2` — **B→A confirmado**. Ciclo completo
+  sem nenhum crash, usando só partições normais (`ota_0`/`ota_1`/`otadata`),
+  nada de eFuse tocado.
+- **Nota sobre o gate de "verificação pendente":** `otatool.py` escreve o
+  ponteiro de boot direto no `otadata` (ferramenta de baixo nível), sem
+  popular o estado `ESP_OTA_IMG_PENDING_VERIFY` que um update real via
+  `esp_ota_begin/write/end` deixaria. Por isso o log mostrou `state=-1`
+  (`ESP_OTA_IMG_UNDEFINED`) ao carregar a v2, não `state=1`. O caminho de
+  confirmação (`nb_ota_shell_confirm_boot_if_pending` marcando
+  `PENDING_VERIFY` como válido) só será exercitado de ponta a ponta quando
+  existir um download OTA real via NBP/2 (`OTA_BEGIN/CHUNK/END`, fatia
+  futura) chamando `esp_ota_set_boot_partition()` depois de um
+  `esp_ota_end()` de verdade.
+- Gate local confirmado: `python3 tools/run_host_tests.py` verde; `idf.py
+  build` verde com rollback habilitado; `python tools/scan_secrets.py`
+  verde.
+- **Pendente para `FEITO`:** download OTA real via NBP/2 exercitando o
+  estado `PENDING_VERIFY` de ponta a ponta; imagem adulterada recusada; dump
+  de flash sem token em claro após flash encryption; decisão explícita para
+  queima de eFuses da N32R16V — os três últimos exigem o perfil
+  `sdkconfig.s1_8_secure.defaults` (irreversível), fora do escopo desta
+  fatia de propósito.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
-*Objetivo:* display + renderer + FSM + idle. No fim de S2 o robô parece vivo.
-*Dependências:* S1.9. *Referência de implementação:* renderer do head v1 (DM2).
+_Objetivo:_ display + renderer + FSM + idle. No fim de S2 o robô parece vivo.
+_Dependências:_ S1.9. _Referência de implementação:_ renderer do head v1 (DM2).
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`) | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`) | `PENDENTE` |
-| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel) | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido | `PENDENTE` |
-| S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE** | host-test cobre 100% das transições × modos; invariante verde | `PENDENTE` |
-| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados | `PENDENTE` |
-| S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
-| S2.6 | Gate visual da fase | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline | `PENDENTE` |
+| ID   | Entrega                                                                                                 | Gate de saída                                                                      | Status     |
+| ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
+| S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `PENDENTE` |
+| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `PENDENTE` |
+| S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `PENDENTE` |
+| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
+| S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
+| S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
-*Objetivo:* fechar o piso offline do produto.
-*Dependências:* S2.6 (S3.1 pode começar após S2.3).
+_Objetivo:_ fechar o piso offline do produto.
+_Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
+| ID   | Entrega                                                                                            | Gate de saída                                                                                   | Status     |
+| ---- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
 | S3.1 | `touch_hal` + `touch_service` (calibração do v1 2.2A: threshold 20%, debounce, TAP/LONG/SUSTAINED) | toque intencional 50/50; zero falso positivo em 1 h de ruído ambiente; reproduzível após reboot | `PENDENTE` |
-| S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face) | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida | `PENDENTE` |
-| S3.3 | `led_service` (WS2812 no 46; idle/estados/afeto; brilho circadiano) | paridade com linguagem de LED do v1; sem flicker | `PENDENTE` |
-| S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves) | transições dormir/acordar observadas nos horários; invariante IDLE segue verde | `PENDENTE` |
-| S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led) | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona | `PENDENTE` |
-| S3.6 | Gate do piso offline | soak 48 h em modo pet (sem server): vivo, responsivo, estável | `PENDENTE` |
+| S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `PENDENTE` |
+| S3.3 | `led_service` (WS2812 no 46; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `PENDENTE` |
+| S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `PENDENTE` |
+| S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `PENDENTE` |
+| S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `PENDENTE` |
 
 ### S4 — Voz (o robô conversa)
 
-*Objetivo:* pipeline de voz fim-a-fim com a mente.
-*Dependências:* S1.7, S3.6. *Referência:* Voice Audio v2 do v1 (desenho) e
+_Objetivo:_ pipeline de voz fim-a-fim com a mente.
+_Dependências:_ S1.7, S3.6. _Referência:_ Voice Audio v2 do v1 (desenho) e
 server v1 (refactor).
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S4.1 | `audio_hal` I2S full-duplex 16 kHz (mic+spk no mesmo barramento) | loopback limpo; zero underrun em 30 min com render ativo (re-valida S0.3 na árvore real) | `PENDENTE` |
-| S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests** | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-* verdes | `PENDENTE` |
-| S4.3 | Streaming NBP/2 de áudio (LISTEN_* robô→server; SAY_* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE | `PENDENTE` |
-| S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro) | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno | `PENDENTE` |
-| S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM | `PENDENTE` |
-| S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM | intents respondem com LLM desligada; latência < 1 s | `PENDENTE` |
-| S4.7 | Gate de voz | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
+| ID   | Entrega                                                                                                                       | Gate de saída                                                                                                              | Status     |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| S4.1 | `audio_hal` I2S full-duplex 16 kHz (mic+spk no mesmo barramento)                                                              | loopback limpo; zero underrun em 30 min com render ativo (re-valida S0.3 na árvore real)                                   | `PENDENTE` |
+| S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests**                         | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-\* verdes                             | `PENDENTE` |
+| S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `PENDENTE` |
+| S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `PENDENTE` |
+| S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper                                                   | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
+| S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM                                                        | intents respondem com LLM desligada; latência < 1 s                                                                        | `PENDENTE` |
+| S4.7 | Gate de voz                                                                                                                   | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
 
 ### S5 — Visão (presença e identidade) — **FASE ADIADA**
 
-*Decisão 2026-07-02:* câmera fora do escopo v2.0 — o form factor estilo
+_Decisão 2026-07-02:_ câmera fora do escopo v2.0 — o form factor estilo
 StackChan não tem cavidade para o módulo (~33×33×17 mm; só a lente passa por
 um furo, mas o corpo precisa de espaço interno atrás dele). Slot elétrico
 (CS GPIO9, MISO 13), mensagens `SNAPSHOT_*` e capability no HELLO permanecem
@@ -730,53 +763,53 @@ sono por inatividade. Rotas de retorno registradas: ArduCam Mega M12 atrás
 de janela, ou câmera WiFi independente (ex.: Freenove aposentada) falando
 direto com o server.
 
-*Objetivo (quando voltar):* câmera sob demanda + pipeline semântico na mente.
-*Dependências:* S4.7 + S0.2 + decisão mecânica. *Referência:* DM4/13.1 do v1.
+_Objetivo (quando voltar):_ câmera sob demanda + pipeline semântico na mente.
+_Dependências:_ S4.7 + S0.2 + decisão mecânica. _Referência:_ DM4/13.1 do v1.
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S5.1 | `camera_hal` (ArduCam Mega SPI, JPEG sob demanda; driver pelo padrão núcleo/casca sobre o spike S0.2) | captura estável; zero interferência em render/áudio (contadores) | `PENDENTE` |
-| S5.2 | `SNAPSHOT_*` no NBP/2 (chunks MEDIA, transfer_id, CRC, preempção por CTRL) | JPEG íntegro no server < 400 ms p95; controle nunca atrasado por transferência (medido) | `PENDENTE` |
-| S5.3 | Server `VisionMind`: detecção (Haar/DNN) + identificação (Ollama vision) + presença | pipeline v1 DM4.9 reproduzido: PRESENT/LEFT_RECENTLY corretos em bancada | `PENDENTE` |
-| S5.4 | Gaze tracking (rosto→`STIMULUS`+gaze target) + away detection (→ sono) | olhos seguem rosto em tempo real; ausência 60 s → sono; retorno → despertar | `PENDENTE` |
-| S5.5 | Enrollment + ativação de perfil (persona local do v1) | cadastro pelo dashboard; reconhecimento ativa perfil; tudo local | `PENDENTE` |
-| S5.6 | Gate de visão | soak 24 h com face loop ativo; recovery limpo ao cobrir/descobrir câmera e reiniciar server | `PENDENTE` |
+| ID   | Entrega                                                                                               | Gate de saída                                                                               | Status     |
+| ---- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------- |
+| S5.1 | `camera_hal` (ArduCam Mega SPI, JPEG sob demanda; driver pelo padrão núcleo/casca sobre o spike S0.2) | captura estável; zero interferência em render/áudio (contadores)                            | `PENDENTE` |
+| S5.2 | `SNAPSHOT_*` no NBP/2 (chunks MEDIA, transfer_id, CRC, preempção por CTRL)                            | JPEG íntegro no server < 400 ms p95; controle nunca atrasado por transferência (medido)     | `PENDENTE` |
+| S5.3 | Server `VisionMind`: detecção (Haar/DNN) + identificação (Ollama vision) + presença                   | pipeline v1 DM4.9 reproduzido: PRESENT/LEFT_RECENTLY corretos em bancada                    | `PENDENTE` |
+| S5.4 | Gaze tracking (rosto→`STIMULUS`+gaze target) + away detection (→ sono)                                | olhos seguem rosto em tempo real; ausência 60 s → sono; retorno → despertar                 | `PENDENTE` |
+| S5.5 | Enrollment + ativação de perfil (persona local do v1)                                                 | cadastro pelo dashboard; reconhecimento ativa perfil; tudo local                            | `PENDENTE` |
+| S5.6 | Gate de visão                                                                                         | soak 24 h com face loop ativo; recovery limpo ao cobrir/descobrir câmera e reiniciar server | `PENDENTE` |
 
 ### S6 — Movimento (servos sob safety)
 
-*Objetivo:* pescoço expressivo com a disciplina de safety do v1, no
+_Objetivo:_ pescoço expressivo com a disciplina de safety do v1, no
 **perfil B** (MG90S provisório — `HARDWARE.md` §Perfis de motion).
-*Dependências:* S3.6. **Bloqueio absoluto:** S6.2+ não inicia sem S6.1
+_Dependências:_ S3.6. **Bloqueio absoluto:** S6.2+ não inicia sem S6.1
 assinado. Trilho B com fuse, INA219 e MOSFET de corte; 5V próprio, GND
 comum, nunca o 5V da placa dev.
-*Upgrade perfil A (SCS0009 + TTLinker):* não é fase nova — é troca da casca
+_Upgrade perfil A (SCS0009 + TTLinker):_ não é fase nova — é troca da casca
 do HAL (`servo_hal_scs`, núcleo do protocolo SCS herdado do v1) +
 re-execução dos gates S6.2 e S6.5 em bancada. Registrar no painel quando
 ocorrer.
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S6.1 | **Gate elétrico assinado** (checklist de `ENERGY.md` §4: proteção reversa, fuse por trilho, isolação 5V↔3V3, GND estrela, brownout sob stall) | checklist em `docs/bringup/` com fotos e medições; assinado antes de qualquer torque no robô | `PENDENTE` |
-| S6.2 | `servo_hal` como **interface dupla** (caps `has_feedback`): casca `servo_hal_pwm` (LEDC 17/18) + `motion_safety` com perfis por capability (B: stall via INA219 + corte MOSFET GPIO3; temp coberta por limite de duty) **com host-test do núcleo** | host-tests de veto/fault/idempotência/perfil; em bancada: eixo bloqueado → corte do trilho < 150 ms | `PENDENTE` |
-| S6.3 | `motion_service` (interpolação, primitivos de pescoço, heartbeat p/ safety, limites por config NVS, **detach em repouso** — zero PWM/zumbido parado) | movimento suave centro↔limites; posição fora de range vetada (log); silêncio audível em idle | `PENDENTE` |
-| S6.4 | Integração expressiva: gaze físico + gestos curtos coordenados com face (conductor mínimo) | linguagem corporal do v1 reproduzida; retorno limpo ao centro em toda entrada em IDLE (invariante estendida a pescoço) | `PENDENTE` |
-| S6.5 | Gate de movimento | soak 48 h com movimento periódico; injeção de stall/brownout → FAULT correto e recuperação por reset; zero evento de safety perdido | `PENDENTE` |
+| ID   | Entrega                                                                                                                                                                                                                                            | Gate de saída                                                                                                                       | Status     |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| S6.1 | **Gate elétrico assinado** (checklist de `ENERGY.md` §4: proteção reversa, fuse por trilho, isolação 5V↔3V3, GND estrela, brownout sob stall)                                                                                                      | checklist em `docs/bringup/` com fotos e medições; assinado antes de qualquer torque no robô                                        | `PENDENTE` |
+| S6.2 | `servo_hal` como **interface dupla** (caps `has_feedback`): casca `servo_hal_pwm` (LEDC 17/18) + `motion_safety` com perfis por capability (B: stall via INA219 + corte MOSFET GPIO3; temp coberta por limite de duty) **com host-test do núcleo** | host-tests de veto/fault/idempotência/perfil; em bancada: eixo bloqueado → corte do trilho < 150 ms                                 | `PENDENTE` |
+| S6.3 | `motion_service` (interpolação, primitivos de pescoço, heartbeat p/ safety, limites por config NVS, **detach em repouso** — zero PWM/zumbido parado)                                                                                               | movimento suave centro↔limites; posição fora de range vetada (log); silêncio audível em idle                                        | `PENDENTE` |
+| S6.4 | Integração expressiva: gaze físico + gestos curtos coordenados com face (conductor mínimo)                                                                                                                                                         | linguagem corporal do v1 reproduzida; retorno limpo ao centro em toda entrada em IDLE (invariante estendida a pescoço)              | `PENDENTE` |
+| S6.5 | Gate de movimento                                                                                                                                                                                                                                  | soak 48 h com movimento periódico; injeção de stall/brownout → FAULT correto e recuperação por reset; zero evento de safety perdido | `PENDENTE` |
 
 ### S7 — Produto (paridade v1 e release)
 
-*Objetivo:* fechar paridade com o v1 (exceto visão, adiada) e cortar a
+_Objetivo:_ fechar paridade com o v1 (exceto visão, adiada) e cortar a
 primeira release.
-*Dependências:* S4.7 (S6 pode correr em paralelo; release não bloqueia em S6
+_Dependências:_ S4.7 (S6 pode correr em paralelo; release não bloqueia em S6
 se servos atrasarem — produto funciona sem pescoço).
 
-| ID | Entrega | Gate de saída | Status |
-| --- | --- | --- | --- |
-| S7.1 | Status rail (ícones persistentes: mic, câmera, mente offline, SD, safety) + quick status | estados simultâneos alinhados; zero disputa com a face; honesto sob falha | `PENDENTE` |
-| S7.2 | `PersonaMind` + memória longa (SQLite; perfil, preferências, fatos; wipe pelo dashboard) | continuidade entre sessões; wipe completo verificado | `PENDENTE` |
-| S7.3 | Dashboard v2 (React): chat, status, métricas do robô, enrollment, provisioning, wipe | fluxos principais utilizáveis; métricas plotadas do `STATUS` | `PENDENTE` |
-| S7.4 | `SkillHost`: agenda cognitiva sobre `schedule_core`, device commands, busca web opcional | timer por voz fim-a-fim; busca degradável sem chave | `PENDENTE` |
+| ID   | Entrega                                                                                                    | Gate de saída                                                                  | Status     |
+| ---- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------- |
+| S7.1 | Status rail (ícones persistentes: mic, câmera, mente offline, SD, safety) + quick status                   | estados simultâneos alinhados; zero disputa com a face; honesto sob falha      | `PENDENTE` |
+| S7.2 | `PersonaMind` + memória longa (SQLite; perfil, preferências, fatos; wipe pelo dashboard)                   | continuidade entre sessões; wipe completo verificado                           | `PENDENTE` |
+| S7.3 | Dashboard v2 (React): chat, status, métricas do robô, enrollment, provisioning, wipe                       | fluxos principais utilizáveis; métricas plotadas do `STATUS`                   | `PENDENTE` |
+| S7.4 | `SkillHost`: agenda cognitiva sobre `schedule_core`, device commands, busca web opcional                   | timer por voz fim-a-fim; busca degradável sem chave                            | `PENDENTE` |
 | S7.5 | **Soak de release: 7 dias** + smoke assinado (`QUALITY.md` §6) + auditoria de segurança (`SECURITY.md` §5) | 7 dias sem crash, heap estável; checklists arquivados em `docs/releases/v2.0/` | `PENDENTE` |
-| S7.6 | Release v2.0: tag, OTA assinada publicada, docs revisadas, v1 aposentado formalmente | robô do dia a dia rodando v2; repo v1 arquivado como referência | `PENDENTE` |
+| S7.6 | Release v2.0: tag, OTA assinada publicada, docs revisadas, v1 aposentado formalmente                       | robô do dia a dia rodando v2; repo v1 arquivado como referência                | `PENDENTE` |
 
 ## 5. Dependências entre fases (resumo)
 
@@ -791,15 +824,15 @@ S5 (visão): ADIADA — retorna após v2.0 com S0.2 + decisão mecânica
 
 ## 6. Fora de escopo do v2.0 (registrado para não vazar)
 
-| Item | Condição de retorno |
-| --- | --- |
-| Câmera / visão (fase S5) | pós-v2.0; **slot reservado** (CS GPIO9, MISO 13, `SNAPSHOT_*` no schema); exige decisão mecânica (cavidade ou câmera WiFi externa) |
-| Tela touch | pós-v2.0; **pinos já reservados** (ctrl no I2C 4/5, INT no GPIO1) |
-| IMU MPU-6050 | pós-v2.0; **pinos já reservados** (I2C 4/5, INT no GPIO8) |
-| Bateria (charger/boost/fuel gauge) | pós-v2.0; I2C + revisão do orçamento de energia na entrada |
-| Touch 3 zonas (MPR121) | pós-v2.0; I2C, custo zero de GPIO |
-| AEC / full-duplex conversacional | quando houver meta medida de conversa contínua |
-| Wake word customizada | quando o fluxo atual justificar treino próprio |
-| TLS no firmware | não retorna (decisão de arquitetura; ver SECURITY.md) |
-| HIL com a Waveshare | opcional pós-v2.0; nunca dependência |
-| Voz bilíngue / RAG / biblioteca local | herdam os planos do v1 depois da paridade |
+| Item                                  | Condição de retorno                                                                                                                |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Câmera / visão (fase S5)              | pós-v2.0; **slot reservado** (CS GPIO9, MISO 13, `SNAPSHOT_*` no schema); exige decisão mecânica (cavidade ou câmera WiFi externa) |
+| Tela touch                            | pós-v2.0; **pinos já reservados** (ctrl no I2C 4/5, INT no GPIO1)                                                                  |
+| IMU MPU-6050                          | pós-v2.0; **pinos já reservados** (I2C 4/5, INT no GPIO8)                                                                          |
+| Bateria (charger/boost/fuel gauge)    | pós-v2.0; I2C + revisão do orçamento de energia na entrada                                                                         |
+| Touch 3 zonas (MPR121)                | pós-v2.0; I2C, custo zero de GPIO                                                                                                  |
+| AEC / full-duplex conversacional      | quando houver meta medida de conversa contínua                                                                                     |
+| Wake word customizada                 | quando o fluxo atual justificar treino próprio                                                                                     |
+| TLS no firmware                       | não retorna (decisão de arquitetura; ver SECURITY.md)                                                                              |
+| HIL com a Waveshare                   | opcional pós-v2.0; nunca dependência                                                                                               |
+| Voz bilíngue / RAG / biblioteca local | herdam os planos do v1 depois da paridade                                                                                          |
