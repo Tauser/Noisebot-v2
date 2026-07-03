@@ -45,7 +45,7 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
 | Campo | Decisão |
 | --- | --- |
-| Fase atual | S1 — fundação (S1.3 em andamento: núcleo do `logger`); S0 corre em paralelo |
+| Fase atual | S1 — fundação (S1.4 e S1.5 `FEITO`; S1.3 bloqueado por S0.3/SD físico); S0 corre em paralelo |
 | Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
 | Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
 | Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
@@ -81,8 +81,8 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.1 | Repo + CI completo (`QUALITY.md` §1): build `-Werror`, host-tests, lint, secrets-scan, budget-gates (tetos iniciais) | CI verde no primeiro `main.c`; PR de teste com warning proposital fica vermelho | `FEITO` |
 | S1.2 | `event_bus` (pool estático, slots de safety, fila de safety, ring de auditoria) **com teste de burst no mesmo commit** | host-test: zero drop não-safety sob perfil de burst alvo; safety imune a fila cheia | `FEITO` |
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
-| S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `EM ANDAMENTO` |
-| S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `EM ANDAMENTO` |
+| S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `FEITO` |
+| S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha/token → NVS) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `PENDENTE` |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
@@ -222,7 +222,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
    núcleo de ambos os componentes estar prontos — próxima fatia desta mesma
    subfase, não uma nova.
 
-**Evidência S1.4 (2026-07-02, parcial):**
+**Evidência S1.4 (2026-07-02):**
 
 - Implementado `firmware/components/infra/app_config` como núcleo C17 puro,
   sem FreeRTOS/ESP-IDF/malloc/NVS: tabela central de chaves tipadas
@@ -282,11 +282,14 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   partição app; `python3 tools/run_host_tests.py` verde (núcleos
   inalterados: `app_config`, `boot_manager`, `event_bus`, `logger`); `python
   tools/scan_secrets.py` verde (`secrets-scan: limpo`).
-- **Gate pendente (bloqueia `FEITO`):** o gate de saída da subfase em si —
-  boot < 3 s até task idle medido em bancada, e falha de fase crítica
-  forçada em hardware confirmando `SAFE_MODE` — exige a placa N32R16V
-  ligada rodando o binário, não só build limpo. Status permanece
-  `EM ANDAMENTO` até essa medição em bancada.
+- **Ensaio em bancada (2026-07-02, N32R16V via COM5):** flash real e captura
+  serial (115200) confirmam boot→`app_main` em ~1,27 s e as duas fases do
+  `boot_manager` somando 30 ms (`outcome=1 fases=2 duracao_total_ms=30`) —
+  bem dentro do gate de < 3 s. Falha crítica forçada de propósito (fase
+  `app_config` marcada como falha, revertido antes do commit): log real
+  `E boot_manager: SAFE_MODE: fase 'app_config' falhou` e
+  `boot: outcome=2 fases=2 duracao_total_ms=30` (2=`NB_BOOT_OUTCOME_SAFE_MODE`).
+  **Gate de saída da subfase atendido.** Status `FEITO`.
 
 **Plano S1.5 (antes de implementar):**
 
@@ -305,7 +308,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 5. Integrar apenas as tasks existentes hoje: `app_main` + idle tasks do ESP-IDF.
    Cada task nova de S2+ deve entrar no watchdog no commit em que nascer.
 
-**Evidência S1.5 (2026-07-02, parcial):**
+**Evidência S1.5 (2026-07-02):**
 
 - Implementado `firmware/components/infra/watchdog` como núcleo C17 puro:
   tabela fixa de 16 tasks, nomes truncados com `NUL`, feed por `task_id`,
@@ -325,10 +328,22 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   `git diff --check` sem erro de whitespace (apenas avisos LF→CRLF no Windows);
   `idf.py build` verde via ESP-IDF v5.5.4, compilando `__idf_watchdog` e
   gerando `noisebot2.bin` com 94% livre na menor partição app.
-- **Gate pendente (bloqueia `FEITO`):** ensaio em bancada com task travada,
-  confirmando reset e leitura posterior da causa em NVS. Não foi executado
-  aqui para não flashear hardware sem pedido explícito e porque a Freenove
-  CAM COM12 continua proibida para v2 sem decisão explícita.
+- **Achado de bancada corrigido antes do gate:** `sdkconfig` tem
+  `CONFIG_ESP_TASK_WDT_INIT=y` (TWDT do sistema já ativa antes do nosso
+  `app_main`) com `CONFIG_ESP_TASK_WDT_PANIC` **desligado**. A versão inicial
+  da casca aceitava o `ESP_ERR_INVALID_STATE` de `esp_task_wdt_init()` e
+  seguia sem reconfigurar — nossa escolha de `trigger_panic=true` nunca era
+  aplicada, e uma task travada de verdade não reiniciaria o robô. Corrigido
+  chamando `esp_task_wdt_reconfigure()` nesse caso.
+- **Ensaio em bancada (2026-07-02, N32R16V via COM5):** versão temporária do
+  `app_main` parou de alimentar o watchdog de propósito (revertida antes do
+  commit). Log real: após 10 s sem feed, `task_wdt: Task watchdog got
+  triggered ... Aborting`, coredump salvo em flash, reboot automático; no
+  boot seguinte, `reset_reason=6` (`ESP_RST_TASK_WDT`) e
+  `watchdog: TWDT ativo: ... reset_anterior=1`
+  (`NB_WATCHDOG_RESET_CAUSE_TASK_TIMEOUT`) — causa persistida em NVS e lida
+  de volta corretamente após o reset. **Gate de saída da subfase atendido.**
+  Status `FEITO`.
 
 ### S2 — Face (o robô fica vivo, mudo)
 

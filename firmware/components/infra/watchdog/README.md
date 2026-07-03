@@ -13,6 +13,16 @@ namespace `nb_wdog` o `esp_reset_reason()` e a causa classificada do boot
 anterior. O TWDT monitora também as idle tasks via `idle_core_mask`, então
 travamentos que impedem o escalonamento viram reset de hardware.
 
+**Achado de bancada:** `sdkconfig` tem `CONFIG_ESP_TASK_WDT_INIT=y`, então o
+ESP-IDF já inicializa a TWDT do sistema antes do nosso `app_main` rodar —
+`esp_task_wdt_init()` sempre retorna `ESP_ERR_INVALID_STATE` neste projeto.
+O default do sdkconfig tem `CONFIG_ESP_TASK_WDT_PANIC` **desligado**; se a
+casca só ignorasse esse erro (como numa versão inicial deste componente),
+nossa escolha de `trigger_panic=true`/timeout nunca seria aplicada e uma task
+travada de verdade não reiniciaria o robô. A correção: em
+`ESP_ERR_INVALID_STATE`, chamar `esp_task_wdt_reconfigure()` para aplicar a
+config desejada na TWDT já ativa.
+
 Nesta fatia só existe `app_main` como task de produto ativa. Cada task nova
 de S2+ deve entrar no watchdog shell no mesmo commit em que nascer, com feed
 no loop natural da própria task.

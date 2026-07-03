@@ -107,7 +107,15 @@ esp_err_t nb_watchdog_shell_init(uint32_t timeout_ms)
     }
 
     err = esp_task_wdt_init(&config);
-    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+    if (err == ESP_ERR_INVALID_STATE) {
+        /* ESP-IDF já inicializou a TWDT do sistema (CONFIG_ESP_TASK_WDT_INIT)
+         * antes de chegarmos aqui, tipicamente sem panic habilitado. Sem
+         * reconfigurar, nossa escolha de timeout/trigger_panic seria
+         * silenciosamente ignorada e uma task travada nunca reiniciaria o
+         * robô. */
+        err = esp_task_wdt_reconfigure(&config);
+    }
+    if (err != ESP_OK) {
         return err;
     }
 
