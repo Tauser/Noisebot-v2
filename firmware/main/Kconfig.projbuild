@@ -1,0 +1,17 @@
+menu "NoiseBot 2"
+
+    config NBP2_SERVER_HOST
+        string "Host (IP ou nome) do server NBP/2 (a mente)"
+        default ""
+        help
+            Endereço do server Python na LAN local. Vazio = mind_link fica
+            tentando reconectar indefinidamente sem nunca conseguir (comportamento
+            seguro por padrão: robô continua autônomo offline — P1).
+
+    config NBP2_SERVER_PORT
+        int "Porta TCP do server NBP/2"
+        default 9100
+        help
+            Deve bater com protocol.port em protocol/nbp2.yaml.
+
+endmenu

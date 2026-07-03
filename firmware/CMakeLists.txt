@@ -4,7 +4,16 @@ cmake_minimum_required(VERSION 3.16)
 # Regra: -Wall -Wextra -Werror em todo código do projeto (ver CLAUDE.md).
 
 set(EXTRA_COMPONENT_DIRS
+    "components/hal/display_hal"
     "components/infra/event_bus"
+    "components/infra/logger"
+    "components/infra/app_config"
+    "components/infra/boot_manager"
+    "components/infra/watchdog"
+    "components/infra/wifi_setup"
+    "components/infra/ota"
+    "components/infra/nbp2"
+    "components/services/mind_link"
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

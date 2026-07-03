@@ -1,0 +1,20 @@
+# NoiseBot 2 — perfil S1.8 seguro.
+#
+# Usar somente no gate de bancada de S1.8, com chave offline preparada e
+# decisao explicita do usuario. Secure Boot v2, anti-rollback e flash
+# encryption podem queimar eFuses irreversiveis na N32R16V.
+#
+# Exemplo:
+#   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.s1_8_secure.defaults" build
+#
+# O caminho da chave NAO fica no repo. Passar via ambiente/CI local seguro:
+#   CONFIG_SECURE_BOOT_SIGNING_KEY="$NOISEBOT2_SECURE_BOOT_KEY"
+
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK=y
+CONFIG_BOOTLOADER_APP_SECURE_VERSION=0
+CONFIG_BOOTLOADER_APP_SEC_VER_SIZE_EFUSE_FIELD=8
+
+CONFIG_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_V2_PREFERRED=y
+CONFIG_SECURE_FLASH_ENC_ENABLED=y

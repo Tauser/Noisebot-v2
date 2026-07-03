@@ -30,6 +30,12 @@ CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
 CONFIG_ESP_TASK_WDT_EN=y
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 
+# OTA (S1.8): rollback por software via otadata, sem eFuse — a imagem nova
+# só é confirmada depois que app_main chega saudável (nb_ota_shell). Sem
+# BOOTLOADER_APP_ANTI_ROLLBACK (esse sim exige eFuse, fica pro gate de
+# bancada explícito, ver sdkconfig.s1_8_secure.defaults).
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
 # Segurança — habilitados de verdade em S1.8 (exigem gestão de chaves; ver SECURITY.md):
 # CONFIG_SECURE_BOOT=y
 # CONFIG_SECURE_FLASH_ENC_ENABLED=y
