@@ -9,6 +9,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/infra/app_config"
     "components/infra/boot_manager"
     "components/infra/watchdog"
+    "components/infra/wifi_setup"
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

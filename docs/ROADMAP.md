@@ -83,7 +83,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `FEITO` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
-| S1.6 | WiFi + **provisioning SoftAP** (SSID/senha/token → NVS) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `PENDENTE` |
+| S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `EM ANDAMENTO` |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
 | S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
@@ -344,6 +344,41 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
   (`NB_WATCHDOG_RESET_CAUSE_TASK_TIMEOUT`) — causa persistida em NVS e lida
   de volta corretamente após o reset. **Gate de saída da subfase atendido.**
   Status `FEITO`.
+
+**Ajuste de escopo S1.6 (2026-07-02, antes de implementar):** a entrega
+original lista "SSID/senha/token → NVS". O token NBP/2 só faz sentido
+semântico quando o protocolo nascer em S1.7 (ele é usado no HELLO, `nbp2.yaml`
+ainda não existe) — implementá-lo agora seria inventar um formato de token
+sem contrato. Além disso, o app oficial "ESP SoftAP Provisioning" da
+Espressif (usado para cumprir "sem toolchain" no celular) fala WiFi
+nativamente, mas não envia dado customizado sem um cliente protocomm próprio
+— colocar o token aqui atritaria com o próprio gate "sem toolchain". Escopo
+desta subfase: só SSID/senha via SoftAP. Token entra em S1.7, junto do
+handshake HELLO, onde o transporte (endpoint protocomm customizado vs.
+reaproveitar o próprio HELLO) pode ser decidido com o contrato do protocolo
+em mãos.
+
+**Plano S1.6 (antes de implementar):**
+
+1. Componente `wifi_setup` (nome evita colisão com os componentes internos
+   `wifi_provisioning`/`protocomm` do próprio ESP-IDF — mesma lição do
+   `app_config`/`config`).
+2. Núcleo C17 puro (`wifi_setup.c/.h`): validação de SSID (1–32 bytes, sem
+   `NUL` embutido) e senha (vazia = rede aberta, ou 8–63 chars ASCII
+   imprimíveis por WPA2-PSK), estado determinístico do fluxo
+   (`NOT_PROVISIONED` → `PROVISIONING` → `PROVISIONED`/`FAILED`). Sem
+   FreeRTOS, NVS ou rede — só validação e transição de estado.
+3. `host_test` no mesmo commit: SSID vazio/grande demais rejeitado, senha
+   curta demais rejeitada, senha vazia aceita (rede aberta), transições de
+   estado válidas e inválidas.
+4. Casca (`shell/`): `wifi_prov_mgr` do ESP-IDF com transporte SoftAP,
+   `WIFI_PROV_SECURITY_1` (PoP fixo, sem TLS — compatível com a regra de
+   "rede é LAN local"), SSID do AP derivado do MAC (`NoiseBot2-XXXX`). WiFi
+   já persiste SSID/senha nativamente via `esp_wifi` (`WIFI_STORAGE_FLASH`) —
+   não duplicar em `app_config` (que também não suporta string ainda).
+5. Gate real ("provisionar do zero pelo celular sem toolchain") exige o app
+   oficial da Espressif rodando num celular contra a N32R16V — não é
+   executável sem essa etapa manual do usuário; fica pendente até acontecer.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
