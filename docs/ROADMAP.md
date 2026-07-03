@@ -45,7 +45,7 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
 | Campo | Decisão |
 | --- | --- |
-| Fase atual | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.7 NBP/2 em andamento); S0 corre em paralelo |
+| Fase atual | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6/S1.7 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.8 OTA em andamento); S0 corre em paralelo |
 | Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
 | Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
 | Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
@@ -84,7 +84,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `FEITO` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `FEITO` |
-| S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `EM ANDAMENTO` |
+| S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `FEITO` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `EM ANDAMENTO` |
 | S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
 
@@ -434,7 +434,7 @@ em mãos.
 5. Deixar TCP/reconexão/backoff e teste de HELLO real contra server fake para
    as próximas fatias de S1.7, porque dependem do encoder/decoder de payload.
 
-**Evidência S1.7 (2026-07-02, parcial):**
+**Evidência S1.7 (2026-07-02 a 2026-07-03):**
 
 - Adicionado `protocol/codegen/generate_nbp2.py`: parser mínimo do
   `nbp2.yaml` que valida IDs duplicados e gera `protocol/generated/c/nbp2.h`,
@@ -584,11 +584,36 @@ em mãos.
 - Gate local confirmado: `python3 tools/run_host_tests.py` verde (núcleo
   inalterado); `idf.py build` verde com a casca nova; `python
   tools/scan_secrets.py` verde.
-- **Pendente para `FEITO`:** soak de 100 reconexões contra server fake
-  (exige rede de bancada estável — retomar quando a instabilidade acima
-  for resolvida); teste dos dois lados rejeitando HELLO com token
-  incorreto **em tráfego TCP real** (já coberto no nível de protocolo via
-  golden test, falta o equivalente fim-a-fim).
+- **Correção do diagnóstico anterior (2026-07-03):** a instabilidade de rede
+  registrada acima **não era WiFi/AP/firewall** — eram processos zumbis do
+  próprio `tools/nbp2_fake_server.py` acumulados na mesma porta
+  (`pkill -f nbp2_fake_server` nunca matou nada nesse ambiente Windows/
+  git-bash; `netstat` mostrou 3 listeners + 2 conexões `ESTABLISHED`
+  simultâneas na porta 8765 de execuções anteriores nunca encerradas). Depois
+  de `taskkill //F //IM python.exe` limpar tudo, a rede local funcionou de
+  primeira e permaneceu estável — não houve mais nenhum `errno 104`/`113`
+  depois da limpeza. Fica registrado para não repetir: sempre conferir
+  `netstat` antes de culpar a rede.
+- **Soak de 100 reconexões (2026-07-03, N32R16V via COM5):**
+  `tools/nbp2_fake_server.py` ganhou `--drop-after`/`--max-cycles` para
+  automatizar o ciclo — derruba a conexão de propósito a cada 2 s e conta
+  quantos ciclos fecham com `HELLO_ACK`. Resultado real:
+  `soak concluido: 100/100 ciclos com HELLO_ACK`. Log serial do robô
+  confirma uptime contínuo de ~9,8 min (586s+) sem reset nem
+  `Guru Meditation`/`stack overflow` durante todo o soak.
+- **Rejeição de token em tráfego TCP real (2026-07-03):**
+  `tools/nbp2_fake_server.py` ganhou `--require-token HEX`: recusa o HELLO
+  (fecha a conexão sem `HELLO_ACK`) quando o token não bate, via
+  `nbp2.timing_safe_equal` — o mesmo mecanismo já coberto no golden test,
+  agora fim-a-fim sobre socket real. Contra o robô real (token vazio, ainda
+  não provisionado): 3/3 HELLOs rejeitados (`soak concluido: 0/3`), sem
+  travar nem crashar — o robô trata a recusa como desconexão normal e seguiu
+  tentando reconectar com backoff, como esperado.
+- **Gate de saída de S1.7 atendido.** Status `FEITO`. Pendente fora do
+  escopo desta subfase: provisionamento real do token (endpoint/fluxo de
+  configuração) fica para quando o `mind_link` ganhar consumidor real
+  (server v2, S4+); a persistência em si (`nb_mind_link_token_shell`) já
+  existe e foi exercitada pelo teste de rejeição acima.
 
 **Plano S1.8 (antes de implementar):**
 
