@@ -497,10 +497,29 @@ em mãos.
   (token correto aceito, errado e ausente rejeitados, nos dois lados);
   `python3 tools/run_host_tests.py` verde; `python tools/scan_secrets.py`
   verde.
+- **Núcleo do `mind_link` (2026-07-03):** criado
+  `firmware/components/services/mind_link` — primeiro componente em
+  `components/services/` (camada L3 de `ARCHITECTURE.md`). Núcleo C17 puro
+  (`mind_link.c/.h`), sem FreeRTOS/sockets/ESP-IDF: máquina de estados da
+  sessão `IDLE` → `AWAITING_HELLO_ACK` → `READY` → `DEAD` (`PROTOCOL.md`
+  §3), heartbeat de 1 s com morte após 3 perdidos (literal do §3.3),
+  `boot_id` divergente no HELLO_ACK invalida a sessão (§3.4), backoff
+  exponencial determinístico de reconexão (`min(500ms·2^tentativa, 30s)`,
+  zera no primeiro handshake bem-sucedido). Host-test com 11 casos.
+- Achado: `mind_link.c` compilava limpo no host-test (MinGW) mas falhava no
+  toolchain do ESP-IDF por falta de `#include <stddef.h>` (uso de `NULL`) —
+  o libc do host puxa `stddef.h` transitivamente por outro header, o do
+  ESP-IDF não. Lembrete de que host-test não substitui o build real do
+  toolchain alvo.
+- Gate local confirmado: `idf.py build` verde (`__idf_mind_link`, 78%
+  livre — sem mudança de tamanho, componente ainda não linkado no `main`);
+  `python3 tools/run_host_tests.py` verde (11/11 casos do `mind_link`);
+  `python tools/scan_secrets.py` verde.
 - **Pendente para `FEITO`:** persistência real do token em NVS e componente
   ESP-IDF que compile o `protocol/generated/c` (ambos dependem do
-  `mind_link` existir); transporte TCP com reconexão/backoff; soak de 100
-  reconexões contra server fake.
+  `mind_link` ganhar casca de transporte real); transporte TCP com
+  reconexão/backoff usando este núcleo; soak de 100 reconexões contra server
+  fake.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
