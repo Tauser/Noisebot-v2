@@ -708,6 +708,50 @@ tools/scan_secrets.py` verde.
   `sdkconfig.s1_8_secure.defaults` (irreversível), fora do escopo desta
   fatia de propósito.
 
+**Evidência S1.1 (2026-07-02):**
+
+- Build local: `idf.py build` verde via ambiente ESP-IDF v5.5.4 do `CLAUDE.md`
+  (`export.bat` + `idf.py build`), binário `noisebot2.bin` com 95% livre na
+  partição app.
+- CI no PR #2 (`S1.1: corrigir gates iniciais do CI`) verde em `firmware-build`,
+  `secrets-scan`, `server-tests (3.10)` e `server-tests (3.11)`; PR mergeado em
+  `main`.
+- Prova negativa no PR #1 (`S1.1: provar gate Werror`): warning proposital
+  derrubou `firmware-build` com `unused variable` tratado como erro por
+  `-Werror`; PR fechado sem merge.
+- Gates pendentes fora do escopo S1.1: budgets finais de SRAM/PSRAM/fps ficam
+  para os gates das fases que criarem carga real (`S0.3`, `S2.1`, `S2.6`).
+
+**Plano S1.2 (antes de implementar):**
+
+1. Criar `event_bus` em núcleo C17 puro (`event_bus.c/.h`) sem FreeRTOS/ESP-IDF,
+   com clock/I/O injetados quando necessário.
+2. Usar pool estático com tipos `nb_*`, slots reservados para safety, fila
+   prioritária de safety e ring de auditoria de tamanho fixo.
+3. Definir política explícita de overflow: evento safety nunca perde slot para
+   tráfego normal; não-safety deve cumprir zero drop no perfil de burst alvo.
+4. Adicionar `host_test` de burst no mesmo commit de implementação, cobrindo
+   saturação normal, reserva safety, ordem de entrega e auditoria.
+5. Integrar ao build/CI sem publicar eventos de HAL diretamente; camadas acima
+   consomem o bus conforme `ARCHITECTURE.md`.
+
+**Evidência S1.2 (2026-07-02):**
+
+- Implementado `firmware/components/infra/event_bus` como núcleo C17 puro,
+  sem FreeRTOS/ESP-IDF/malloc, com pool estático de 32 slots, 4 reservados
+  para safety, fila safety separada e ring de auditoria.
+- Host-test de burst no mesmo commit: cobre zero drop normal no perfil alvo,
+  fila normal cheia com safety aceito, prioridade safety na entrega, auditoria
+  de drop/poll e payload inválido.
+- Gate local: `python tools/run_host_tests.py` verde; `idf.py build` verde
+  compilando `event_bus`; `tools/scan_secrets.py` verde; `git diff --check`
+  verde.
+- CI no PR #3 verde em `firmware-build`, `host-tests`, `secrets-scan`,
+  `server-tests (3.10)` e `server-tests (3.11)`.
+- Gates pendentes fora do escopo S1.2: casca concorrente/task dona do bus e
+  integração com logger/panic entram em S1.3+; HAL continua proibido de
+  publicar diretamente.
+
 ### S2 — Face (o robô fica vivo, mudo)
 
 _Objetivo:_ display + renderer + FSM + idle. No fim de S2 o robô parece vivo.
