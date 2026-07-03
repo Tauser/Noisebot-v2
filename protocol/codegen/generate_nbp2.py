@@ -1,27 +1,49 @@
 #!/usr/bin/env python3
-"""Generate the first NBP/2 protocol artifacts from protocol/nbp2.yaml.
+"""Generate NBP/2 protocol artifacts from protocol/nbp2.yaml.
 
-This is intentionally small and schema-shaped. S1.7 starts by locking the
-wire envelope (message ids, frame layout, CRC32, timing-safe token compare);
-message payload structs/CBOR are added in the next S1.7 slice.
+S1.7: envelope (message ids, frame layout, CRC32, timing-safe token compare)
+plus per-message structs and CBOR encode/decode, for C and Python. This
+script is the only place allowed to know the wire format — generated code
+is never hand-edited (P4).
 """
 
 from __future__ import annotations
 
 import argparse
-import re
+import keyword
 from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = ROOT / "protocol" / "nbp2.yaml"
+
+# Tipos escalares suportados hoje pelo nbp2.yaml (não adicionar tipo sem uso real).
+SCALAR_C_TYPE = {
+    "u8": "uint8_t",
+    "u16": "uint16_t",
+    "u32": "uint32_t",
+    "u64": "uint64_t",
+    "i8": "int8_t",
+    "f32": "float",
+}
+
+
+@dataclass(frozen=True)
+class Field:
+    name: str
+    type: str
+    max: int | None = None
+    enum: str | None = None
 
 
 @dataclass(frozen=True)
 class Message:
     name: str
     msg_id: int
+    fields: tuple[Field, ...]
 
 
 @dataclass(frozen=True)
@@ -30,57 +52,179 @@ class Schema:
     minor: int
     sof: int
     max_ctrl_payload: int
+    enums: dict[str, tuple[str, ...]]
     messages: tuple[Message, ...]
 
 
 def parse_schema(path: Path) -> Schema:
-    text = path.read_text(encoding="utf-8")
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
 
-    version = re.search(r"version:\s*\{\s*major:\s*(\d+),\s*minor:\s*(\d+)\s*\}", text)
-    sof = re.search(r"sof:\s*(0x[0-9A-Fa-f]+|\d+)", text)
-    max_ctrl = re.search(r"max_ctrl_payload:\s*(\d+)", text)
-    if version is None or sof is None or max_ctrl is None:
-        raise SystemExit(f"{path}: schema incompleto para codegen S1.7")
+    protocol = raw["protocol"]
+    enums = {name: tuple(values) for name, values in raw.get("enums", {}).items()}
 
     messages: list[Message] = []
-    current_name: str | None = None
-    for line in text.splitlines():
-        name_match = re.match(r"\s*-\s+name:\s*([A-Z0-9_]+)", line)
-        if name_match:
-            current_name = name_match.group(1)
-            continue
+    seen_ids: dict[int, str] = {}
+    for entry in raw["messages"]:
+        fields = tuple(
+            Field(
+                name=f["name"],
+                type=f["type"],
+                max=f.get("max"),
+                enum=f.get("enum"),
+            )
+            for f in entry.get("fields", [])
+        )
+        for field in fields:
+            if field.type == "enum" and field.enum not in enums:
+                raise SystemExit(
+                    f"{path}: {entry['name']}.{field.name}: enum '{field.enum}' não existe"
+                )
+            if field.type in ("bytes", "str") and not field.max:
+                raise SystemExit(
+                    f"{path}: {entry['name']}.{field.name}: tipo '{field.type}' exige 'max'"
+                )
+            if field.type not in SCALAR_C_TYPE and field.type not in ("bytes", "str", "enum"):
+                raise SystemExit(
+                    f"{path}: {entry['name']}.{field.name}: tipo '{field.type}' desconhecido"
+                )
 
-        id_match = re.match(r"\s*id:\s*(0x[0-9A-Fa-f]+|\d+)", line)
-        if id_match and current_name is not None:
-            messages.append(Message(current_name, int(id_match.group(1), 0)))
-            current_name = None
+        msg_id = int(entry["id"])
+        previous = seen_ids.get(msg_id)
+        if previous is not None:
+            raise SystemExit(f"{path}: id duplicado 0x{msg_id:04x}: {previous}/{entry['name']}")
+        seen_ids[msg_id] = entry["name"]
+
+        messages.append(Message(name=entry["name"], msg_id=msg_id, fields=fields))
 
     if not messages:
         raise SystemExit(f"{path}: nenhuma mensagem encontrada")
 
-    seen_ids: dict[int, str] = {}
-    for message in messages:
-        previous = seen_ids.get(message.msg_id)
-        if previous is not None:
-            raise SystemExit(
-                f"{path}: id duplicado 0x{message.msg_id:04x}: {previous}/{message.name}"
-            )
-        seen_ids[message.msg_id] = message.name
-
     return Schema(
-        major=int(version.group(1)),
-        minor=int(version.group(2)),
-        sof=int(sof.group(1), 0),
-        max_ctrl_payload=int(max_ctrl.group(1)),
+        major=int(protocol["version"]["major"]),
+        minor=int(protocol["version"]["minor"]),
+        sof=int(protocol["framing"]["sof"]),
+        max_ctrl_payload=int(protocol["framing"]["max_ctrl_payload"]),
+        enums=enums,
         messages=tuple(messages),
     )
 
 
+def msg_lower(name: str) -> str:
+    return name.lower()
+
+
+# ── C ─────────────────────────────────────────────────────────────────────
+
+
+def c_struct_field_lines(field: Field) -> list[str]:
+    if field.type in SCALAR_C_TYPE:
+        return [f"    {SCALAR_C_TYPE[field.type]} {field.name};"]
+    if field.type == "bytes":
+        return [
+            f"    uint8_t {field.name}[{field.max}];",
+            f"    uint16_t {field.name}_len;",
+        ]
+    if field.type == "str":
+        return [f"    char {field.name}[{field.max} + 1];"]
+    if field.type == "enum":
+        return [f"    nbp2_{field.enum}_t {field.name};"]
+    raise AssertionError(field.type)
+
+
+def c_encode_field_lines(field: Field) -> list[str]:
+    n = field.name
+    if field.type in ("u8", "u16", "u32", "u64"):
+        return [f"    NBP2_CBOR_TRY(nbp2_cbor_write_uint(&w, in->{n}));"]
+    if field.type == "i8":
+        return [f"    NBP2_CBOR_TRY(nbp2_cbor_write_int(&w, in->{n}));"]
+    if field.type == "f32":
+        return [f"    NBP2_CBOR_TRY(nbp2_cbor_write_float32(&w, in->{n}));"]
+    if field.type == "bytes":
+        return [
+            f"    if (in->{n}_len > sizeof(in->{n})) {{ return NBP2_ERR_PAYLOAD_TOO_LARGE; }}",
+            f"    NBP2_CBOR_TRY(nbp2_cbor_write_bytes(&w, in->{n}, in->{n}_len));",
+        ]
+    if field.type == "str":
+        return [
+            f"    NBP2_CBOR_TRY(nbp2_cbor_write_text(&w, in->{n}, strnlen(in->{n}, sizeof(in->{n}) - 1u)));",
+        ]
+    if field.type == "enum":
+        return [f"    NBP2_CBOR_TRY(nbp2_cbor_write_uint(&w, (uint64_t)in->{n}));"]
+    raise AssertionError(field.type)
+
+
+def c_decode_field_lines(field: Field, enums: dict[str, tuple[str, ...]]) -> list[str]:
+    n = field.name
+    if field.type in ("u8", "u16", "u32", "u64"):
+        max_value = {"u8": "0xFFu", "u16": "0xFFFFu", "u32": "0xFFFFFFFFu"}.get(field.type)
+        lines = ["    NBP2_CBOR_TRY(nbp2_cbor_read_uint(&r, &tmp_u));"]
+        if max_value is not None:
+            lines.append(f"    if (tmp_u > {max_value}) {{ return NBP2_ERR_CBOR_MALFORMED; }}")
+        lines.append(f"    out->{n} = ({SCALAR_C_TYPE[field.type]})tmp_u;")
+        return lines
+    if field.type == "i8":
+        return [
+            "    NBP2_CBOR_TRY(nbp2_cbor_read_int(&r, &tmp_i));",
+            "    if (tmp_i < -128 || tmp_i > 127) { return NBP2_ERR_CBOR_MALFORMED; }",
+            f"    out->{n} = (int8_t)tmp_i;",
+        ]
+    if field.type == "f32":
+        return [f"    NBP2_CBOR_TRY(nbp2_cbor_read_float32(&r, &out->{n}));"]
+    if field.type == "bytes":
+        return [
+            f"    NBP2_CBOR_TRY(nbp2_cbor_read_bytes(&r, out->{n}, sizeof(out->{n}), &out->{n}_len));",
+        ]
+    if field.type == "str":
+        return [
+            f"    NBP2_CBOR_TRY(nbp2_cbor_read_text(&r, out->{n}, sizeof(out->{n}) - 1u, &tmp_len));",
+            f"    out->{n}[tmp_len] = '\\0';",
+        ]
+    if field.type == "enum":
+        count = len(enums[field.enum])
+        return [
+            "    NBP2_CBOR_TRY(nbp2_cbor_read_uint(&r, &tmp_u));",
+            f"    if (tmp_u >= {count}u) {{ return NBP2_ERR_CBOR_MALFORMED; }}",
+            f"    out->{n} = (nbp2_{field.enum}_t)tmp_u;",
+        ]
+    raise AssertionError(field.type)
+
+
+def c_message_needs(message: Message, kinds: set[str]) -> bool:
+    return any(f.type in kinds for f in message.fields)
+
+
 def write_c_header(schema: Schema, out_dir: Path) -> None:
-    enum_lines = "\n".join(
-        f"    NBP2_MSG_{message.name} = 0x{message.msg_id:04X}u,"
-        for message in schema.messages
+    enum_blocks = []
+    for enum_name, values in schema.enums.items():
+        members = "\n".join(
+            f"    NBP2_{enum_name.upper()}_{value} = {i}," for i, value in enumerate(values)
+        )
+        enum_blocks.append(f"typedef enum {{\n{members}\n}} nbp2_{enum_name}_t;")
+    enums_src = "\n\n".join(enum_blocks)
+
+    msg_enum_lines = "\n".join(
+        f"    NBP2_MSG_{message.name} = 0x{message.msg_id:04X}u," for message in schema.messages
     )
+
+    struct_blocks = []
+    proto_blocks = []
+    for message in schema.messages:
+        lname = msg_lower(message.name)
+        field_lines = "\n".join(
+            line for field in message.fields for line in c_struct_field_lines(field)
+        )
+        if not field_lines:
+            field_lines = "    uint8_t _unused;"
+        struct_blocks.append(f"typedef struct {{\n{field_lines}\n}} nbp2_msg_{lname}_t;")
+        proto_blocks.append(
+            f"nbp2_status_t nbp2_encode_{lname}(const nbp2_msg_{lname}_t *in, uint8_t *out,\n"
+            f"                                  size_t cap, size_t *out_len);\n"
+            f"nbp2_status_t nbp2_decode_{lname}(const uint8_t *data, size_t len,\n"
+            f"                                  nbp2_msg_{lname}_t *out);"
+        )
+    structs_src = "\n\n".join(struct_blocks)
+    protos_src = "\n\n".join(proto_blocks)
+
     (out_dir / "nbp2.h").write_text(
         f"""#ifndef NB_NBP2_H
 #define NB_NBP2_H
@@ -100,7 +244,7 @@ extern "C" {{
 #define NBP2_FRAME_OVERHEAD 13u
 
 typedef enum {{
-{enum_lines}
+{msg_enum_lines}
 }} nbp2_msg_type_t;
 
 typedef enum {{
@@ -110,6 +254,7 @@ typedef enum {{
     NBP2_ERR_BAD_SOF,
     NBP2_ERR_BAD_CRC,
     NBP2_ERR_PAYLOAD_TOO_LARGE,
+    NBP2_ERR_CBOR_MALFORMED,
 }} nbp2_status_t;
 
 typedef struct {{
@@ -138,6 +283,50 @@ bool nbp2_timing_safe_equal(const uint8_t *left,
                             const uint8_t *right,
                             size_t right_len);
 
+/* Enums do protocolo (protocol/nbp2.yaml §enums). */
+
+{enums_src}
+
+/* CBOR mínimo: array/uint/int/bytes/text/float32 canônicos (RFC 8949),
+ * o bastante para codificar os payloads deste protocolo. Sem mapas, sem
+ * comprimento indefinido, sem malloc. */
+
+typedef struct {{
+    uint8_t *buf;
+    size_t cap;
+    size_t pos;
+}} nbp2_cbor_writer_t;
+
+typedef struct {{
+    const uint8_t *buf;
+    size_t len;
+    size_t pos;
+}} nbp2_cbor_reader_t;
+
+void nbp2_cbor_writer_init(nbp2_cbor_writer_t *w, uint8_t *buf, size_t cap);
+nbp2_status_t nbp2_cbor_write_array_header(nbp2_cbor_writer_t *w, uint32_t count);
+nbp2_status_t nbp2_cbor_write_uint(nbp2_cbor_writer_t *w, uint64_t value);
+nbp2_status_t nbp2_cbor_write_int(nbp2_cbor_writer_t *w, int64_t value);
+nbp2_status_t nbp2_cbor_write_bytes(nbp2_cbor_writer_t *w, const uint8_t *data, size_t len);
+nbp2_status_t nbp2_cbor_write_text(nbp2_cbor_writer_t *w, const char *data, size_t len);
+nbp2_status_t nbp2_cbor_write_float32(nbp2_cbor_writer_t *w, float value);
+
+void nbp2_cbor_reader_init(nbp2_cbor_reader_t *r, const uint8_t *buf, size_t len);
+nbp2_status_t nbp2_cbor_read_array_header(nbp2_cbor_reader_t *r, uint32_t *out_count);
+nbp2_status_t nbp2_cbor_read_uint(nbp2_cbor_reader_t *r, uint64_t *out_value);
+nbp2_status_t nbp2_cbor_read_int(nbp2_cbor_reader_t *r, int64_t *out_value);
+nbp2_status_t nbp2_cbor_read_bytes(nbp2_cbor_reader_t *r, uint8_t *out_buf, size_t out_cap,
+                                   uint16_t *out_len);
+nbp2_status_t nbp2_cbor_read_text(nbp2_cbor_reader_t *r, char *out_buf, size_t out_cap,
+                                  uint16_t *out_len);
+nbp2_status_t nbp2_cbor_read_float32(nbp2_cbor_reader_t *r, float *out_value);
+
+/* Structs e encode/decode por mensagem (protocol/nbp2.yaml §messages). */
+
+{structs_src}
+
+{protos_src}
+
 #ifdef __cplusplus
 }}
 #endif
@@ -148,11 +337,80 @@ bool nbp2_timing_safe_equal(const uint8_t *left,
     )
 
 
-def write_c_source(out_dir: Path) -> None:
+def write_c_source(schema: Schema, out_dir: Path) -> None:
+    message_funcs = []
+    for message in schema.messages:
+        lname = msg_lower(message.name)
+        n_fields = len(message.fields)
+
+        encode_body = "\n".join(
+            line for field in message.fields for line in c_encode_field_lines(field)
+        )
+        decode_body = "\n".join(
+            line for field in message.fields for line in c_decode_field_lines(field, schema.enums)
+        )
+        needs_tmp_u = any(f.type in ("u8", "u16", "u32", "u64", "enum") for f in message.fields)
+        needs_tmp_i = any(f.type == "i8" for f in message.fields)
+        needs_tmp_len = any(f.type == "str" for f in message.fields)
+
+        decode_locals = ["    nbp2_cbor_reader_t r;", "    uint32_t count;"]
+        if needs_tmp_u:
+            decode_locals.append("    uint64_t tmp_u;")
+        if needs_tmp_i:
+            decode_locals.append("    int64_t tmp_i;")
+        if needs_tmp_len:
+            decode_locals.append("    uint16_t tmp_len;")
+
+        message_funcs.append(f"""nbp2_status_t nbp2_encode_{lname}(const nbp2_msg_{lname}_t *in, uint8_t *out,
+                                  size_t cap, size_t *out_len)
+{{
+    nbp2_cbor_writer_t w;
+
+    if (in == NULL || out == NULL || out_len == NULL) {{
+        return NBP2_ERR_INVALID_ARG;
+    }}
+
+    nbp2_cbor_writer_init(&w, out, cap);
+    NBP2_CBOR_TRY(nbp2_cbor_write_array_header(&w, {n_fields}u));
+{encode_body}
+
+    *out_len = w.pos;
+    return NBP2_OK;
+}}
+
+nbp2_status_t nbp2_decode_{lname}(const uint8_t *data, size_t len,
+                                  nbp2_msg_{lname}_t *out)
+{{
+{chr(10).join(decode_locals)}
+
+    if (data == NULL || out == NULL) {{
+        return NBP2_ERR_INVALID_ARG;
+    }}
+
+    nbp2_cbor_reader_init(&r, data, len);
+    NBP2_CBOR_TRY(nbp2_cbor_read_array_header(&r, &count));
+    if (count != {n_fields}u) {{
+        return NBP2_ERR_CBOR_MALFORMED;
+    }}
+{decode_body}
+
+    return NBP2_OK;
+}}""")
+
+    messages_src = "\n\n".join(message_funcs)
+
     (out_dir / "nbp2.c").write_text(
         r'''#include "nbp2.h"
 
 #include <string.h>
+
+#define NBP2_CBOR_TRY(expr)                                                   \
+    do {                                                                     \
+        nbp2_status_t _nbp2_status = (expr);                                 \
+        if (_nbp2_status != NBP2_OK) {                                       \
+            return _nbp2_status;                                            \
+        }                                                                    \
+    } while (0)
 
 static void nbp2_write_u16_le(uint8_t *out, uint16_t value)
 {
@@ -298,21 +556,403 @@ bool nbp2_timing_safe_equal(const uint8_t *left,
 
     return diff == 0u;
 }
-''',
+
+/* ── CBOR mínimo (RFC 8949, forma canônica curta) ────────────────────────── */
+
+void nbp2_cbor_writer_init(nbp2_cbor_writer_t *w, uint8_t *buf, size_t cap)
+{
+    w->buf = buf;
+    w->cap = cap;
+    w->pos = 0u;
+}
+
+static nbp2_status_t nbp2_cbor_write_header(nbp2_cbor_writer_t *w, uint8_t major,
+                                            uint64_t value)
+{
+    uint8_t major_bits = (uint8_t)(major << 5u);
+
+    if (value < 24u) {
+        if (w->pos + 1u > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+        w->buf[w->pos++] = (uint8_t)(major_bits | (uint8_t)value);
+        return NBP2_OK;
+    }
+    if (value <= 0xFFu) {
+        if (w->pos + 2u > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+        w->buf[w->pos++] = (uint8_t)(major_bits | 24u);
+        w->buf[w->pos++] = (uint8_t)value;
+        return NBP2_OK;
+    }
+    if (value <= 0xFFFFu) {
+        if (w->pos + 3u > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+        w->buf[w->pos++] = (uint8_t)(major_bits | 25u);
+        w->buf[w->pos++] = (uint8_t)((value >> 8u) & 0xFFu);
+        w->buf[w->pos++] = (uint8_t)(value & 0xFFu);
+        return NBP2_OK;
+    }
+    if (value <= 0xFFFFFFFFu) {
+        if (w->pos + 5u > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+        w->buf[w->pos++] = (uint8_t)(major_bits | 26u);
+        w->buf[w->pos++] = (uint8_t)((value >> 24u) & 0xFFu);
+        w->buf[w->pos++] = (uint8_t)((value >> 16u) & 0xFFu);
+        w->buf[w->pos++] = (uint8_t)((value >> 8u) & 0xFFu);
+        w->buf[w->pos++] = (uint8_t)(value & 0xFFu);
+        return NBP2_OK;
+    }
+
+    if (w->pos + 9u > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+    w->buf[w->pos++] = (uint8_t)(major_bits | 27u);
+    for (int shift = 56; shift >= 0; shift -= 8) {
+        w->buf[w->pos++] = (uint8_t)((value >> (unsigned)shift) & 0xFFu);
+    }
+    return NBP2_OK;
+}
+
+nbp2_status_t nbp2_cbor_write_array_header(nbp2_cbor_writer_t *w, uint32_t count)
+{
+    return nbp2_cbor_write_header(w, 4u, count);
+}
+
+nbp2_status_t nbp2_cbor_write_uint(nbp2_cbor_writer_t *w, uint64_t value)
+{
+    return nbp2_cbor_write_header(w, 0u, value);
+}
+
+nbp2_status_t nbp2_cbor_write_int(nbp2_cbor_writer_t *w, int64_t value)
+{
+    if (value >= 0) {
+        return nbp2_cbor_write_header(w, 0u, (uint64_t)value);
+    }
+    return nbp2_cbor_write_header(w, 1u, (uint64_t)(-(value + 1)));
+}
+
+static nbp2_status_t nbp2_cbor_write_string(nbp2_cbor_writer_t *w, uint8_t major,
+                                            const uint8_t *data, size_t len)
+{
+    nbp2_status_t status = nbp2_cbor_write_header(w, major, (uint64_t)len);
+
+    if (status != NBP2_OK) { return status; }
+    if (w->pos + len > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+    if (len > 0u) {
+        memcpy(&w->buf[w->pos], data, len);
+    }
+    w->pos += len;
+    return NBP2_OK;
+}
+
+nbp2_status_t nbp2_cbor_write_bytes(nbp2_cbor_writer_t *w, const uint8_t *data, size_t len)
+{
+    return nbp2_cbor_write_string(w, 2u, data, len);
+}
+
+nbp2_status_t nbp2_cbor_write_text(nbp2_cbor_writer_t *w, const char *data, size_t len)
+{
+    return nbp2_cbor_write_string(w, 3u, (const uint8_t *)data, len);
+}
+
+nbp2_status_t nbp2_cbor_write_float32(nbp2_cbor_writer_t *w, float value)
+{
+    union {
+        float f;
+        uint32_t u;
+    } bits;
+
+    if (w->pos + 5u > w->cap) { return NBP2_ERR_BUFFER_TOO_SMALL; }
+
+    bits.f = value;
+    w->buf[w->pos++] = (uint8_t)((7u << 5u) | 26u);
+    w->buf[w->pos++] = (uint8_t)((bits.u >> 24u) & 0xFFu);
+    w->buf[w->pos++] = (uint8_t)((bits.u >> 16u) & 0xFFu);
+    w->buf[w->pos++] = (uint8_t)((bits.u >> 8u) & 0xFFu);
+    w->buf[w->pos++] = (uint8_t)(bits.u & 0xFFu);
+    return NBP2_OK;
+}
+
+void nbp2_cbor_reader_init(nbp2_cbor_reader_t *r, const uint8_t *buf, size_t len)
+{
+    r->buf = buf;
+    r->len = len;
+    r->pos = 0u;
+}
+
+static nbp2_status_t nbp2_cbor_read_header(nbp2_cbor_reader_t *r, uint8_t expected_major,
+                                           uint64_t *out_value)
+{
+    uint8_t first;
+    uint8_t major;
+    uint8_t info;
+
+    if (r->pos >= r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+
+    first = r->buf[r->pos];
+    major = (uint8_t)(first >> 5u);
+    info = (uint8_t)(first & 0x1Fu);
+    if (major != expected_major) { return NBP2_ERR_CBOR_MALFORMED; }
+    r->pos += 1u;
+
+    if (info < 24u) {
+        *out_value = info;
+        return NBP2_OK;
+    }
+    if (info == 24u) {
+        if (r->pos + 1u > r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+        *out_value = r->buf[r->pos];
+        r->pos += 1u;
+        return NBP2_OK;
+    }
+    if (info == 25u) {
+        if (r->pos + 2u > r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+        *out_value = ((uint64_t)r->buf[r->pos] << 8u) | (uint64_t)r->buf[r->pos + 1u];
+        r->pos += 2u;
+        return NBP2_OK;
+    }
+    if (info == 26u) {
+        if (r->pos + 4u > r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+        *out_value = ((uint64_t)r->buf[r->pos] << 24u) | ((uint64_t)r->buf[r->pos + 1u] << 16u) |
+                     ((uint64_t)r->buf[r->pos + 2u] << 8u) | (uint64_t)r->buf[r->pos + 3u];
+        r->pos += 4u;
+        return NBP2_OK;
+    }
+    if (info == 27u) {
+        uint64_t value = 0u;
+        int shift;
+
+        if (r->pos + 8u > r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+        for (shift = 0; shift < 8; ++shift) {
+            value = (value << 8u) | (uint64_t)r->buf[r->pos + (size_t)shift];
+        }
+        r->pos += 8u;
+        *out_value = value;
+        return NBP2_OK;
+    }
+
+    return NBP2_ERR_CBOR_MALFORMED;
+}
+
+nbp2_status_t nbp2_cbor_read_array_header(nbp2_cbor_reader_t *r, uint32_t *out_count)
+{
+    uint64_t value;
+    nbp2_status_t status = nbp2_cbor_read_header(r, 4u, &value);
+
+    if (status != NBP2_OK) { return status; }
+    if (value > 0xFFFFFFFFu) { return NBP2_ERR_CBOR_MALFORMED; }
+    *out_count = (uint32_t)value;
+    return NBP2_OK;
+}
+
+nbp2_status_t nbp2_cbor_read_uint(nbp2_cbor_reader_t *r, uint64_t *out_value)
+{
+    return nbp2_cbor_read_header(r, 0u, out_value);
+}
+
+nbp2_status_t nbp2_cbor_read_int(nbp2_cbor_reader_t *r, int64_t *out_value)
+{
+    uint8_t major;
+    uint64_t magnitude;
+    nbp2_status_t status;
+
+    if (r->pos >= r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+    major = (uint8_t)(r->buf[r->pos] >> 5u);
+
+    if (major == 0u) {
+        status = nbp2_cbor_read_header(r, 0u, &magnitude);
+        if (status != NBP2_OK) { return status; }
+        if (magnitude > (uint64_t)INT64_MAX) { return NBP2_ERR_CBOR_MALFORMED; }
+        *out_value = (int64_t)magnitude;
+        return NBP2_OK;
+    }
+    if (major == 1u) {
+        status = nbp2_cbor_read_header(r, 1u, &magnitude);
+        if (status != NBP2_OK) { return status; }
+        if (magnitude > (uint64_t)INT64_MAX) { return NBP2_ERR_CBOR_MALFORMED; }
+        *out_value = -1 - (int64_t)magnitude;
+        return NBP2_OK;
+    }
+    return NBP2_ERR_CBOR_MALFORMED;
+}
+
+static nbp2_status_t nbp2_cbor_read_string(nbp2_cbor_reader_t *r, uint8_t major,
+                                           uint8_t *out_buf, size_t out_cap, uint16_t *out_len)
+{
+    uint64_t length;
+    nbp2_status_t status = nbp2_cbor_read_header(r, major, &length);
+
+    if (status != NBP2_OK) { return status; }
+    if (length > out_cap) { return NBP2_ERR_PAYLOAD_TOO_LARGE; }
+    if (r->pos + length > r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+    if (length > 0u) {
+        memcpy(out_buf, &r->buf[r->pos], (size_t)length);
+    }
+    r->pos += (size_t)length;
+    *out_len = (uint16_t)length;
+    return NBP2_OK;
+}
+
+nbp2_status_t nbp2_cbor_read_bytes(nbp2_cbor_reader_t *r, uint8_t *out_buf, size_t out_cap,
+                                   uint16_t *out_len)
+{
+    return nbp2_cbor_read_string(r, 2u, out_buf, out_cap, out_len);
+}
+
+nbp2_status_t nbp2_cbor_read_text(nbp2_cbor_reader_t *r, char *out_buf, size_t out_cap,
+                                  uint16_t *out_len)
+{
+    return nbp2_cbor_read_string(r, 3u, (uint8_t *)out_buf, out_cap, out_len);
+}
+
+nbp2_status_t nbp2_cbor_read_float32(nbp2_cbor_reader_t *r, float *out_value)
+{
+    union {
+        float f;
+        uint32_t u;
+    } bits;
+
+    if (r->pos + 5u > r->len) { return NBP2_ERR_CBOR_MALFORMED; }
+    if (r->buf[r->pos] != ((7u << 5u) | 26u)) { return NBP2_ERR_CBOR_MALFORMED; }
+
+    bits.u = ((uint32_t)r->buf[r->pos + 1u] << 24u) | ((uint32_t)r->buf[r->pos + 2u] << 16u) |
+             ((uint32_t)r->buf[r->pos + 3u] << 8u) | (uint32_t)r->buf[r->pos + 4u];
+    r->pos += 5u;
+    *out_value = bits.f;
+    return NBP2_OK;
+}
+
+'''
+        + messages_src
+        + "\n",
         encoding="utf-8",
     )
+
+
+# ── Python ────────────────────────────────────────────────────────────────
+
+
+def py_class_name(name: str) -> str:
+    return "".join(part.capitalize() for part in name.split("_"))
+
+
+def py_safe_name(name: str) -> str:
+    return f"{name}_" if keyword.iskeyword(name) else name
+
+
+def py_field_type(field: Field) -> str:
+    if field.type in ("u8", "u16", "u32", "u64", "i8"):
+        return "int"
+    if field.type == "f32":
+        return "float"
+    if field.type == "bytes":
+        return "bytes"
+    if field.type == "str":
+        return "str"
+    if field.type == "enum":
+        return py_class_name(field.enum)
+    raise AssertionError(field.type)
+
+
+def py_encode_field_lines(field: Field) -> list[str]:
+    n = py_safe_name(field.name)
+    if field.type in ("u8", "u16", "u32", "u64"):
+        return [f"    cbor_write_uint(buf, msg.{n})"]
+    if field.type == "i8":
+        return [f"    cbor_write_int(buf, msg.{n})"]
+    if field.type == "f32":
+        return [f"    cbor_write_float32(buf, msg.{n})"]
+    if field.type == "bytes":
+        return [
+            f"    if len(msg.{n}) > {field.max}:",
+            f'        raise ValueError("{n} excede o maximo de {field.max} bytes")',
+            f"    cbor_write_bytes(buf, msg.{n})",
+        ]
+    if field.type == "str":
+        return [
+            f"    _{n}_encoded = msg.{n}.encode(\"utf-8\")",
+            f"    if len(_{n}_encoded) > {field.max}:",
+            f'        raise ValueError("{n} excede o maximo de {field.max} bytes")',
+            f"    cbor_write_text(buf, msg.{n})",
+        ]
+    if field.type == "enum":
+        return [f"    cbor_write_uint(buf, int(msg.{n}))"]
+    raise AssertionError(field.type)
+
+
+def py_decode_field_lines(field: Field) -> list[str]:
+    n = py_safe_name(field.name)
+    if field.type in ("u8", "u16", "u32", "u64"):
+        return [f"    {n} = reader.read_uint()"]
+    if field.type == "i8":
+        return [f"    {n} = reader.read_int()"]
+    if field.type == "f32":
+        return [f"    {n} = reader.read_float32()"]
+    if field.type == "bytes":
+        return [f"    {n} = reader.read_bytes()"]
+    if field.type == "str":
+        return [f"    {n} = reader.read_text()"]
+    if field.type == "enum":
+        return [f"    {n} = {py_class_name(field.enum)}(reader.read_uint())"]
+    raise AssertionError(field.type)
 
 
 def write_python(schema: Schema, out_dir: Path) -> None:
     constants = "\n".join(
         f"MSG_{message.name} = 0x{message.msg_id:04X}" for message in schema.messages
     )
+
+    enum_blocks = []
+    for enum_name, values in schema.enums.items():
+        members = "\n".join(f"    {value} = {i}" for i, value in enumerate(values))
+        enum_blocks.append(f"class {py_class_name(enum_name)}(IntEnum):\n{members}")
+    enums_src = "\n\n\n".join(enum_blocks)
+
+    message_blocks = []
+    for message in schema.messages:
+        lname = msg_lower(message.name)
+        cls_name = py_class_name(message.name)
+
+        if message.fields:
+            field_decls = "\n".join(
+                f"    {py_safe_name(f.name)}: {py_field_type(f)}" for f in message.fields
+            )
+        else:
+            field_decls = "    pass"
+
+        encode_lines = "\n".join(
+            line for field in message.fields for line in py_encode_field_lines(field)
+        )
+        decode_lines = "\n".join(
+            line for field in message.fields for line in py_decode_field_lines(field)
+        )
+        ctor_args = ", ".join(py_safe_name(f.name) for f in message.fields)
+
+        message_blocks.append(
+            f'''@dataclass(frozen=True)
+class {cls_name}:
+{field_decls}
+
+
+def encode_{lname}(msg: {cls_name}) -> bytes:
+    buf = bytearray()
+    cbor_write_array_header(buf, {len(message.fields)})
+{encode_lines if encode_lines else "    pass"}
+    return bytes(buf)
+
+
+def decode_{lname}(data: bytes) -> {cls_name}:
+    reader = CborReader(data)
+    count = reader.read_array_header()
+    if count != {len(message.fields)}:
+        raise ValueError("{message.name.lower()}: numero de campos invalido")
+{decode_lines if decode_lines else "    pass"}
+    return {cls_name}({ctor_args})'''
+        )
+    messages_src = "\n\n\n".join(message_blocks)
+
     (out_dir / "nbp2.py").write_text(
-        f'''"""Generated NBP/2 framing helpers. Do not edit by hand."""
+        f'''"""Generated NBP/2 framing + CBOR payload helpers. Do not edit by hand."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import IntEnum
+import struct
 import zlib
 
 
@@ -379,6 +1019,140 @@ def timing_safe_equal(left: bytes, right: bytes) -> bool:
         r_val = right[index] if index < len(right) else 0
         diff |= l_val ^ r_val
     return diff == 0
+
+
+# ── CBOR minimo (RFC 8949, forma canonica curta) ─────────────────────────
+
+def _write_header(buf: bytearray, major: int, value: int) -> None:
+    top = major << 5
+    if value < 24:
+        buf.append(top | value)
+    elif value <= 0xFF:
+        buf.append(top | 24)
+        buf.append(value)
+    elif value <= 0xFFFF:
+        buf.append(top | 25)
+        buf += value.to_bytes(2, "big")
+    elif value <= 0xFFFFFFFF:
+        buf.append(top | 26)
+        buf += value.to_bytes(4, "big")
+    else:
+        buf.append(top | 27)
+        buf += value.to_bytes(8, "big")
+
+
+def cbor_write_array_header(buf: bytearray, count: int) -> None:
+    _write_header(buf, 4, count)
+
+
+def cbor_write_uint(buf: bytearray, value: int) -> None:
+    _write_header(buf, 0, value)
+
+
+def cbor_write_int(buf: bytearray, value: int) -> None:
+    if value >= 0:
+        _write_header(buf, 0, value)
+    else:
+        _write_header(buf, 1, -value - 1)
+
+
+def cbor_write_bytes(buf: bytearray, data: bytes) -> None:
+    _write_header(buf, 2, len(data))
+    buf += data
+
+
+def cbor_write_text(buf: bytearray, text: str) -> None:
+    encoded = text.encode("utf-8")
+    _write_header(buf, 3, len(encoded))
+    buf += encoded
+
+
+def cbor_write_float32(buf: bytearray, value: float) -> None:
+    buf.append(0xFA)
+    buf += struct.pack(">f", value)
+
+
+class CborReader:
+    def __init__(self, data: bytes) -> None:
+        self.data = data
+        self.pos = 0
+
+    def _read_header(self, expected_major: int) -> int:
+        if self.pos >= len(self.data):
+            raise ValueError("cbor truncated")
+        first = self.data[self.pos]
+        major = first >> 5
+        info = first & 0x1F
+        if major != expected_major:
+            raise ValueError("cbor unexpected major type")
+        self.pos += 1
+        if info < 24:
+            return info
+        if info == 24:
+            value = self.data[self.pos]
+            self.pos += 1
+            return value
+        if info == 25:
+            value = int.from_bytes(self.data[self.pos : self.pos + 2], "big")
+            self.pos += 2
+            return value
+        if info == 26:
+            value = int.from_bytes(self.data[self.pos : self.pos + 4], "big")
+            self.pos += 4
+            return value
+        if info == 27:
+            value = int.from_bytes(self.data[self.pos : self.pos + 8], "big")
+            self.pos += 8
+            return value
+        raise ValueError("cbor unsupported additional info")
+
+    def read_array_header(self) -> int:
+        return self._read_header(4)
+
+    def read_uint(self) -> int:
+        return self._read_header(0)
+
+    def read_int(self) -> int:
+        if self.pos >= len(self.data):
+            raise ValueError("cbor truncated")
+        major = self.data[self.pos] >> 5
+        if major == 0:
+            return self._read_header(0)
+        if major == 1:
+            return -1 - self._read_header(1)
+        raise ValueError("cbor unexpected major type for int")
+
+    def _read_string(self, major: int) -> bytes:
+        length = self._read_header(major)
+        data = self.data[self.pos : self.pos + length]
+        if len(data) != length:
+            raise ValueError("cbor truncated string")
+        self.pos += length
+        return data
+
+    def read_bytes(self) -> bytes:
+        return self._read_string(2)
+
+    def read_text(self) -> str:
+        return self._read_string(3).decode("utf-8")
+
+    def read_float32(self) -> float:
+        if self.pos >= len(self.data) or self.data[self.pos] != 0xFA:
+            raise ValueError("cbor expected float32")
+        self.pos += 1
+        value = struct.unpack(">f", self.data[self.pos : self.pos + 4])[0]
+        self.pos += 4
+        return value
+
+
+# ── Enums do protocolo ────────────────────────────────────────────────────
+
+{enums_src}
+
+
+# ── Mensagens (structs + encode/decode CBOR) ─────────────────────────────
+
+{messages_src}
 ''',
         encoding="utf-8",
     )
@@ -397,7 +1171,7 @@ def main() -> int:
     py_dir.mkdir(parents=True, exist_ok=True)
 
     write_c_header(schema, c_dir)
-    write_c_source(c_dir)
+    write_c_source(schema, c_dir)
     write_python(schema, py_dir)
     print(f"nbp2-codegen: {len(schema.messages)} mensagens geradas em {args.out}")
     return 0

@@ -38,6 +38,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install codegen deps
+        run: pip install pyyaml
       - name: Generate NBP/2 artifacts and compare C/Python bytes
         run: python tools/check_protocol_golden.py
 

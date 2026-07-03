@@ -454,9 +454,34 @@ em mãos.
   `python tools/run_host_tests.py` verde; `python tools/scan_secrets.py`
   verde; `git diff --check` sem erro de whitespace (apenas avisos LF→CRLF no
   Windows).
-- **Pendente para `FEITO`:** codegen dos payloads CBOR/structs para
-  HELLO/HEARTBEAT/TIME_SYNC/EVENT/STATUS, persistência/leitura do token NBP/2
-  em NVS, teste dos dois lados rejeitando HELLO sem token ou token incorreto,
+- **Payloads CBOR (2026-07-02):** `generate_nbp2.py` reescrito para usar
+  PyYAML (única dependência externa do toolchain; `pip install pyyaml` no
+  job `protocol-golden`) em vez do parser regex — schema completo (enums,
+  campos tipados) precisava de um parser de verdade, não regex sobre YAML.
+  Gera agora, para as 26 mensagens: struct C (`nbp2_msg_<nome>_t`) e
+  dataclass Python por mensagem, `nbp2_encode_*`/`nbp2_decode_*` em C e
+  `encode_*`/`decode_*` em Python, usando CBOR canônico (array posicional de
+  campos, RFC 8949 forma curta) implementado à mão nos dois lados — sem
+  `cbor2` nem lib de terceiros, para que os bytes baterem por construção.
+  Tipos suportados (os únicos usados no YAML hoje): u8/u16/u32/u64/i8/f32/
+  bytes(max)/str(max)/enum. Structs de mensagem renomeados para
+  `nbp2_msg_<nome>_t` (não `nbp2_<nome>_t`) depois que a mensagem `STATUS`
+  colidiu com o enum de erro `nbp2_status_t` já existente — mesma família de
+  armadilha do `app_config`/`config`, registrada para não repetir. Campo
+  `from` (EVENT_STATE) é palavra reservada em Python: o gerador renomeia só
+  no lado Python (`from_`) via `keyword.iskeyword`, mantendo `from` no C.
+- `tools/check_protocol_golden.py` estendido: além do frame/token já
+  cobertos, agora codifica HELLO/HEARTBEAT/STATUS/TIMER_SET/EVENT_STATE em C
+  com os mesmos valores usados em Python e compara os bytes CBOR; e decodifica
+  em C bytes que o Python codificou (HELLO/STATUS/TIMER_SET), provando as
+  duas direções, não só round-trip dentro da mesma linguagem. Esses cinco
+  mensagens cobrem todos os 9 tipos de campo do schema.
+- Gate local confirmado: `python tools/check_protocol_golden.py` verde
+  (`nbp2-codegen: 26 mensagens geradas`, `protocol-golden: ok`); compilação
+  do C gerado com `-Wall -Wextra -Werror` sem warning; `python3
+  tools/run_host_tests.py` verde; `python tools/scan_secrets.py` verde.
+- **Pendente para `FEITO`:** persistência/leitura do token NBP/2 em NVS,
+  teste dos dois lados rejeitando HELLO sem token ou token incorreto,
   transporte TCP com reconexão/backoff e soak de 100 reconexões contra server
   fake.
 
