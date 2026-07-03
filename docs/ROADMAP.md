@@ -380,6 +380,36 @@ em mãos.
    oficial da Espressif rodando num celular contra a N32R16V — não é
    executável sem essa etapa manual do usuário; fica pendente até acontecer.
 
+**Evidência S1.6 (2026-07-02, parcial):**
+
+- Implementado `firmware/components/infra/wifi_setup` como núcleo C17 puro:
+  validação de SSID/senha e máquina de estados `NOT_PROVISIONED` →
+  `PROVISIONING` → `PROVISIONED`/`FAILED`, `reset` de qualquer estado.
+  Host-test cobrindo validação e todas as transições.
+- Casca `shell/nb_wifi_setup_shell.c/.h`: `wifi_prov_mgr` (ESP-IDF) sobre
+  SoftAP, `WIFI_PROV_SECURITY_1`, SSID do AP `NoiseBot2-XXXX` derivado do
+  MAC, PoP fixo `nb2setup` (limitação conhecida — documentada no README,
+  revisitar antes de produção). Eventos do `wifi_prov_mgr` alimentam a
+  máquina de estados do núcleo. Integrado no `app_main` após o watchdog;
+  falha aqui loga e segue offline, não trava o boot (P1).
+- Gate local confirmado na máquina de desenvolvimento: `idf.py build` verde
+  (`__idf_wifi_setup`, `noisebot2.bin` com 78% livre — queda esperada pela
+  stack WiFi/protocomm linkada); `python3 tools/run_host_tests.py` verde;
+  `python tools/scan_secrets.py` verde (`secrets-scan: limpo`).
+- **Ensaio em bancada (2026-07-02, N32R16V via COM5):** a placa já tinha
+  credenciais WiFi persistidas na NVS de uso anterior (fora do nosso
+  controle). Log real confirma o caminho "já provisionado":
+  `wifi_setup: ja provisionado, conectando em modo estacao`, seguido de
+  `wifi:mode : sta` — o branch de reconexão direta funciona. O caminho
+  SoftAP/PoP (dispositivo não provisionado) não foi testado nesta sessão
+  para não apagar a NVS compartilhada com `app_config`/`watchdog` sem
+  necessidade — decisão do usuário.
+- **Gate pendente (bloqueia `FEITO`):** provisionar do zero com o app
+  oficial da Espressif contra o SoftAP `NoiseBot2-XXXX` a partir de um
+  celular — depende do usuário apagar o provisioning atual (pelo próprio
+  app, ou pedindo para apagar a NVS) e executar o fluxo manualmente. Status
+  permanece `EM ANDAMENTO`.
+
 ### S2 — Face (o robô fica vivo, mudo)
 
 *Objetivo:* display + renderer + FSM + idle. No fim de S2 o robô parece vivo.

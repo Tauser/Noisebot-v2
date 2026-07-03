@@ -3,6 +3,8 @@
  *
  * Fase atual: S1.4 — boot real via boot_manager (logger + app_config).
  * S1.5: watchdog integrado ao app_main/TWDT.
+ * S1.6: wifi_setup (SoftAP provisioning) — falha aqui não trava o robô,
+ * que continua funcional offline (P1: corpo/mente separados).
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -15,6 +17,7 @@
 #include "esp_chip_info.h"
 #include "nb_boot_manager_shell.h"
 #include "nb_watchdog_shell.h"
+#include "nb_wifi_setup_shell.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
@@ -38,6 +41,12 @@ void app_main(void)
              (unsigned)report.total_duration_ms);
 
     ESP_ERROR_CHECK(nb_watchdog_shell_init(NB_APP_MAIN_WATCHDOG_TIMEOUT_MS));
+
+    esp_err_t wifi_err = nb_wifi_setup_shell_init();
+    if (wifi_err != ESP_OK) {
+        ESP_LOGE(TAG, "wifi_setup falhou (%s) — seguindo offline",
+                 esp_err_to_name(wifi_err));
+    }
 
     for (;;) {
         ESP_ERROR_CHECK(nb_watchdog_shell_feed());

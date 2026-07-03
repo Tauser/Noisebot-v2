@@ -22,7 +22,19 @@ Contrato do núcleo:
 parte deste componente — ele nasce em S1.7 junto do protocolo, onde o
 transporte pode ser decidido com o contrato em mãos.
 
-**Pendente (fora do escopo desta fatia):** casca (`shell/`) usando
-`wifi_prov_mgr` do ESP-IDF sobre SoftAP; o gate real (provisionar do celular
-sem toolchain) exige um celular rodando o app oficial "ESP SoftAP
-Provisioning" contra a placa.
+Casca (`shell/nb_wifi_setup_shell.c/.h`): se já há credenciais persistidas
+(`wifi_prov_mgr_is_provisioned()`), conecta direto em modo estação. Caso
+contrário, sobe SoftAP `NoiseBot2-XXXX` (XXXX = sufixo do MAC) com
+`WIFI_PROV_SECURITY_1` (handshake X25519 + PoP, sem TLS) para o app oficial
+"ESP SoftAP Provisioning" da Espressif provisionar SSID/senha. Os eventos do
+`wifi_prov_mgr` alimentam a máquina de estados do núcleo
+(`begin`/`fail`/`PROVISIONED`).
+
+**Limitação conhecida, registrada para não virar surpresa depois:** o PoP
+(`nb2setup`) é fixo no firmware, igual em toda a frota — aceitável para
+bancada/S1.6, mas errado para produção (deveria ser único por unidade,
+impresso num QR/label). Revisitar antes de qualquer deploy real.
+
+**Pendente:** o gate real (provisionar do zero pelo celular sem toolchain)
+exige um celular rodando o app oficial contra a placa — não é executável
+sem essa etapa manual do usuário.
