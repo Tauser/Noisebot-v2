@@ -14,6 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Generate NBP/2 artifacts (Python do runner, nao o do ESP-IDF)
+        run: |
+          pip install pyyaml
+          python protocol/codegen/generate_nbp2.py
       - name: Build ESP-IDF (-Wall -Wextra -Werror)
         uses: espressif/esp-idf-ci-action@v1
         with:

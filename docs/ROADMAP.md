@@ -515,10 +515,26 @@ em mãos.
   livre — sem mudança de tamanho, componente ainda não linkado no `main`);
   `python3 tools/run_host_tests.py` verde (11/11 casos do `mind_link`);
   `python tools/scan_secrets.py` verde.
-- **Pendente para `FEITO`:** persistência real do token em NVS e componente
-  ESP-IDF que compile o `protocol/generated/c` (ambos dependem do
-  `mind_link` ganhar casca de transporte real); transporte TCP com
-  reconexão/backoff usando este núcleo; soak de 100 reconexões contra server
+- **Componente `nbp2` no build do ESP-IDF (2026-07-03):** resolvido o risco
+  registrado antes — criado `firmware/components/infra/nbp2`, casca fininha
+  que só compila `protocol/generated/c/nbp2.c/.h` (não gera nada). O codegen
+  (Python + PyYAML) roda **fora** do toolchain do ESP-IDF: no CI, o job
+  `firmware-build` gera os artefatos com o Python padrão do runner antes de
+  chamar a action do ESP-IDF; localmente, é um passo manual documentado no
+  README do componente (`python protocol/codegen/generate_nbp2.py`). Se os
+  arquivos gerados não existirem, o CMake falha com `message(FATAL_ERROR
+  ...)` explicando o comando a rodar, em vez de um erro de arquivo não
+  encontrado difícil de rastrear — testado de propósito (renomeei
+  `protocol/generated/` e rodei `idf.py build`: erro claro; restaurado antes
+  do commit).
+- Gate local confirmado: `idf.py build` verde (`__idf_nbp2`, `noisebot2.bin`
+  78% livre — nbp2 ainda não linkado no `main`, só disponível);
+  `python3 tools/run_host_tests.py` verde; `python
+  tools/check_protocol_golden.py` verde; `python tools/scan_secrets.py`
+  verde.
+- **Pendente para `FEITO`:** persistência real do token em NVS; casca do
+  `mind_link` com socket TCP de verdade (usando `nbp2` + o núcleo de sessão
+  já prontos) com reconexão/backoff; soak de 100 reconexões contra server
   fake.
 
 ### S2 — Face (o robô fica vivo, mudo)
