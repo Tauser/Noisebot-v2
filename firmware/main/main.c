@@ -9,6 +9,8 @@
  * backoff e nunca bloqueia o boot se o server estiver offline.
  * S1.8: confirmação local de imagem OTA pendente só depois do esqueleto subir
  * saudável; Secure Boot/flash encryption exigem gate de bancada explícito.
+ * S2.1: display_hal — padrão de teste visual de bring-up numa task própria;
+ * o renderer real entra em S2.2.
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -24,11 +26,36 @@
 #include "nb_wifi_setup_shell.h"
 #include "nb_ota_shell.h"
 #include "nb_mind_link_shell.h"
+#include "nb_display_hal_shell.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
+#define NB_APP_MAIN_DISPLAY_TEST_STACK 4096u
+#define NB_APP_MAIN_DISPLAY_TEST_PRIO 8
 
 static const char *TAG = "nb2";
+
+static void nb_app_main_display_test_task(void *arg)
+{
+    uint16_t *back;
+    esp_err_t err;
+    int frame = 0;
+
+    (void)arg;
+
+    for (;;) {
+        back = nb_display_hal_shell_get_back_buffer();
+        nb_display_hal_shell_draw_test_pattern(back, frame * 2);
+
+        err = nb_display_hal_shell_flush_and_swap();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "display flush falhou (%s)", esp_err_to_name(err));
+        }
+
+        ++frame;
+        vTaskDelay(pdMS_TO_TICKS(33));
+    }
+}
 
 void app_main(void)
 {
@@ -68,6 +95,14 @@ void app_main(void)
         }
     } else {
         ESP_LOGW(TAG, "boot nao saudavel; imagem OTA pendente nao sera confirmada");
+    }
+
+    esp_err_t display_err = nb_display_hal_shell_init();
+    if (display_err != ESP_OK) {
+        ESP_LOGE(TAG, "display_hal falhou (%s)", esp_err_to_name(display_err));
+    } else {
+        xTaskCreate(nb_app_main_display_test_task, "display_test",
+                   NB_APP_MAIN_DISPLAY_TEST_STACK, NULL, NB_APP_MAIN_DISPLAY_TEST_PRIO, NULL);
     }
 
     for (;;) {

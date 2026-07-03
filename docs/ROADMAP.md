@@ -713,14 +713,97 @@ tools/scan_secrets.py` verde.
 _Objetivo:_ display + renderer + FSM + idle. No fim de S2 o robô parece vivo.
 _Dependências:_ S1.9. _Referência de implementação:_ renderer do head v1 (DM2).
 
+**Exceção de ordem registrada (2026-07-03):** S2 está começando com S1.9
+ainda `PENDENTE`, por decisão explícita do usuário — S1.9 é um soak de 24h
+(zero reset, heap estável, reconexões limpas), não trabalho de código; não
+há nada a implementar nele além de deixar rodando e observar. Ficar parado
+esperando essas 24h não rende trabalho. Nenhum item de S2 vira `FEITO`
+enquanto S1.9 não fechar: o gate de saída de S2 (S2.6, soak 48h) já
+pressupõe um esqueleto estável, então a validação final de S2 fica
+condicionada, na prática, ao soak de S1.9 ter rodado em algum momento antes
+disso. Retomar S1.9 (iniciar o soak de 24h) continua pendente e deve ser
+feito antes de considerar S2.6 atendido.
+
 | ID   | Entrega                                                                                                 | Gate de saída                                                                      | Status     |
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
-| S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `PENDENTE` |
+| S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `EM ANDAMENTO` |
 | S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `PENDENTE` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `PENDENTE` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
 | S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
+
+**Plano S2.1 (antes de implementar):**
+
+1. Driver ESP-IDF nativo (`esp_lcd_panel_io_spi` + `esp_lcd_new_panel_st7789`),
+   C17 puro — decisão explícita para não estender C++/LovyanGFX pra fora da
+   camada de renderer (S2.2), respeitando `CLAUDE.md` ao pé da letra. Pinos:
+   CS=10, MOSI=11, SCLK=12, DC=14; sem MISO, sem RST dedicado (reset via
+   comando SWRESET), sem controle de backlight (BL fixo em 3.3V).
+2. Núcleo puro (`display_hal.c/.h`): bookkeeping de double buffer (índice de
+   front/back, swap), sem tocar SPI/DMA/ESP-IDF — os ponteiros dos dois
+   framebuffers em PSRAM são injetados pelo chamador.
+3. Casca (`shell/nb_display_hal_shell.c/.h`): aloca os dois framebuffers em
+   PSRAM (`heap_caps_malloc(..., MALLOC_CAP_SPIRAM)` — nunca em SRAM, regra
+   de `ARCHITECTURE.md` §6), inicializa o painel via `esp_lcd`, expõe
+   `flush()` (`esp_lcd_panel_draw_bitmap`) e delega o buffer swap ao núcleo.
+4. `host_test` no mesmo commit cobrindo o núcleo (swap alterna front/back,
+   estado inicial determinístico).
+5. Padrão de teste visual (cor sólida ou barras) para confirmação humana em
+   bancada — não dá pra validar imagem por log, precisa do usuário olhar
+   pro display.
+6. Gate completo (30 fps por 1h, zero artefato, SRAM inalterada via `.map`)
+   é ensaio de bancada prolongado — a fatia de hoje prova que a imagem
+   aparece corretamente; o soak de 1h fica registrado como próximo passo.
+
+**Evidência S2.1 (2026-07-03):**
+
+- Implementado `firmware/components/hal/display_hal` — primeiro componente
+  em `components/hal/` (camada L0). Núcleo C17 puro (`display_hal.c/.h`):
+  bookkeeping de double buffer (índice front/back, swap), sem
+  FreeRTOS/SPI/DMA. Host-test cobrindo init determinístico, swap alternando
+  front/back, chamadas com `NULL` seguras.
+- Casca (`shell/nb_display_hal_shell.c/.h`): ST7789 via `esp_lcd` nativo do
+  ESP-IDF (`esp_lcd_panel_io_spi` + `esp_lcd_new_panel_st7789`), C17 puro —
+  sem LovyanGFX/C++ nesta camada, por decisão registrada no plano acima.
+  Framebuffers (320×240 RGB565) em PSRAM via `heap_caps_malloc(...,
+  MALLOC_CAP_SPIRAM)`.
+- **Bug real corrigido (2026-07-03):** faltava `esp_lcd_panel_swap_xy(true)`.
+  O controlador ST7789 é nativamente 240 (coluna) × 320 (linha); sem trocar
+  os eixos, o `draw_bitmap` em paisagem 320×240 mandava endereço de coluna
+  até 319 num controlador com só 240 colunas de RAM — causava o artefato
+  visual nas duas bordas da tela. Corrigido chamando
+  `esp_lcd_panel_swap_xy(panel, true)` no init; independente de velocidade
+  de clock (testado e confirmado nas duas pontas).
+- **Ensaio real em bancada (2026-07-03, N32R16V via COM5):** sessão de
+  debug ao vivo com o usuário, várias hipóteses testadas e descartadas
+  metodicamente:
+  - Clock 50 MHz (spec do painel) corrompeu cor e apagou a tela nesta
+    fiação de jumper — sinal/integridade real, não lógica.
+  - Reforço do fio de GND (fio duplicado) eliminou flicker e cor incorreta
+    que apareciam mesmo em 40 MHz — indicando contato de GND marginal como
+    causa dominante da instabilidade, não o clock em si.
+  - Rampa de frequência (1 fps → 5 → 10 → 30 fps) confirmou estabilidade em
+    todos os degraus com o padrão estático, depois de corrigido o GND.
+  - Com scroll ativo a 30 fps e WiFi/mind_link **desligados** de propósito
+    (teste isolado): 30 fps estável por ~30 s, sem flicker, sem troca de
+    cor, sem apagar — cores corretas (vermelho/verde/azul/branco/preto).
+  - Com WiFi/mind_link religados: tela permanece estável (sem flicker, sem
+    apagar), mas com leve troca de cor residual — consistente com
+    interferência de RF do rádio WiFi 2.4 GHz acoplando na fiação de jumper
+    sem blindagem próxima à antena, não um bug de código.
+- Clock final: **20 MHz** (não os 50 MHz de spec do painel) — teto real
+  confirmado nesta fiação de bancada; registrar o teto real quando o
+  pinout for congelado (S0.4) e a fiação for revisada (par trançado/PCB
+  ao invés de jumper solto).
+- Gate local confirmado: `python3 tools/run_host_tests.py` verde
+  (`display_hal` + núcleos inalterados); `idf.py build` verde (77% livre);
+  `python tools/scan_secrets.py` verde.
+- **Pendente para `FEITO`:** soak de 30 fps por 1h contínua; teto de clock
+  real com fiação definitiva (não jumper); resíduo de cor com WiFi ativo
+  (RF/EMI) — revisitar com fiação blindada/PCB no S0.4; budget de SRAM via
+  `.map` (framebuffers já em PSRAM, mas a métrica formal não foi extraída
+  ainda).
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
