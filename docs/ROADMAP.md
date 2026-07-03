@@ -792,10 +792,34 @@ feito antes de considerar S2.6 atendido.
     apagar), mas com leve troca de cor residual — consistente com
     interferência de RF do rádio WiFi 2.4 GHz acoplando na fiação de jumper
     sem blindagem próxima à antena, não um bug de código.
-- Clock final: **20 MHz** (não os 50 MHz de spec do painel) — teto real
-  confirmado nesta fiação de bancada; registrar o teto real quando o
-  pinout for congelado (S0.4) e a fiação for revisada (par trançado/PCB
-  ao invés de jumper solto).
+- Clock inicial pós-GND: **20 MHz** (não os 50 MHz de spec do painel) —
+  teto conservador desta fiação de bancada, registrado antes de investigar
+  a causa raiz abaixo.
+- **Dois bugs reais adicionais corrigidos (2026-07-03), causa raiz — não
+  clock nem fiação:**
+  - **Race DMA/framebuffer:** `esp_lcd_panel_draw_bitmap()` no SPI é
+    assíncrono (enfileira e retorna antes de os pixels saírem); sem
+    barreira, a task de render sobrescrevia o framebuffer ainda em
+    transmissão, misturando dois frames (flicker). Corrigido com um
+    semáforo binário liberado no callback `on_color_trans_done`, que
+    serializa: só uma transferência em voo, swap espera o fim da anterior.
+  - **Coerência de cache PSRAM:** `esp_lcd_panel_io_spi` (ESP-IDF) nunca
+    seta `SPI_TRANS_DMA_USE_PSRAM` nas transações que monta, então
+    `spi_master` não sincroniza cache antes do DMA ler um buffer em PSRAM
+    (confirmado lendo `esp_driver_spi/src/gpspi/spi_master.c`). O DMA lia
+    dado ainda não escrito de volta da cache — corrupção de cor
+    intermitente (vermelho→laranja, azul→roxo) independente de clock ou
+    fiação. Confirmado em bancada: buffer único em SRAM interna (sem
+    PSRAM) ficou perfeito até estático a 10 MHz; buffer em PSRAM sem sync
+    manual corrompia mesmo estático. Corrigido com `esp_cache_msync(...,
+    ESP_CACHE_MSYNC_FLAG_DIR_C2M)` no back buffer antes de cada
+    `draw_bitmap`, exigindo os framebuffers alinhados à linha de cache (32
+    bytes, via `heap_caps_aligned_alloc`).
+- Clock final: **40 MHz** — confirmado limpo em bancada com as duas
+  correções acima; o clock nunca foi a causa raiz. Ainda não é o teto de
+  50 MHz de spec do painel; revisitar quando o pinout for congelado
+  (S0.4) e a fiação for revisada (par trançado/PCB ao invés de jumper
+  solto).
 - Gate local confirmado: `python3 tools/run_host_tests.py` verde
   (`display_hal` + núcleos inalterados); `idf.py build` verde (77% livre);
   `python tools/scan_secrets.py` verde.

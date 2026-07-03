@@ -1,29 +1,62 @@
 #include "nb_display_hal_shell.h"
 
 #include "driver/spi_master.h"
+#include "esp_attr.h"
+#include "esp_cache.h"
 #include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_st7789.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #define NB_DISPLAY_HAL_SPI_HOST SPI2_HOST
 #define NB_DISPLAY_HAL_PIN_SCLK 12
 #define NB_DISPLAY_HAL_PIN_MOSI 11
 #define NB_DISPLAY_HAL_PIN_CS 10
 #define NB_DISPLAY_HAL_PIN_DC 14
-/* Mesmo com swap_xy corrigido (resolveu o artefato nas bordas) e sem
- * flicker, 40 MHz ainda mostrou cores erradas (vazamento entre canais:
- * vermelho puro virando laranja, azul virando roxo) -- sinal de bit
- * corrompido na fiação de jumper. Baixando pra validar se 20 MHz elimina
- * de vez; registrar o teto real em HARDWARE.md quando o pinout congelar
- * (S0.4). */
-#define NB_DISPLAY_HAL_PIXEL_CLOCK_HZ (20 * 1000 * 1000)
+/* Causa real do "artefato de cor" não era clock nem fiação: o
+ * esp_lcd_panel_io_spi (ESP-IDF) nunca seta a flag SPI_TRANS_DMA_USE_PSRAM
+ * nas transações que monta, então o driver spi_master não sincroniza cache
+ * antes do DMA ler um buffer alocado em PSRAM (confirmado lendo
+ * esp_driver_spi/src/gpspi/spi_master.c: use_psram fica false, então o
+ * cache_msync condicional na linha ~1216 nunca roda pra esse caso). Testado
+ * e confirmado: buffer único em SRAM interna (sem PSRAM) ficou perfeito
+ * até com padrão estático e 10 MHz; buffer em PSRAM sem sync manual
+ * corrompia mesmo estático. Corrigido chamando esp_cache_msync() na cara
+ * antes de cada draw_bitmap (ver flush_and_swap). 40 MHz confirmado limpo
+ * com o sync manual — o clock nunca foi o problema. */
+#define NB_DISPLAY_HAL_PIXEL_CLOCK_HZ (40 * 1000 * 1000)
 
 static const char *TAG = "display_hal";
 static nb_display_hal_t s_hal;
 static esp_lcd_panel_handle_t s_panel;
+static size_t s_buffer_bytes;
+
+/* esp_lcd_panel_draw_bitmap() no SPI é assíncrono: enfileira a transferência
+ * DMA e retorna antes de os pixels saírem pela SPI. Um frame cheio
+ * (320x240x16bpp @ 20 MHz) leva ~61 ms para transmitir. Sem barreira, a task
+ * de render (loop ~33 ms) sobrescreve o framebuffer enquanto o DMA ainda o lê
+ * -> mistura de dois frames nas bandas ("flicker" que aparece e some no
+ * batimento das duas cadências). Este semáforo serializa: só uma transferência
+ * em voo, e o swap/reuso do buffer espera o `on_color_trans_done`. */
+static SemaphoreHandle_t s_trans_done;
+
+static bool IRAM_ATTR nb_display_hal_on_trans_done(esp_lcd_panel_io_handle_t io,
+                                                   esp_lcd_panel_io_event_data_t *edata,
+                                                   void *user_ctx)
+{
+    BaseType_t higher_prio_woken = pdFALSE;
+
+    (void)io;
+    (void)edata;
+    (void)user_ctx;
+
+    xSemaphoreGiveFromISR(s_trans_done, &higher_prio_woken);
+    return higher_prio_woken == pdTRUE;
+}
 
 esp_err_t nb_display_hal_shell_init(void)
 {
@@ -34,8 +67,15 @@ esp_err_t nb_display_hal_shell_init(void)
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_err_t err;
 
-    buffer_a = heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM);
-    buffer_b = heap_caps_malloc(buffer_bytes, MALLOC_CAP_SPIRAM);
+    s_buffer_bytes = buffer_bytes;
+
+    /* esp_cache_msync() exige endereço alinhado à linha de cache (32 bytes
+     * no ESP32-S3) -- heap_caps_malloc não garante isso, só o tamanho já
+     * é múltiplo de 32 por acaso (320x240x2). Usar aligned_alloc evita o
+     * ESP_ERR_INVALID_ARG visto em bancada quando o 2º buffer caía
+     * desalinhado. */
+    buffer_a = heap_caps_aligned_alloc(32, buffer_bytes, MALLOC_CAP_SPIRAM);
+    buffer_b = heap_caps_aligned_alloc(32, buffer_bytes, MALLOC_CAP_SPIRAM);
     if (buffer_a == NULL || buffer_b == NULL) {
         ESP_LOGE(TAG, "falha ao alocar framebuffers em PSRAM (%u bytes cada)",
                  (unsigned)buffer_bytes);
@@ -70,6 +110,24 @@ esp_err_t nb_display_hal_shell_init(void)
                                    &io_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_lcd_new_panel_io_spi falhou: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    s_trans_done = xSemaphoreCreateBinary();
+    if (s_trans_done == NULL) {
+        ESP_LOGE(TAG, "falha ao criar semáforo de transferência DMA");
+        return ESP_ERR_NO_MEM;
+    }
+    /* Começa "livre": o primeiro flush não tem transferência anterior para
+     * esperar. */
+    xSemaphoreGive(s_trans_done);
+
+    const esp_lcd_panel_io_callbacks_t io_cbs = {
+        .on_color_trans_done = nb_display_hal_on_trans_done,
+    };
+    err = esp_lcd_panel_io_register_event_callbacks(io_handle, &io_cbs, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "register_event_callbacks falhou: %s", esp_err_to_name(err));
         return err;
     }
 
@@ -122,10 +180,33 @@ uint16_t *nb_display_hal_shell_get_back_buffer(void)
 
 esp_err_t nb_display_hal_shell_flush_and_swap(void)
 {
-    esp_err_t err = esp_lcd_panel_draw_bitmap(s_panel, 0, 0, NB_DISPLAY_HAL_WIDTH,
-                                              NB_DISPLAY_HAL_HEIGHT,
-                                              nb_display_hal_get_back_buffer(&s_hal));
+    esp_err_t err;
+    uint16_t *back_buffer;
+
+    /* Barreira: espera a transferência DMA anterior terminar antes de enfileirar
+     * a próxima e trocar os buffers. Garante uma única transferência em voo e
+     * que o buffer prestes a ser reusado não está mais sendo lido pelo DMA. */
+    xSemaphoreTake(s_trans_done, portMAX_DELAY);
+
+    back_buffer = nb_display_hal_get_back_buffer(&s_hal);
+
+    /* esp_lcd_panel_io_spi não seta SPI_TRANS_DMA_USE_PSRAM nas transações
+     * que monta, então o spi_master não sincroniza cache sozinho pra
+     * buffers em PSRAM (ver comentário no topo do arquivo). Sem isso o DMA
+     * pode ler dado ainda não escrito de volta da cache -> corrupção de
+     * cor, independente de clock ou fiação (confirmado em bancada). */
+    err = esp_cache_msync(back_buffer, s_buffer_bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
     if (err != ESP_OK) {
+        xSemaphoreGive(s_trans_done);
+        return err;
+    }
+
+    err = esp_lcd_panel_draw_bitmap(s_panel, 0, 0, NB_DISPLAY_HAL_WIDTH, NB_DISPLAY_HAL_HEIGHT,
+                                    back_buffer);
+    if (err != ESP_OK) {
+        /* Não houve transferência em voo: devolve o token para não travar o
+         * próximo flush. */
+        xSemaphoreGive(s_trans_done);
         return err;
     }
 

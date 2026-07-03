@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "display_hal.c" "shell/nb_display_hal_shell.c"
     INCLUDE_DIRS "." "shell"
-    REQUIRES esp_lcd driver
+    REQUIRES esp_lcd driver esp_mm
 )
 
 component_compile_options(

@@ -32,6 +32,24 @@ Framebuffers (320×240 RGB565, ~150 KB cada) sempre em PSRAM
 de cor horizontais) para confirmar visualmente que o display está
 respondendo — não é o renderer real.
 
+**Sincronização DMA:** `esp_lcd_panel_draw_bitmap()` no SPI é assíncrono
+(enfileira o DMA e retorna antes de os pixels saírem). `flush_and_swap()`
+usa um semáforo liberado no callback `on_color_trans_done` para esperar a
+transferência anterior antes de reenfileirar e trocar os buffers — sem essa
+barreira a task de render sobrescreve o framebuffer enquanto o DMA ainda o
+lê, misturando dois frames nas bandas (flicker). O double buffer não basta
+sozinho quando o loop de render é mais rápido que o tempo de transmissão de
+um frame (~61 ms @ 20 MHz; ~31 ms @ 40 MHz).
+
+**Coerência de cache PSRAM:** o `esp_lcd_panel_io_spi` não seta
+`SPI_TRANS_DMA_USE_PSRAM` nas transações, então o `spi_master` não faz o
+`cache_msync` automático — o DMA lia da PSRAM dado ainda não escrito de
+volta da cache, corrompendo bits de cor de forma intermitente (vermelho→
+laranja, azul→roxo), independente de clock e fiação. `flush_and_swap()`
+chama `esp_cache_msync(..., ESP_CACHE_MSYNC_FLAG_DIR_C2M)` no back buffer
+antes de cada `draw_bitmap`. Requer buffer alinhado à linha de cache (ver
+alocação em `shell_init`).
+
 **Pendente (fora do escopo desta fatia, ver `docs/ROADMAP.md` §S2.1):** soak
 de 30 fps por 1h com medição de artefato/SRAM via `.map`; esse teste
 prolongado fica registrado como próximo passo depois da confirmação visual
