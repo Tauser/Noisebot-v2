@@ -45,7 +45,7 @@ Regras de leitura de evidência (herdadas do v1, onde funcionaram):
 
 | Campo | Decisão |
 | --- | --- |
-| Fase atual | S1 — fundação (S1.4 e S1.5 `FEITO`; S1.3 bloqueado por S0.3/SD físico); S0 corre em paralelo |
+| Fase atual | S1 — fundação (S1.1/S1.2/S1.4/S1.5/S1.6 `FEITO`; S1.3 bloqueado por S0.3/SD físico; S1.7 é o próximo); S0 corre em paralelo |
 | Próximo marco | Pinout congelado (S0.4, tag `pinout-v1.0`) |
 | Hardware | **Waveshare N32R16V única** (decisão 2026-07-01); SD externo; Freenove segue rodando o v1. Rota alternativa Freenove preservada em `HARDWARE_FREENOVE.md` |
 | Câmera | **ADIADA** (decisão 2026-07-02): form factor estilo StackChan não tem cavidade; slot SPI (CS 9/MISO 13) e mensagens `SNAPSHOT_*` reservados |
@@ -83,7 +83,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.3 | `logger` estruturado (ring RAM + worker SD) + dump de ring em shutdown **e panic** (coredump partition) | panic forçado em bancada produz coredump legível + ring de eventos | `EM ANDAMENTO` |
 | S1.4 | `config` (NVS tipada, chaves centralizadas) + `boot_manager` por fases com relatório | boot < 3 s até task idle; falha de fase crítica → SAFE_MODE testado | `FEITO` |
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
-| S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `EM ANDAMENTO` |
+| S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `FEITO` |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `PENDENTE` |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
 | S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
@@ -380,7 +380,7 @@ em mãos.
    oficial da Espressif rodando num celular contra a N32R16V — não é
    executável sem essa etapa manual do usuário; fica pendente até acontecer.
 
-**Evidência S1.6 (2026-07-02, parcial):**
+**Evidência S1.6 (2026-07-02):**
 
 - Implementado `firmware/components/infra/wifi_setup` como núcleo C17 puro:
   validação de SSID/senha e máquina de estados `NOT_PROVISIONED` →
@@ -404,11 +404,19 @@ em mãos.
   SoftAP/PoP (dispositivo não provisionado) não foi testado nesta sessão
   para não apagar a NVS compartilhada com `app_config`/`watchdog` sem
   necessidade — decisão do usuário.
-- **Gate pendente (bloqueia `FEITO`):** provisionar do zero com o app
-  oficial da Espressif contra o SoftAP `NoiseBot2-XXXX` a partir de um
-  celular — depende do usuário apagar o provisioning atual (pelo próprio
-  app, ou pedindo para apagar a NVS) e executar o fluxo manualmente. Status
-  permanece `EM ANDAMENTO`.
+- **Ensaio em bancada com reset de provisioning (2026-07-02, N32R16V via
+  COM5):** NVS de WiFi apagada (`esptool erase_region 0x9000 0x6000`) para
+  forçar estado não-provisionado. Log real confirma o SoftAP subindo:
+  `wifi_setup: nao provisionado: SoftAP 'NoiseBot2-3D58', PoP 'nb2setup'`,
+  `wifi:mode : sta + softAP`, `wifi_setup: provisioning iniciado`.
+  Provisionamento real feito do zero pelo app oficial "ESP SoftAP
+  Provisioning" (Android) contra `NoiseBot2-3D58`/PoP `nb2setup`, com SSID e
+  senha da rede do usuário — sem toolchain, só o celular. Após reboot
+  seguinte, log confirma persistência: `wifi_setup: ja provisionado,
+  conectando em modo estacao` — as credenciais aplicadas pelo app foram
+  gravadas na NVS e sobrevivem a reset. **Gate de saída da subfase
+  atendido.** `secrets-scan` confirma zero credencial no repo (PoP/SSID/
+  senha nunca tocam o código-fonte). Status `FEITO`.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
