@@ -480,10 +480,27 @@ em mãos.
   (`nbp2-codegen: 26 mensagens geradas`, `protocol-golden: ok`); compilação
   do C gerado com `-Wall -Wextra -Werror` sem warning; `python3
   tools/run_host_tests.py` verde; `python tools/scan_secrets.py` verde.
-- **Pendente para `FEITO`:** persistência/leitura do token NBP/2 em NVS,
-  teste dos dois lados rejeitando HELLO sem token ou token incorreto,
-  transporte TCP com reconexão/backoff e soak de 100 reconexões contra server
-  fake.
+- **Validação de token do HELLO (2026-07-02):** escopo decidido
+  explicitamente — a validação fica no nível de protocolo (C+Python, golden
+  test), sem NVS nem integração no build do ESP-IDF ainda. Persistência real
+  em NVS e o transporte TCP dependem do `mind_link` (serviço L3,
+  `ARCHITECTURE.md`), que ainda não existe; integrar o codegen (Python +
+  PyYAML) no CMake do firmware antes disso teria risco real de quebrar o job
+  `firmware-build` do CI sem um consumidor real do lado do robô.
+  `tools/check_protocol_golden.py` ganhou 3 casos: token correto, token
+  errado (mesmo tamanho) e token ausente — decodifica o frame completo
+  (envelope + payload HELLO) e valida com `nbp2_timing_safe_equal`, nos dois
+  lados. Sanity check manual confirmou que o teste realmente pega divergência
+  (alterei um valor esperado de propósito e o gate ficou vermelho, revertido
+  antes do commit).
+- Gate local confirmado: `python tools/check_protocol_golden.py` verde
+  (token correto aceito, errado e ausente rejeitados, nos dois lados);
+  `python3 tools/run_host_tests.py` verde; `python tools/scan_secrets.py`
+  verde.
+- **Pendente para `FEITO`:** persistência real do token em NVS e componente
+  ESP-IDF que compile o `protocol/generated/c` (ambos dependem do
+  `mind_link` existir); transporte TCP com reconexão/backoff; soak de 100
+  reconexões contra server fake.
 
 ### S2 — Face (o robô fica vivo, mudo)
 

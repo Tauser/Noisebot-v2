@@ -194,6 +194,46 @@ int main(void)
                (unsigned long long)out.fire_at_unix_ms, out.label);
     }
 
+    /* HELLO + token: servidor so aceita a conexao se o token bater
+     * byte-a-byte (comparacao timing-safe) com o configurado. Recebe o
+     * frame completo (SOF..CRC), decodifica o envelope e depois o payload,
+     * exatamente como o lado real vai fazer -- nao testa so a funcao de
+     * comparacao isolada. */
+    {
+        static const uint8_t expected_token[] = {'''
+        + c_byte_array(py_encoded["expected_token"])
+        + r'''};
+        static const uint8_t frame_correct[] = {'''
+        + c_byte_array(py_encoded["hello_frame_correct_token"])
+        + r'''};
+        static const uint8_t frame_wrong[] = {'''
+        + c_byte_array(py_encoded["hello_frame_wrong_token"])
+        + r'''};
+        static const uint8_t frame_missing[] = {'''
+        + c_byte_array(py_encoded["hello_frame_missing_token"])
+        + r'''};
+        static const uint8_t *frames[3] = {frame_correct, frame_wrong, frame_missing};
+        static const size_t frame_lens[3] = {sizeof(frame_correct), sizeof(frame_wrong),
+                                             sizeof(frame_missing)};
+        const char *names[3] = {"correct", "wrong", "missing"};
+        int i;
+
+        for (i = 0; i < 3; ++i) {
+            nbp2_frame_view_t auth_view;
+            nbp2_msg_hello_t hello = {0};
+            bool accepted;
+
+            if (nbp2_decode_frame(frames[i], frame_lens[i], &auth_view) != NBP2_OK) { return 30 + i; }
+            if (auth_view.type != NBP2_MSG_HELLO) { return 33 + i; }
+            if (nbp2_decode_hello(auth_view.payload, auth_view.payload_len, &hello) != NBP2_OK) {
+                return 36 + i;
+            }
+            accepted = nbp2_timing_safe_equal(hello.token, hello.token_len, expected_token,
+                                              sizeof(expected_token));
+            printf("hello_auth_%s=%d\n", names[i], accepted ? 1 : 0);
+        }
+    }
+
     return 0;
 }
 ''',
@@ -239,12 +279,22 @@ def main() -> int:
     py_timer_set = nbp2.TimerSet(timer_id=1, fire_at_unix_ms=1700000000000, label="lembrete")
     py_event_state = nbp2.EventState(from_=nbp2.FsmState.IDLE, to=nbp2.FsmState.SLEEPING)
 
+    expected_token = b"tok-correct-1234"
+    wrong_token = b"tok-wrong--5678!"
+    hello_correct = nbp2.Hello(proto_major=0, proto_minor=1, boot_id=1, caps=0, token=expected_token)
+    hello_wrong = nbp2.Hello(proto_major=0, proto_minor=1, boot_id=1, caps=0, token=wrong_token)
+    hello_missing = nbp2.Hello(proto_major=0, proto_minor=1, boot_id=1, caps=0, token=b"")
+
     py_encoded = {
         "hello": nbp2.encode_hello(py_hello),
         "heartbeat": nbp2.encode_heartbeat(py_heartbeat),
         "status": nbp2.encode_status(py_status),
         "timer_set": nbp2.encode_timer_set(py_timer_set),
         "event_state": nbp2.encode_event_state(py_event_state),
+        "expected_token": expected_token,
+        "hello_frame_correct_token": nbp2.encode_frame(nbp2.MSG_HELLO, 1, nbp2.encode_hello(hello_correct)),
+        "hello_frame_wrong_token": nbp2.encode_frame(nbp2.MSG_HELLO, 1, nbp2.encode_hello(hello_wrong)),
+        "hello_frame_missing_token": nbp2.encode_frame(nbp2.MSG_HELLO, 1, nbp2.encode_hello(hello_missing)),
     }
 
     c_source = BUILD / "nbp2_golden.c"
@@ -285,6 +335,9 @@ def main() -> int:
         "hello_from_py": f"0,1,{0x11223344},7,4:61626364",
         "status_from_py": "1,0.500,-0.250,1000,2000,300,0,-42",
         "timer_set_from_py": "1,1700000000000,lembrete",
+        "hello_auth_correct": "1" if nbp2.timing_safe_equal(hello_correct.token, expected_token) else "0",
+        "hello_auth_wrong": "1" if nbp2.timing_safe_equal(hello_wrong.token, expected_token) else "0",
+        "hello_auth_missing": "1" if nbp2.timing_safe_equal(hello_missing.token, expected_token) else "0",
     }
 
     if c_values != expected:
