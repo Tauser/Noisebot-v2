@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES boot_manager watchdog wifi_setup
+    REQUIRES boot_manager watchdog wifi_setup mind_link
 )
 
 # -Werror no código do projeto (componentes próprios seguem o mesmo padrão).

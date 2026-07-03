@@ -53,6 +53,27 @@ static void nb_wifi_setup_shell_event_handler(void *arg, esp_event_base_t event_
     }
 }
 
+static void nb_wifi_setup_shell_wifi_event_handler(void *arg, esp_event_base_t event_base,
+                                                   int32_t event_id, void *event_data)
+{
+    (void)arg;
+
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        /* esp_wifi_start() em modo estação não conecta sozinho — é preciso
+         * pedir explicitamente, e de novo a cada desconexão (troca de AP,
+         * sinal fraco, reboot do roteador etc.). Sem isso a estação nunca
+         * associa e todo o resto (mind_link) fica "network unreachable"
+         * pra sempre, sem nunca dar erro óbvio disso. */
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        ESP_LOGW(TAG, "desconectado do AP, tentando reconectar");
+        esp_wifi_connect();
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        const ip_event_got_ip_t *event = (const ip_event_got_ip_t *)event_data;
+        ESP_LOGI(TAG, "IP obtido: " IPSTR, IP2STR(&event->ip_info.ip));
+    }
+}
+
 static void nb_wifi_setup_shell_derive_service_name(char *out_name, size_t out_size)
 {
     uint8_t mac[6] = {0};
@@ -104,6 +125,18 @@ esp_err_t nb_wifi_setup_shell_init(void)
 
     err = esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID,
                                      &nb_wifi_setup_shell_event_handler, NULL);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                     &nb_wifi_setup_shell_wifi_event_handler, NULL);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    err = esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                     &nb_wifi_setup_shell_wifi_event_handler, NULL);
     if (err != ESP_OK) {
         return err;
     }

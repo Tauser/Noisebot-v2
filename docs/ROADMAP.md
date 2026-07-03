@@ -85,7 +85,7 @@ ao S0). *Camadas:* L0 parcial, L1, início do mind_link.
 | S1.5 | `watchdog` (TWDT + HW) integrado a todas as tasks existentes | task travada em bancada → reset + causa registrada em NVS | `FEITO` |
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo) | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo | `FEITO` |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos | `EM ANDAMENTO` |
-| S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `PENDENTE` |
+| S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3) | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `EM ANDAMENTO` |
 | S1.9 | Soak do esqueleto | 24 h: zero reset, heap estável, reconexões limpas com server de teste | `PENDENTE` |
 
 **Evidência S1.1 (2026-07-02):**
@@ -532,10 +532,110 @@ em mãos.
   `python3 tools/run_host_tests.py` verde; `python
   tools/check_protocol_golden.py` verde; `python tools/scan_secrets.py`
   verde.
-- **Pendente para `FEITO`:** persistência real do token em NVS; casca do
-  `mind_link` com socket TCP de verdade (usando `nbp2` + o núcleo de sessão
-  já prontos) com reconexão/backoff; soak de 100 reconexões contra server
-  fake.
+- **Casca do `mind_link` com TCP real (2026-07-03):** adicionado
+  `shell/nb_mind_link_shell.c/.h` (task FreeRTOS, socket TCP contra
+  `CONFIG_NBP2_SERVER_HOST:PORT`, envia HELLO/HEARTBEAT usando `nbp2` +
+  reassemblagem de frame com resync em SOF ruim) e
+  `shell/nb_mind_link_token_shell.c/.h` (token em NVS, namespace `nbp2_tok`,
+  nunca logado). `tools/nbp2_fake_server.py` criado como servidor
+  descartável de bancada (não é o server real — server v2 não existe antes
+  de S4) para validar o handshake sem precisar da mente.
+- **Três bugs reais achados e corrigidos em bancada (N32R16V, COM5):**
+  1. **Stack overflow.** Três buffers de ~4 KB (`NBP2_MAX_CTRL_PAYLOAD`)
+     viviam na pilha da task (6 KB): o acumulador de recepção, o frame
+     parseado e os buffers de envio de HELLO — send_hello chama send_frame,
+     os dois ficam vivos ao mesmo tempo. Sintoma real: `Guru Meditation
+     Error (Cache error)`, `InstrFetchProhibited`, `IllegalInstruction` em
+     boot loop, registradores com lixo aleatório. Corrigido tornando os
+     quatro buffers `static` (fora da pilha) — só a task usa, chamada
+     sequencial, sem problema de reentrância.
+  2. **`esp_wifi_connect()` faltando.** `nb_wifi_setup_shell_init()` chamava
+     `esp_wifi_start()` no caminho "já provisionado" mas nunca pedia pra
+     conectar — a estação nunca associava, `mind_link` ficava com
+     "network unreachable" (errno 118) para sempre, sem nenhum erro óbvio
+     apontando a causa. Corrigido registrando handler de `WIFI_EVENT_STA_START`
+     (chama `esp_wifi_connect()`) e `WIFI_EVENT_STA_DISCONNECTED` (reconecta)
+     em `wifi_setup`, mais log de `IP_EVENT_STA_GOT_IP` (útil por si só).
+  3. **`SO_RCVTIMEO` sem garantia.** O `recv()` bloqueava para sempre depois
+     do servidor ficar em silêncio por um tempo, mesmo com `SO_RCVTIMEO`
+     configurado — sintoma: heartbeat parava de vez (contador travado) sem
+     nenhum log de erro, task simplesmente presa dentro do `recv()`.
+     Corrigido trocando para socket não-bloqueante (`O_NONBLOCK` via
+     `fcntl`) com `vTaskDelay` no `EAGAIN`, mecanismo mais robusto que
+     depender do timeout do socket.
+  4. `getaddrinfo()` trocado por `inet_pton()` direto (host sempre IPv4
+     literal nesta fatia) — evita o caminho de resolução DNS do lwip, mais
+     pesado em pilha, sem necessidade real ainda (hostname/mDNS não é
+     escopo de S1.7).
+- **Ensaio em bancada com handshake completo (2026-07-03, N32R16V via
+  COM5, `tools/nbp2_fake_server.py`):** log real dos dois lados confirma
+  round-trip completo — robô: `HELLO enviado`; server:
+  `HELLO boot_id=0x... token_len=0`, `HELLO_ACK enviado, sessao READY`,
+  `HEARTBEAT recebido counter=1`, `counter=2`. Sessão estável sem
+  reconexão nem crash durante a janela observada. **Ambiente de bancada
+  instável**: a rede local (WiFi doméstico + firewall do Windows) produziu
+  falhas intermitentes de conexão (`errno 104`/`113`, RST/host unreachable)
+  entre tentativas, inclusive na mesma porta que funcionou momentos antes —
+  atribuído a instabilidade de associação do AP e/ou firewall do host de
+  teste, não ao firmware (nenhum dos bugs corrigidos acima recorreu depois
+  de corrigidos). Regra de firewall `TCP 9100 entrada` criada no host de
+  teste; teste bem-sucedido usou porta 8765 (mesma do server v1) por
+  já ter passagem livre confirmada na rede do usuário.
+- Gate local confirmado: `python3 tools/run_host_tests.py` verde (núcleo
+  inalterado); `idf.py build` verde com a casca nova; `python
+  tools/scan_secrets.py` verde.
+- **Pendente para `FEITO`:** soak de 100 reconexões contra server fake
+  (exige rede de bancada estável — retomar quando a instabilidade acima
+  for resolvida); teste dos dois lados rejeitando HELLO com token
+  incorreto **em tráfego TCP real** (já coberto no nível de protocolo via
+  golden test, falta o equivalente fim-a-fim).
+
+**Plano S1.8 (antes de implementar):**
+
+1. Começar pela parte reversível: componente `ota` em L1, com núcleo C17 puro
+   para a política de anti-rollback/commit e casca ESP-IDF fina sobre
+   `esp_ota_ops`.
+2. Integrar no `app_main` a confirmação de imagem OTA pendente somente depois
+   que o boot do esqueleto estiver saudável. Falhas não-críticas de WiFi/
+   mind_link continuam não bloqueando o robô offline (P1), mas SAFE_MODE não
+   confirma imagem nova.
+3. Criar perfil separado `sdkconfig.s1_8_secure.defaults` para Secure Boot v2,
+   anti-rollback e flash encryption, sem chave no repo e sem ativar eFuse no
+   build cotidiano.
+4. Documentar recuperação/perda de chave em `SECURITY.md` antes de qualquer
+   queima irreversível.
+5. Deixar download OTA por NBP/2 para a próxima fatia da S1.8, porque depende
+   dos payloads/casca TCP de S1.7 estarem fechados.
+
+**Evidência S1.8 (2026-07-03, parcial):**
+
+- Implementado `firmware/components/infra/ota` como núcleo C17 puro:
+  rejeita downgrade de `secure_version`, mantém imagem em estado pendente e
+  só permite commit depois de boot marcado como saudável. Sem FreeRTOS,
+  ESP-IDF, NVS ou `malloc`.
+- Host-test no mesmo commit: aceita versão igual/maior, rejeita downgrade e
+  versão fora da janela de eFuse planejada, exige boot saudável antes do
+  commit, rejeita commit sem imagem pendente e valida argumentos nulos.
+- Casca `shell/nb_ota_shell.c/.h`: lê estado da partição atual com
+  `esp_ota_get_state_partition()` e confirma `ESP_OTA_IMG_PENDING_VERIFY`
+  com `esp_ota_mark_app_valid_cancel_rollback()` apenas quando o `app_main`
+  chega ao ponto saudável. Caminho explícito de rollback/reboot preparado
+  para health check futuro.
+- `app_main` integrado: se `boot_manager` retorna `NB_BOOT_OUTCOME_OK`,
+  confirma imagem OTA pendente; se entra em SAFE_MODE, não confirma.
+- Adicionado `firmware/sdkconfig.s1_8_secure.defaults` como perfil separado
+  para o gate de bancada, com aviso de eFuses irreversíveis e sem chave
+  privada no repo.
+- `SECURITY.md` agora inclui procedimento de recuperação/perda de chave antes
+  de habilitar Secure Boot v2/flash encryption.
+- Gates locais confirmados: `python tools/run_host_tests.py` verde incluindo
+  `ota`; `python tools/scan_secrets.py` verde; `git diff --check` sem erro de
+  whitespace (apenas avisos LF→CRLF no Windows); `idf.py build` verde via
+  ESP-IDF v5.5.4, gerando `noisebot2.bin` com 78% livre na menor partição
+  app.
+- **Pendente para `FEITO`:** OTA A→B→A em bancada, imagem adulterada recusada,
+  dump de flash sem token em claro após flash encryption, e decisão explícita
+  para queima de eFuses da N32R16V.
 
 ### S2 — Face (o robô fica vivo, mudo)
 
