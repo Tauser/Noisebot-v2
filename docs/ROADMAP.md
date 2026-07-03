@@ -726,7 +726,7 @@ feito antes de considerar S2.6 atendido.
 
 | ID   | Entrega                                                                                                 | Gate de saída                                                                      | Status     |
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
-| S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `EM ANDAMENTO` |
+| S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `FEITO` |
 | S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `PENDENTE` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `PENDENTE` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
@@ -820,6 +820,14 @@ feito antes de considerar S2.6 atendido.
   50 MHz de spec do painel; revisitar quando o pinout for congelado
   (S0.4) e a fiação for revisada (par trançado/PCB ao invés de jumper
   solto).
+- **Gate de saída fechado (2026-07-03):** soak de 30 fps por 1h completa
+  em bancada no N32R16V (COM5), padrão de teste com scroll ativo, WiFi/
+  mind_link ligados — zero artefato (sem flicker, sem troca de cor, sem
+  apagar) durante a hora inteira, já com as correções de DMA/cache acima
+  aplicadas. SRAM (DIRAM) comparada via `.map` antes/depois do soak —
+  inalterada; baseline do build atual: DIRAM 159267 bytes (46.6%, de
+  341760 disponíveis), IRAM 16384 bytes (100%, sem folga — dentro do
+  orçamento fixo dessa região). S2.1 encerrado: `FEITO`.
 - Gate local confirmado: `python3 tools/run_host_tests.py` verde
   (`display_hal` + núcleos inalterados); `idf.py build` verde (77% livre);
   `python tools/scan_secrets.py` verde.
