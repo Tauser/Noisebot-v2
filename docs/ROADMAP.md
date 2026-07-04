@@ -1141,6 +1141,47 @@ feito antes de considerar S2.6 atendido.
   (touch/voz reais) ficam para `reflex_engine` (S3.2), quando o
   `touch_service` existir. S2.5 encerrado: `FEITO`.
 
+**Plano S2.6 (antes de rodar o soak):**
+
+1. Instrumentar `main.c` com budgets: fps medido (janela de 5s, task de
+   face) e heap/PSRAM (`heap_caps_get_free_size`/`get_minimum_free_size`,
+   a cada ~60s no heartbeat) -- nada disso existia antes, o soak não
+   teria como registrar baseline sem medir de verdade.
+2. S2.6 pressupõe o esqueleto estável (S1.9, soak de 24h, ainda
+   `PENDENTE` desde a exceção de ordem registrada no início de §S2) --
+   como a mesma imagem cobre S1 a S2.5, o soak de 48h do S2.6 cobre o
+   de 24h do S1.9 como subconjunto; os dois fecham juntos.
+3. Captura de log serial em background (`scratch/soak_s2_6/capture.py`,
+   fora do repo) por toda a duração, pra inspecionar resets/crashes sem
+   depender de estar olhando a tela o tempo todo.
+
+**Evidência S2.6 (2026-07-04, em andamento):**
+
+- Instrumentação adicionada: fps medido na task de face (janela de 5s)
+  e heap/PSRAM no heartbeat (a cada ~60 batimentos).
+- **Bug real achado ao instrumentar (N32R16V, COM5):** fps medido veio
+  23.2, abaixo do "≥30" confirmado visualmente no S2.2 -- só ficou
+  visível com o número exato na mão, não dava pra perceber a olho. Causa
+  raiz: o loop da task de face fazia `vTaskDelay(33 ms)` **depois** do
+  trabalho (lógica 0.02ms + desenho ~7.2ms + flush ~3.6ms àquele fps),
+  empilhando o delay fixo em cima do tempo de processamento em vez de
+  manter um período fixo -- período real ~44ms (23fps) em vez dos 33ms
+  (30fps) pretendidos desde o S2.2. Corrigido trocando `vTaskDelay` por
+  `vTaskDelayUntil`, que desconta o tempo já gasto. Confirmado após o
+  fix: fps=30.2-30.3 estável por >1min30 de captura.
+- Com o fps corrigido, `flush_ms` subiu de ~3.6ms pra ~25.8ms -- não é
+  regressão, é a transferência SPI real do frame (~31ms @ 40MHz,
+  documentado no `display_hal` desde o S2.1) aparecendo porque agora
+  rodamos no ritmo certo; total por frame (lógica+desenho+flush) ≈ 33ms,
+  no limite da banda do SPI a 40MHz pra full-frame a 30fps, sem folga
+  sobrando mas estável.
+- Gate local confirmado: `python tools/run_host_tests.py` verde;
+  `idf.py build` limpo; `python tools/scan_secrets.py` limpo.
+- **Soak de 48h iniciado (2026-07-04, N32R16V via COM5)** com a
+  instrumentação de fps/heap/PSRAM ativa e captura de log em background.
+  S2.6 continua `PENDENTE` até completar as 48h sem crash/reset e o
+  baseline de fps/PSRAM ficar registrado como referência.
+
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
 _Objetivo:_ fechar o piso offline do produto.
