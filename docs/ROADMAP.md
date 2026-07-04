@@ -773,7 +773,7 @@ feito antes de considerar S2.6 atendido.
 | S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `FEITO` |
 | S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `FEITO` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `FEITO` |
-| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `EM ANDAMENTO` |
+| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `FEITO` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
 | S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
 
@@ -1063,13 +1063,26 @@ feito antes de considerar S2.6 atendido.
   (`idle_engine` + núcleos inalterados, incluindo `face_renderer` após
   o retune de `kGazeXTravel`/`kYTravel`); `idf.py build` limpo; `python
   tools/scan_secrets.py` limpo.
-- **Pendente para `FEITO`:** `CURIOUS_TILT` (largura por olho) e
-  `HEAD_TILT_HOLD` (roll/inclinação) não têm como aparecer no display
-  ainda -- o renderer (S2.2) só suporta gaze e abertura de olho. O gate
-  completo (todos os motifs de `VISUAL.md` §3 confirmados numa sessão
-  de 60s) fica pendente até o renderer ganhar essas duas capacidades;
-  decisão explícita de escopo confirmada com o usuário (integrar só o
-  que já é suportado nesta fatia).
+- **Extensão do renderer para largura e roll por olho (2026-07-04):**
+  `nb_face_core_eye_column()` (S2.2) já aceitava `half_width` como
+  parâmetro -- só faltava a casca variar isso por olho. Estendida
+  `nb_face_renderer_shell_draw()` com três parâmetros novos
+  (`width_l`, `width_r`, `tilt`, clamp de largura em `[0.5, 1.5]`);
+  `tilt` desloca verticalmente os dois olhos em direções opostas
+  (`kTiltTravel`, roll visual de `HEAD_TILT_HOLD`). `main.c` liga
+  `idle_engine`'s `out.width_l/width_r/tilt` direto no draw.
+- **Ensaio de bancada final (2026-07-04, N32R16V via COM5):**
+  confirmado ao vivo pelo usuário: piscar (`BLINK_BAR`/`DOUBLE_BLINK`)
+  ok; drift contínuo e desvios de olhar (`SIDE_PEEK`/`LOOK_DOWN_BLINK`/
+  scans) vivos e suaves depois do retune; `CURIOUS_TILT` (um olho mais
+  largo) confirmado; `HEAD_TILT_HOLD` (assimetria de altura entre os
+  olhos) confirmado -- em momentos diferentes da sessão, ambos
+  funcionando corretamente (a confusão inicial foi só o usuário
+  descrevendo o evento mais recente, não um bug real).
+- Gate de saída fechado: critério de `VISUAL.md` §3 atendido em
+  bancada (todos os motifs observados funcionando); parâmetros
+  documentados no código (`idle_engine.c`, `nb_face_renderer_shell.cpp`).
+  S2.4 encerrado: `FEITO`.
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 

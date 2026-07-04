@@ -21,8 +21,8 @@ Sem FreeRTOS/ESP-IDF: clock injetado via `nb_idle_engine_tick(dt_ms)` e
 RNG embutido (xorshift32 determinístico, semente injetada no init) —
 host-testável byte a byte, sem depender de `esp_random()`. Sem casca
 própria ainda (mesma regra do `event_bus`/`tiny_fsm`); `main.c` liga
-direto ao `face_renderer` (S2.2) pra bring-up: soma `SOFT_DRIFT` + blink
-à expressão `NEUTRAL`.
+direto ao `face_renderer` (S2.2) pra bring-up, somando todos os motifs
+(drift, blink, gaze, largura por olho, roll) à expressão `NEUTRAL`.
 
 Host-test cobre: determinismo (mesma semente ⇒ mesma sequência),
 semente 0 não trava o RNG, `NULL` seguro, drift dentro da amplitude,
@@ -33,8 +33,7 @@ larga exatamente um olho, e o critério de aceite de `VISUAL.md` §3
 `BLINK_BAR`) verificado sobre 10 min simulados × 8 sementes — robusto
 o bastante pra não depender de sorte de uma janela de 60s isolada.
 
-**Pendente para o gate completo do S2.4:** `CURIOUS_TILT` (largura por
-olho) e `HEAD_TILT_HOLD` (roll) ainda não aparecem no display — o
-renderer (S2.2) só suporta gaze e abertura de olho. `SOFT_DRIFT`,
-blinks, `LOOK_DOWN_BLINK`, `SIDE_PEEK` e as varreduras já foram
-confirmados em bancada pelo usuário.
+**Gate do S2.4 fechado:** todos os motifs confirmados em bancada pelo
+usuário, incluindo `CURIOUS_TILT` (largura) e `HEAD_TILT_HOLD` (roll)
+depois de o renderer (S2.2) ganhar suporte a `width_l`/`width_r`/`tilt`
+em `nb_face_renderer_shell_draw()`.

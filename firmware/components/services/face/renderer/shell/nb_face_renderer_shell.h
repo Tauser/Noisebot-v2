@@ -28,9 +28,12 @@ extern "C" {
 esp_err_t nb_face_renderer_shell_bind_buffer(uint16_t *buffer);
 
 /* Desenha o estado de face já resolvido (estático ou interpolado por
- * nb_face_core_lerp) no buffer amarrado. gaze_x/gaze_y em [-1, 1]. */
+ * nb_face_core_lerp) no buffer amarrado. gaze_x/gaze_y em [-1, 1].
+ * width_l/width_r: multiplicador de largura por olho (1.0 = normal,
+ * clampado em [0.5, 1.5] -- CURIOUS_TILT do idle_engine, S2.4). tilt:
+ * assimetria vertical entre os olhos (roll visual -- HEAD_TILT_HOLD). */
 void nb_face_renderer_shell_draw(const nb_face_state_t *face, float gaze_x, float gaze_y,
-                                 uint32_t color);
+                                 float width_l, float width_r, float tilt, uint32_t color);
 
 #ifdef __cplusplus
 }
