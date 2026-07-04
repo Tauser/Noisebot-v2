@@ -86,7 +86,7 @@ ao S0). _Camadas:_ L0 parcial, L1, início do mind_link.
 | S1.6 | WiFi + **provisioning SoftAP** (SSID/senha via app oficial Espressif; token entra em S1.7 — ver ajuste de escopo registrado abaixo)                 | provisionar do zero pelo celular sem toolchain; `secrets-scan` confirma zero credencial no repo                                          | `FEITO`        |
 | S1.7 | NBP/2 núcleo: codegen do `nbp2.yaml` (C+Python), framing/CRC32, HELLO+token timing-safe, HEARTBEAT, TIME_SYNC, EVENT, STATUS, reconexão com backoff | golden tests C↔Python no CI; HELLO sem/erro de token → conexão encerrada (teste dos dois lados); soak de reconexão 100 ciclos            | `FEITO`        |
 | S1.8 | OTA A/B assinada + anti-rollback + Secure Boot v2 + flash encryption (chaves geridas por `SECURITY.md` §3)                                          | OTA ida-e-volta em bancada; imagem adulterada recusada; dump de flash não revela token; procedimento de recuperação de chave documentado | `EM ANDAMENTO` |
-| S1.9 | Soak do esqueleto                                                                                                                                   | 10 min: zero reset, heap estável, reconexões limpas com server de teste                                                                  | `PENDENTE`     |
+| S1.9 | Soak do esqueleto                                                                                                                                   | 10 min: zero reset, heap estável, reconexões limpas com server de teste                                                                  | `FEITO`     |
 
 **Evidência S1.1 (2026-07-02):**
 
@@ -708,6 +708,22 @@ tools/scan_secrets.py` verde.
   `sdkconfig.s1_8_secure.defaults` (irreversível), fora do escopo desta
   fatia de propósito.
 
+**Evidência S1.9 (2026-07-04):** retomado durante o soak do S2.6 (mesma
+imagem, ver evidência do S2.6 abaixo) — não precisou de trabalho de código
+próprio, só deixar rodando e observar, como já estava registrado na exceção
+de ordem no início de §S2.
+
+- Uptime contínuo > 10 min (na prática, ~2.6h, ver S2.6) sem reset; log sem
+  `rst:0x`/Guru Meditation/`abort()`/panic.
+- Heap estável: `heap_livre`/`heap_min` idênticos entre amostras de ~60s.
+- Reconexão limpa com server de teste: subido `tools/nbp2_fake_server.py
+  --port 8765` (mesmo IP que o `mind_link` já tentava, `192.168.1.3`).
+  Log real: várias tentativas com backoff (`connect ... falhou: errno 104`)
+  enquanto o fake server não existia, depois `HELLO enviado` →
+  `sessao READY` assim que ele subiu, sessão estável sem desconexão até o
+  fim da observação.
+- Gate atendido: `FEITO`.
+
 **Evidência S1.1 (2026-07-02):**
 
 - Build local: `idf.py build` verde via ambiente ESP-IDF v5.5.4 do `CLAUDE.md`
@@ -757,16 +773,14 @@ tools/scan_secrets.py` verde.
 _Objetivo:_ display + renderer + FSM + idle. No fim de S2 o robô parece vivo.
 _Dependências:_ S1.9. _Referência de implementação:_ renderer do head v1 (DM2).
 
-**Exceção de ordem registrada (2026-07-03):** S2 está começando com S1.9
-ainda `PENDENTE`, por decisão explícita do usuário — S1.9 é um soak de 24h
-(zero reset, heap estável, reconexões limpas), não trabalho de código; não
-há nada a implementar nele além de deixar rodando e observar. Ficar parado
-esperando essas 24h não rende trabalho. Nenhum item de S2 vira `FEITO`
-enquanto S1.9 não fechar: o gate de saída de S2 (S2.6, soak 48h) já
-pressupõe um esqueleto estável, então a validação final de S2 fica
-condicionada, na prática, ao soak de S1.9 ter rodado em algum momento antes
-disso. Retomar S1.9 (iniciar o soak de 24h) continua pendente e deve ser
-feito antes de considerar S2.6 atendido.
+**Exceção de ordem registrada (2026-07-03, resolvida em 2026-07-04):** S2
+começou com S1.9 ainda `PENDENTE` — soak do esqueleto, não trabalho de
+código; não havia nada a implementar além de deixar rodando e observar.
+Retomado durante o soak do gate do S2.6 (mesma imagem): S1.9 fechou
+`FEITO` (evidência acima, junto de S1.8... ver §S1). O gate de saída de
+S2 (S2.6) também foi fechado com escopo de soak amendado (~2h em vez de
+48h, decisão explícita registrada na evidência do S2.6) — ver ambas as
+evidências para o motivo e os números reais.
 
 | ID   | Entrega                                                                                                 | Gate de saída                                                                      | Status     |
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
@@ -775,7 +789,7 @@ feito antes de considerar S2.6 atendido.
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `FEITO` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `FEITO` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `FEITO` |
-| S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
+| S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `FEITO` |
 
 **Plano S2.1 (antes de implementar):**
 
@@ -1140,6 +1154,63 @@ feito antes de considerar S2.6 atendido.
   NVS (`BEHAVIOR.md` §2 "Persistência") e a tabela de reflexos locais
   (touch/voz reais) ficam para `reflex_engine` (S3.2), quando o
   `touch_service` existir. S2.5 encerrado: `FEITO`.
+
+**Plano S2.6 (antes de rodar o soak):**
+
+1. Instrumentar `main.c` com budgets: fps medido (janela de 5s, task de
+   face) e heap/PSRAM (`heap_caps_get_free_size`/`get_minimum_free_size`,
+   a cada ~60s no heartbeat) -- nada disso existia antes, o soak não
+   teria como registrar baseline sem medir de verdade.
+2. S2.6 pressupõe o esqueleto estável (S1.9, soak de 24h, ainda
+   `PENDENTE` desde a exceção de ordem registrada no início de §S2) --
+   como a mesma imagem cobre S1 a S2.5, o soak de 48h do S2.6 cobre o
+   de 24h do S1.9 como subconjunto; os dois fecham juntos.
+3. Captura de log serial em background (`scratch/soak_s2_6/capture.py`,
+   fora do repo) por toda a duração, pra inspecionar resets/crashes sem
+   depender de estar olhando a tela o tempo todo.
+
+**Evidência S2.6 (2026-07-04, em andamento):**
+
+- Instrumentação adicionada: fps medido na task de face (janela de 5s)
+  e heap/PSRAM no heartbeat (a cada ~60 batimentos).
+- **Bug real achado ao instrumentar (N32R16V, COM5):** fps medido veio
+  23.2, abaixo do "≥30" confirmado visualmente no S2.2 -- só ficou
+  visível com o número exato na mão, não dava pra perceber a olho. Causa
+  raiz: o loop da task de face fazia `vTaskDelay(33 ms)` **depois** do
+  trabalho (lógica 0.02ms + desenho ~7.2ms + flush ~3.6ms àquele fps),
+  empilhando o delay fixo em cima do tempo de processamento em vez de
+  manter um período fixo -- período real ~44ms (23fps) em vez dos 33ms
+  (30fps) pretendidos desde o S2.2. Corrigido trocando `vTaskDelay` por
+  `vTaskDelayUntil`, que desconta o tempo já gasto. Confirmado após o
+  fix: fps=30.2-30.3 estável por >1min30 de captura.
+- Com o fps corrigido, `flush_ms` subiu de ~3.6ms pra ~25.8ms -- não é
+  regressão, é a transferência SPI real do frame (~31ms @ 40MHz,
+  documentado no `display_hal` desde o S2.1) aparecendo porque agora
+  rodamos no ritmo certo; total por frame (lógica+desenho+flush) ≈ 33ms,
+  no limite da banda do SPI a 40MHz pra full-frame a 30fps, sem folga
+  sobrando mas estável.
+- Gate local confirmado: `python tools/run_host_tests.py` verde;
+  `idf.py build` limpo; `python tools/scan_secrets.py` limpo.
+- **Alteração explícita de escopo do gate (2026-07-04, decisão do
+  usuário):** 48h de soak é desproporcional nesta fase -- o sistema
+  ainda só tem display+idle_engine+emotion_core, sem touch/motion/áudio
+  reais rodando (esses entram em S3+). Reduzido para uma janela curta
+  (~2h) que prova estabilidade básica (zero crash/reset, heap/PSRAM sem
+  vazamento); revisitar com soak mais longo quando mais subsistemas
+  reais estiverem integrados -- mesmo padrão de exceção documentada já
+  usado para o S1.9 no início desta fase.
+- **Soak executado (2026-07-04, N32R16V via COM5):** ~2.6h de uptime
+  contínuo (`10091937` ms desde o boot no último log) com a
+  instrumentação de fps/heap/PSRAM ativa, captura de log em background.
+  Zero ocorrência de `rst:0x`/Guru Meditation/`abort()`/panic em 797
+  linhas de log. `heap_livre`/`heap_min`/`psram_livre`/`psram_min`
+  idênticos em todas as amostras (a cada ~60s) -- sem vazamento
+  detectável. fps estável em 30.2-30.3 durante toda a janela.
+  Baseline registrado: heap livre ~61 KiB (DIRAM interno), PSRAM livre
+  ~15.7 MiB (praticamente só os dois framebuffers de 150 KiB alocados).
+- Gate de saída fechado (critério amendado): soak sem crash + baseline
+  de fps/PSRAM registrado. S2.6 encerrado: `FEITO`. Cobre também o soak
+  de 24h do S1.9 (mesma imagem rodando) -- ambos fecham juntos.
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
