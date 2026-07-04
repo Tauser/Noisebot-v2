@@ -1,6 +1,7 @@
 #include "emotion_core.h"
 
 #include <math.h>
+#include <stddef.h>
 
 /* Constante de decaimento derivada de BEHAVIOR.md §2 ("constante ~60s até
  * <5% do pico"): exp(-60/tau) = 0.05 => tau = 60/ln(20) ≈ 20.0285s. */
