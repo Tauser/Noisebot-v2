@@ -11,8 +11,13 @@
  * saudável; Secure Boot/flash encryption exigem gate de bancada explícito.
  * S2.1: display_hal — driver ST7789 + double buffer PSRAM.
  * S2.2: renderer paramétrico (face_renderer) — cicla as 10 expressões-base
- * com interpolação de 220 ms, numa task própria, para comparação visual
- * lado a lado com o v1 em bancada.
+ * com interpolação de 220 ms; gate fechado (paridade visual + fps >= 30
+ * confirmados em bancada).
+ * S2.4: idle_engine — motifs de VISUAL.md §3 (drift + blink) sobre
+ * NEUTRAL, numa task própria, para o ensaio de bancada de 60s. Só os
+ * motifs que o renderer atual sabe desenhar (gaze + abertura de olho);
+ * CURIOUS_TILT/HEAD_TILT_HOLD exigem largura/roll por olho, que o
+ * renderer ainda não suporta (registrado como pendente em ROADMAP.md).
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -25,6 +30,7 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_chip_info.h"
+#include "esp_random.h"
 #include "nb_boot_manager_shell.h"
 #include "nb_watchdog_shell.h"
 #include "nb_wifi_setup_shell.h"
@@ -32,42 +38,39 @@
 #include "nb_mind_link_shell.h"
 #include "nb_display_hal_shell.h"
 #include "nb_face_renderer_shell.h"
+#include "idle_engine.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
-#define NB_APP_MAIN_FACE_DEMO_STACK 4096u
-#define NB_APP_MAIN_FACE_DEMO_PRIO 8
-#define NB_APP_MAIN_FACE_DEMO_TICK_MS 33u
-#define NB_APP_MAIN_FACE_DEMO_HOLD_MS 1500u
-#define NB_APP_MAIN_FACE_DEMO_TRANSITION_MS 220u
+#define NB_APP_MAIN_IDLE_DEMO_STACK 4096u
+#define NB_APP_MAIN_IDLE_DEMO_PRIO 8
+#define NB_APP_MAIN_IDLE_DEMO_TICK_MS 33u
 
 static const char *TAG = "nb2";
 
-/* Cicla as NB_FACE_EXPR_COUNT expressões-base com interpolação de 220 ms
- * (VISUAL.md §1/§2) — padrão de bring-up do S2.2 para comparação visual
- * lado a lado com o v1; substitui o padrão de barras do S2.1. */
-static void nb_app_main_face_demo_task(void *arg)
+/* Sobrepõe SOFT_DRIFT + blink (BLINK_BAR/DOUBLE_BLINK/LINE_BLINK) e gaze
+ * de LOOK_DOWN_BLINK/SIDE_PEEK/scans à expressão NEUTRAL (VISUAL.md §3) —
+ * padrão de bring-up do S2.4 para o ensaio de 60s em bancada. CURIOUS_TILT
+ * (largura por olho) e HEAD_TILT_HOLD (roll) não têm como aparecer ainda:
+ * o renderer (S2.2) só suporta gaze e abertura de olho. */
+static void nb_app_main_idle_demo_task(void *arg)
 {
-    uint32_t from_expr = 0;
-    uint32_t to_expr = 1;
-    uint32_t elapsed_ms = 0;
-    bool transitioning = true;
+    nb_idle_engine_t idle;
 
     (void)arg;
 
+    nb_idle_engine_init(&idle, esp_random());
+
     for (;;) {
-        const nb_face_state_t *from = nb_face_core_get_expression((nb_face_expr_t)from_expr);
-        const nb_face_state_t *to = nb_face_core_get_expression((nb_face_expr_t)to_expr);
-        nb_face_state_t current;
+        nb_idle_output_t out;
 
-        if (transitioning) {
-            const float t = (float)elapsed_ms / (float)NB_APP_MAIN_FACE_DEMO_TRANSITION_MS;
-            nb_face_core_lerp(from, to, (t > 1.0f) ? 1.0f : t, &current);
-        } else {
-            current = *to;
-        }
+        nb_idle_engine_tick(&idle, NB_APP_MAIN_IDLE_DEMO_TICK_MS, &out);
 
-        nb_face_renderer_shell_draw(&current, 0.0f, 0.0f, 0xffffffU);
+        nb_face_state_t current = *nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
+        current.open_l *= out.open_l;
+        current.open_r *= out.open_r;
+
+        nb_face_renderer_shell_draw(&current, out.gaze_x, out.gaze_y, 0xffffffU);
 
         esp_err_t err = nb_display_hal_shell_flush_and_swap();
         if (err != ESP_OK) {
@@ -78,18 +81,7 @@ static void nb_app_main_face_demo_task(void *arg)
             ESP_LOGE(TAG, "bind do back buffer falhou (%s)", esp_err_to_name(err));
         }
 
-        elapsed_ms += NB_APP_MAIN_FACE_DEMO_TICK_MS;
-        if (transitioning && elapsed_ms >= NB_APP_MAIN_FACE_DEMO_TRANSITION_MS) {
-            transitioning = false;
-            elapsed_ms = 0;
-        } else if (!transitioning && elapsed_ms >= NB_APP_MAIN_FACE_DEMO_HOLD_MS) {
-            from_expr = to_expr;
-            to_expr = (to_expr + 1u) % NB_FACE_EXPR_COUNT;
-            transitioning = true;
-            elapsed_ms = 0;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(NB_APP_MAIN_FACE_DEMO_TICK_MS));
+        vTaskDelay(pdMS_TO_TICKS(NB_APP_MAIN_IDLE_DEMO_TICK_MS));
     }
 }
 
@@ -143,8 +135,8 @@ void app_main(void)
             ESP_LOGE(TAG, "bind inicial do face_renderer falhou (%s)",
                      esp_err_to_name(bind_err));
         } else {
-            xTaskCreate(nb_app_main_face_demo_task, "face_demo", NB_APP_MAIN_FACE_DEMO_STACK,
-                       NULL, NB_APP_MAIN_FACE_DEMO_PRIO, NULL);
+            xTaskCreate(nb_app_main_idle_demo_task, "idle_demo", NB_APP_MAIN_IDLE_DEMO_STACK,
+                       NULL, NB_APP_MAIN_IDLE_DEMO_PRIO, NULL);
         }
     }
 

@@ -11,9 +11,16 @@ namespace {
 constexpr int16_t kBaseLeftX = 96;
 constexpr int16_t kBaseRightX = 224;
 constexpr int16_t kEyeBaseY = 122;
-constexpr float kYTravel = 32.0f;
+/* kYTravel/kGazeXTravel retunados em bancada (2026-07-04, junto do S2.4):
+ * os valores herdados do v1 (32/14) mapeavam o gaze de idle_engine pra
+ * poucos pixels (<18px mesmo no limite) -- imperceptível/curto demais
+ * neste display. Aumentados dentro da folga real de tela (eyes em
+ * kBaseLeftX=96/kBaseRightX=224, meia-largura 46px -> ~50px de margem
+ * até a borda de cada lado; verticalmente ~72-76px de folga acima/abaixo
+ * de kEyeBaseY). */
+constexpr float kYTravel = 55.0f;
 constexpr float kXOffsetTravel = 18.0f;
-constexpr float kGazeXTravel = 14.0f;
+constexpr float kGazeXTravel = 26.0f;
 constexpr float kGazeYLimit = .55f;
 
 const char *TAG = "face_renderer";
