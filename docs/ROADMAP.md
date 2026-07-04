@@ -774,7 +774,7 @@ feito antes de considerar S2.6 atendido.
 | S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `FEITO` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `FEITO` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `FEITO` |
-| S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
+| S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `FEITO` |
 | S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
 
 **Plano S2.1 (antes de implementar):**
@@ -1083,6 +1083,63 @@ feito antes de considerar S2.6 atendido.
   bancada (todos os motifs observados funcionando); parâmetros
   documentados no código (`idle_engine.c`, `nb_face_renderer_shell.cpp`).
   S2.4 encerrado: `FEITO`.
+
+**Plano S2.5 (antes de implementar):**
+
+1. Núcleo C17 puro (`emotion_core.c/.h`) em `components/autonomic/`:
+   vetor 2D (valência × ativação) em `[-1, +1]`, `nb_emotion_core_
+   apply_stimulus()` (soma deltas, clamp por eixo) e `nb_emotion_core_
+   tick(dt_ms)` (decaimento exponencial analítico rumo a (0,0), `tau`
+   derivado de "constante ~60s até <5% do pico" de `BEHAVIOR.md` §2:
+   `tau = 60/ln(20) ≈ 20.03s`).
+2. `nb_emotion_core_nearest_expression()`: distância euclidiana às 10
+   âncoras de `VISUAL.md` §2, reaproveitando `nb_face_expr_t` do
+   renderer (S2.2, camada L3 adjacente) em vez de duplicar o enum.
+3. `tools/run_host_tests.py` ganhou include path cruzado entre núcleos
+   puros (`emotion_core` → `renderer.h`, só header, sem link) -- mesma
+   filosofia do `event_bus`/`tiny_fsm`: reuso em vez de duplicação.
+4. `host_test` no mesmo commit: estado inicial neutro, clamp de
+   estímulo por eixo e acumulado, decaimento chegando a <5% em 60s,
+   decaimento monotônico rumo a zero dos dois lados (positivo e
+   negativo), nearest-neighbor batendo exatamente em cada âncora,
+   `NULL` seguro.
+5. Bring-up em `main.c`: pulso de estímulo sintético periódico
+   (substituto do toque real, que só chega em S3.1) aplicado sobre o
+   vetor; a expressão-âncora mais próxima troca com a mesma
+   interpolação de 220ms do S2.2, e o `idle_engine` (S2.4) continua
+   sobrepondo motifs por cima.
+6. Ensaio de bancada: confirmar visualmente que o pulso muda a
+   expressão e que ela decai de volta pra `NEUTRAL` antes do próximo
+   pulso — sem overlap que trave a face longe do baseline.
+
+**Evidência S2.5 (2026-07-04):**
+
+- Implementado `firmware/components/autonomic/emotion_core` — núcleo
+  C17 puro, sem FreeRTOS/ESP-IDF/NVS. Host-test cobre estado inicial,
+  clamp por eixo e acumulado, decaimento (<5% em 60s, monotônico dos
+  dois lados), nearest-neighbor exato nas 10 âncoras, e `NULL` seguro.
+- `main.c`: task de bring-up aplica um pulso de estímulo sintético
+  periódico, interpola a expressão-âncora resultante em 220ms e
+  sobrepõe os motifs do `idle_engine` (S2.4) por cima.
+- **Bug real achado em bancada (N32R16V, COM5):** o pulso sintético
+  inicial era aplicado a cada 15s, bem mais curto que a constante de
+  decaimento (~60s até <5% do pico). Os pulsos se acumulavam mais
+  rápido do que decaíam (a essa cadência, o vetor nunca chegava perto
+  de zero antes do próximo pulso), travando a expressão oscilando
+  entre `HAPPY`/`CURIOUS` sem nunca voltar para `NEUTRAL` — visível ao
+  vivo, não pego pelo host-test (que testa decaimento isolado, não a
+  cadência de pulsos do bring-up). Corrigido aumentando o intervalo
+  para 90s, folga real acima da constante de decaimento.
+- **Ensaio de bancada confirmado pelo usuário** depois do fix: pulso
+  muda a expressão (`HAPPY`/`CURIOUS`), decai de volta para `NEUTRAL`
+  ao longo de ~60s, e fica estável até o próximo pulso.
+- Gate local confirmado: `python tools/run_host_tests.py` verde
+  (`emotion_core` + núcleos inalterados); `idf.py build` limpo;
+  `python tools/scan_secrets.py` limpo.
+- **Fora do escopo desta fatia:** persistência da última expressão em
+  NVS (`BEHAVIOR.md` §2 "Persistência") e a tabela de reflexos locais
+  (touch/voz reais) ficam para `reflex_engine` (S3.2), quando o
+  `touch_service` existir. S2.5 encerrado: `FEITO`.
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 

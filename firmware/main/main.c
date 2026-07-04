@@ -15,8 +15,11 @@
  * confirmados em bancada).
  * S2.4: idle_engine — todos os motifs de VISUAL.md §3 (drift, blink,
  * peeks/scans, largura por olho de CURIOUS_TILT, roll de
- * HEAD_TILT_HOLD) sobre NEUTRAL, numa task própria, para o ensaio de
- * bancada de 60s.
+ * HEAD_TILT_HOLD) sobre a expressão corrente, numa task própria.
+ * S2.5: emotion_core v0 — pulso de estímulo sintético a cada ~90s
+ * (substituto do touch real, que só chega em S3.1), decaindo pra
+ * NEUTRAL; a expressão-âncora mais próxima do vetor troca com
+ * interpolação de 220 ms, igual ao S2.2.
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -38,38 +41,87 @@
 #include "nb_display_hal_shell.h"
 #include "nb_face_renderer_shell.h"
 #include "idle_engine.h"
+#include "emotion_core.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
-#define NB_APP_MAIN_IDLE_DEMO_STACK 4096u
-#define NB_APP_MAIN_IDLE_DEMO_PRIO 8
-#define NB_APP_MAIN_IDLE_DEMO_TICK_MS 33u
+#define NB_APP_MAIN_FACE_DEMO_STACK 4096u
+#define NB_APP_MAIN_FACE_DEMO_PRIO 8
+#define NB_APP_MAIN_FACE_DEMO_TICK_MS 33u
+#define NB_APP_MAIN_FACE_DEMO_TRANSITION_MS 220u
+/* Precisa ser bem maior que a constante de decaimento (~60s até <5% do
+ * pico, BEHAVIOR.md §2) -- bug real achado em bancada: com 15s o pulso
+ * seguinte chegava antes do vetor decair, acumulando (0.6*e^-15/tau ainda
+ * é maioria do pulso) até travar perto do teto, oscilando entre
+ * HAPPY/CURIOUS sem nunca voltar pra NEUTRAL. 90s dá folga real pro
+ * decaimento completar entre pulsos. */
+#define NB_APP_MAIN_EMOTION_STIMULUS_PERIOD_MS 90000u
 
 static const char *TAG = "nb2";
 
-/* Sobrepõe todos os motifs de VISUAL.md §3 (SOFT_DRIFT, blink, gaze de
- * LOOK_DOWN_BLINK/SIDE_PEEK/scans, largura de CURIOUS_TILT, roll de
- * HEAD_TILT_HOLD) à expressão NEUTRAL — padrão de bring-up do S2.4 para
- * o ensaio de 60s em bancada. */
-static void nb_app_main_idle_demo_task(void *arg)
+/* idle_engine (S2.4) sobrepõe motifs de VISUAL.md §3 à expressão-âncora
+ * mais próxima do vetor do emotion_core (S2.5). Um pulso de estímulo
+ * sintético a cada ~90s substitui o toque real (S3.1, ainda não existe),
+ * pra tornar visível em bancada a subida + decaimento pra NEUTRAL —
+ * critério de VISUAL.md §2/BEHAVIOR.md §2. */
+static void nb_app_main_face_demo_task(void *arg)
 {
     nb_idle_engine_t idle;
+    nb_emotion_state_t emotion;
+    nb_face_expr_t from_expr = NB_FACE_EXPR_NEUTRAL;
+    nb_face_expr_t to_expr = NB_FACE_EXPR_NEUTRAL;
+    uint32_t transition_elapsed_ms = 0;
+    uint32_t since_stimulus_ms = 0;
+    bool transitioning = false;
 
     (void)arg;
 
     nb_idle_engine_init(&idle, esp_random());
+    nb_emotion_core_init(&emotion);
 
     for (;;) {
-        nb_idle_output_t out;
+        nb_idle_output_t idle_out;
 
-        nb_idle_engine_tick(&idle, NB_APP_MAIN_IDLE_DEMO_TICK_MS, &out);
+        nb_emotion_core_tick(&emotion, NB_APP_MAIN_FACE_DEMO_TICK_MS);
+        nb_idle_engine_tick(&idle, NB_APP_MAIN_FACE_DEMO_TICK_MS, &idle_out);
 
-        nb_face_state_t current = *nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
-        current.open_l *= out.open_l;
-        current.open_r *= out.open_r;
+        since_stimulus_ms += NB_APP_MAIN_FACE_DEMO_TICK_MS;
+        if (since_stimulus_ms >= NB_APP_MAIN_EMOTION_STIMULUS_PERIOD_MS) {
+            since_stimulus_ms = 0;
+            /* Pulso positivo (substitui TOUCH_TAP real, BEHAVIOR.md §2). */
+            nb_emotion_core_apply_stimulus(&emotion, 0.6f, 0.4f);
+        }
 
-        nb_face_renderer_shell_draw(&current, out.gaze_x, out.gaze_y, out.width_l, out.width_r,
-                                    out.tilt, 0xffffffU);
+        const nb_face_expr_t nearest = nb_emotion_core_nearest_expression(&emotion);
+        if (nearest != to_expr) {
+            /* to_expr é sempre onde a face está agora (parada) ou pra onde
+             * está indo (em transição) -- vale como ponto de partida da
+             * nova transição nos dois casos. */
+            from_expr = to_expr;
+            to_expr = nearest;
+            transitioning = true;
+            transition_elapsed_ms = 0;
+        }
+
+        nb_face_state_t current;
+        if (transitioning) {
+            const float t =
+                (float)transition_elapsed_ms / (float)NB_APP_MAIN_FACE_DEMO_TRANSITION_MS;
+            nb_face_core_lerp(nb_face_core_get_expression(from_expr),
+                              nb_face_core_get_expression(to_expr), (t > 1.0f) ? 1.0f : t,
+                              &current);
+            transition_elapsed_ms += NB_APP_MAIN_FACE_DEMO_TICK_MS;
+            if (transition_elapsed_ms >= NB_APP_MAIN_FACE_DEMO_TRANSITION_MS) {
+                transitioning = false;
+            }
+        } else {
+            current = *nb_face_core_get_expression(to_expr);
+        }
+        current.open_l *= idle_out.open_l;
+        current.open_r *= idle_out.open_r;
+
+        nb_face_renderer_shell_draw(&current, idle_out.gaze_x, idle_out.gaze_y, idle_out.width_l,
+                                    idle_out.width_r, idle_out.tilt, 0xffffffU);
 
         esp_err_t err = nb_display_hal_shell_flush_and_swap();
         if (err != ESP_OK) {
@@ -80,7 +132,7 @@ static void nb_app_main_idle_demo_task(void *arg)
             ESP_LOGE(TAG, "bind do back buffer falhou (%s)", esp_err_to_name(err));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(NB_APP_MAIN_IDLE_DEMO_TICK_MS));
+        vTaskDelay(pdMS_TO_TICKS(NB_APP_MAIN_FACE_DEMO_TICK_MS));
     }
 }
 
@@ -134,8 +186,8 @@ void app_main(void)
             ESP_LOGE(TAG, "bind inicial do face_renderer falhou (%s)",
                      esp_err_to_name(bind_err));
         } else {
-            xTaskCreate(nb_app_main_idle_demo_task, "idle_demo", NB_APP_MAIN_IDLE_DEMO_STACK,
-                       NULL, NB_APP_MAIN_IDLE_DEMO_PRIO, NULL);
+            xTaskCreate(nb_app_main_face_demo_task, "face_demo", NB_APP_MAIN_FACE_DEMO_STACK,
+                       NULL, NB_APP_MAIN_FACE_DEMO_PRIO, NULL);
         }
     }
 
