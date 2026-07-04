@@ -14,9 +14,12 @@ v1 — não está no ESP Component Registry). O sprite é amarrado
 (`setBuffer`) ao back buffer do `display_hal` (S2.1) via
 `nb_face_renderer_shell_bind_buffer()`, sem alocar framebuffer próprio.
 `nb_face_renderer_shell_draw()` desenha os dois olhos e delega o
-push/swap ao `display_hal`.
+push/swap ao `display_hal`. Além do estado paramétrico, aceita
+`gaze_x`/`gaze_y`, `width_l`/`width_r` (multiplicador de largura por
+olho, clamp `[0.5, 1.5]` — `CURIOUS_TILT` do `idle_engine`, S2.4) e
+`tilt` (assimetria vertical entre os olhos — `HEAD_TILT_HOLD`).
 
-`main.c` cicla as 10 expressões com hold + interpolação de 220 ms numa
-task própria (`nb_app_main_face_demo_task`) — padrão de bring-up para
-comparação visual lado a lado com o v1 em bancada (gate do S2.2:
-paridade visual + fps ≥ 30 medido).
+`main.c` (S2.4) roda o `idle_engine` sobre a expressão `NEUTRAL`,
+somando drift/blink/gaze/largura/roll ao desenho — confirmado em
+bancada (gate do S2.2: paridade visual + fps ≥ 30; gate do S2.4:
+catálogo de motifs de `VISUAL.md` §3).

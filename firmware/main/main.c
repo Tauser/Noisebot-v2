@@ -13,11 +13,10 @@
  * S2.2: renderer paramétrico (face_renderer) — cicla as 10 expressões-base
  * com interpolação de 220 ms; gate fechado (paridade visual + fps >= 30
  * confirmados em bancada).
- * S2.4: idle_engine — motifs de VISUAL.md §3 (drift + blink) sobre
- * NEUTRAL, numa task própria, para o ensaio de bancada de 60s. Só os
- * motifs que o renderer atual sabe desenhar (gaze + abertura de olho);
- * CURIOUS_TILT/HEAD_TILT_HOLD exigem largura/roll por olho, que o
- * renderer ainda não suporta (registrado como pendente em ROADMAP.md).
+ * S2.4: idle_engine — todos os motifs de VISUAL.md §3 (drift, blink,
+ * peeks/scans, largura por olho de CURIOUS_TILT, roll de
+ * HEAD_TILT_HOLD) sobre NEUTRAL, numa task própria, para o ensaio de
+ * bancada de 60s.
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -48,11 +47,10 @@
 
 static const char *TAG = "nb2";
 
-/* Sobrepõe SOFT_DRIFT + blink (BLINK_BAR/DOUBLE_BLINK/LINE_BLINK) e gaze
- * de LOOK_DOWN_BLINK/SIDE_PEEK/scans à expressão NEUTRAL (VISUAL.md §3) —
- * padrão de bring-up do S2.4 para o ensaio de 60s em bancada. CURIOUS_TILT
- * (largura por olho) e HEAD_TILT_HOLD (roll) não têm como aparecer ainda:
- * o renderer (S2.2) só suporta gaze e abertura de olho. */
+/* Sobrepõe todos os motifs de VISUAL.md §3 (SOFT_DRIFT, blink, gaze de
+ * LOOK_DOWN_BLINK/SIDE_PEEK/scans, largura de CURIOUS_TILT, roll de
+ * HEAD_TILT_HOLD) à expressão NEUTRAL — padrão de bring-up do S2.4 para
+ * o ensaio de 60s em bancada. */
 static void nb_app_main_idle_demo_task(void *arg)
 {
     nb_idle_engine_t idle;
@@ -70,7 +68,8 @@ static void nb_app_main_idle_demo_task(void *arg)
         current.open_l *= out.open_l;
         current.open_r *= out.open_r;
 
-        nb_face_renderer_shell_draw(&current, out.gaze_x, out.gaze_y, 0xffffffU);
+        nb_face_renderer_shell_draw(&current, out.gaze_x, out.gaze_y, out.width_l, out.width_r,
+                                    out.tilt, 0xffffffU);
 
         esp_err_t err = nb_display_hal_shell_flush_and_swap();
         if (err != ESP_OK) {
