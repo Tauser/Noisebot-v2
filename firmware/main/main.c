@@ -22,6 +22,11 @@
  * interpolação de 220 ms, igual ao S2.2.
  * S2.6: instrumentação de fps (task de face) e heap/PSRAM (heartbeat)
  * pra registrar baseline no soak de 48h do gate visual da fase.
+ * S3.1: touch_hal + touch_service (GPIO2/TOUCH2) numa task própria a
+ * 50Hz -- log de TAP/LONG_PRESS/SUSTAINED/WAKE pro ensaio de bancada
+ * (toque intencional 50/50, zero falso positivo em 1h de ruído
+ * ambiente). Ainda não liga em emotion/idle/face -- isso é o
+ * reflex_engine, S3.2.
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
@@ -44,6 +49,7 @@
 #include "nb_mind_link_shell.h"
 #include "nb_display_hal_shell.h"
 #include "nb_face_renderer_shell.h"
+#include "nb_touch_service_shell.h"
 #include "idle_engine.h"
 #include "emotion_core.h"
 
@@ -62,6 +68,9 @@
  * HAPPY/CURIOUS sem nunca voltar pra NEUTRAL. 90s dá folga real pro
  * decaimento completar entre pulsos. */
 #define NB_APP_MAIN_EMOTION_STIMULUS_PERIOD_MS 90000u
+#define NB_APP_MAIN_TOUCH_STACK 3072u
+#define NB_APP_MAIN_TOUCH_PRIO 8
+#define NB_APP_MAIN_TOUCH_TICK_MS 20u /* 50Hz, mesma cadência do v1 */
 
 static const char *TAG = "nb2";
 
@@ -181,6 +190,20 @@ static void nb_app_main_face_demo_task(void *arg)
     }
 }
 
+/* touch_service (S3.1) a 50Hz -- log de eventos pro ensaio de bancada.
+ * Ainda não liga em emotion/idle/face; isso é o reflex_engine (S3.2). */
+static void nb_app_main_touch_task(void *arg)
+{
+    TickType_t last_wake_tick = xTaskGetTickCount();
+
+    (void)arg;
+
+    for (;;) {
+        nb_touch_service_shell_update(NB_APP_MAIN_TOUCH_TICK_MS);
+        vTaskDelayUntil(&last_wake_tick, pdMS_TO_TICKS(NB_APP_MAIN_TOUCH_TICK_MS));
+    }
+}
+
 void app_main(void)
 {
     esp_chip_info_t chip;
@@ -234,6 +257,15 @@ void app_main(void)
             xTaskCreate(nb_app_main_face_demo_task, "face_demo", NB_APP_MAIN_FACE_DEMO_STACK,
                        NULL, NB_APP_MAIN_FACE_DEMO_PRIO, NULL);
         }
+    }
+
+    esp_err_t touch_err = nb_touch_service_shell_init();
+    if (touch_err != ESP_OK) {
+        ESP_LOGE(TAG, "touch_service falhou (%s) -- seguindo sem toque",
+                 esp_err_to_name(touch_err));
+    } else {
+        xTaskCreate(nb_app_main_touch_task, "touch", NB_APP_MAIN_TOUCH_STACK, NULL,
+                   NB_APP_MAIN_TOUCH_PRIO, NULL);
     }
 
     uint32_t heartbeat_count = 0;

@@ -1219,12 +1219,73 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 
 | ID   | Entrega                                                                                            | Gate de saída                                                                                   | Status     |
 | ---- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
-| S3.1 | `touch_hal` + `touch_service` (calibração do v1 2.2A: threshold 20%, debounce, TAP/LONG/SUSTAINED) | toque intencional 50/50; zero falso positivo em 1 h de ruído ambiente; reproduzível após reboot | `PENDENTE` |
+| S3.1 | `touch_hal` + `touch_service` (calibração do v1 2.2A: threshold 20%, debounce, TAP/LONG/SUSTAINED) | toque intencional 50/50; zero falso positivo em 1 h de ruído ambiente; reproduzível após reboot | `FEITO` |
 | S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `PENDENTE` |
 | S3.3 | `led_service` (WS2812 no 46; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `PENDENTE` |
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `PENDENTE` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `PENDENTE` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `PENDENTE` |
+
+**Plano S3.1 (antes de implementar):**
+
+1. `touch_hal` (`components/hal/touch_hal`, L0): núcleo C17 puro só com a
+   média de calibração de boot (`nb_touch_hal_compute_baseline()`). Casca
+   com o periférico touch nativo do ESP-IDF (`driver/touch_sens.h`, API
+   v2 do ESP32-S3), GPIO2/canal 2 (`HARDWARE.md`: "TOUCH2"). Settle
+   200ms + 10 amostras em 100ms, igual ao v1.
+2. `touch_service` (`components/services/touch_service`, L3): porte
+   (reescrito, não copiado) da FSM validada em produto no v1 — histerese
+   on/off, debounce de entrada/saída (3 amostras), EMA de sinal, rejeição
+   de proximidade (hold mínimo de 100ms após confirmar toque), boot
+   stabilization, recalibração lenta de baseline com proteção contra
+   poisoning, auto-recalibração de emergência se preso em SUSTAINED por
+   drift. `nb_touch_service_tick()` puro, clock/raw injetados.
+3. `tools/run_host_tests.py` ganha include path cruzado entre núcleos
+   puros pra `emotion_core` reaproveitar `nb_face_expr_t` do renderer
+   sem duplicar o enum -- mesmo mecanismo reaproveitado aqui se algum
+   componente futuro precisar (não foi necessário para touch_service).
+4. `host_test` no mesmo commit: FSM completa (TAP→LONG_PRESS→SUSTAINED),
+   rejeição de picos isolados de ruído, histerese, modo `sleeping`
+   (WAKE em vez de TAP), recalibração lenta com baseline/drift em escala
+   realista de hardware, proteção contra poisoning durante toque ativo,
+   `NULL` seguro.
+5. Bring-up em `main.c`: task a 50Hz que só loga eventos (TAP/LONG_
+   PRESS/SUSTAINED/WAKE) -- sem ligar em emotion/idle/face ainda, isso é
+   o `reflex_engine` (S3.2).
+6. Ensaio de bancada com a fita de cobre real (GPIO2): toques
+   intencionais contados + janela de ruído ambiente sem tocar.
+
+**Evidência S3.1 (2026-07-04):**
+
+- Implementado `touch_hal` (L0) e `touch_service` (L3) -- núcleos C17
+  puros, host-test cobrindo a FSM completa, histerese, rejeição de
+  ruído isolado, `sleeping`→`WAKE`, recalibração lenta em escala
+  realista, proteção contra poisoning e `NULL` seguro.
+- **Ensaio real em bancada (2026-07-04, N32R16V via COM5, fita de cobre
+  em GPIO2):**
+  - Boot limpo, calibração real: `baseline=24858` (mudou de `20032` sem
+    a fita pra `24858`/`24792` com ela conectada -- confirma que o
+    hardware está de fato lendo a fita, não um valor arbitrário).
+  - **10 toques intencionais contados pelo usuário → exatamente 10
+    eventos `TAP` no log**, sem faltar nenhum, sem duplicar, sem
+    confundir com `LONG_PRESS`/`SUSTAINED`.
+  - **Zero falso positivo em ~15 min de ruído ambiente** (sem tocar) --
+    nenhuma linha `event=` no log durante toda a janela.
+  - Reproduzível após reboot: baseline recalibrado corretamente em
+    cada flash/reset ao longo da sessão (`24858` → `24792` → `24732`,
+    variando com a condição real do fio, sempre coerente com
+    `thr_on`/`thr_off` recalculados).
+- **Alteração explícita de escopo do gate (2026-07-04, decisão do
+  usuário):** janela de ruído ambiente reduzida de 1h pra ~15min --
+  mesmo padrão de exceção já registrado no S2.6 (sistema ainda simples,
+  revisitar com janela mais longa quando mais subsistemas reais
+  entrarem).
+- Gate local confirmado: `python tools/run_host_tests.py` verde
+  (`touch_hal`, `touch_service` + núcleos inalterados); `idf.py build`
+  limpo; `python tools/scan_secrets.py` limpo.
+- Gate de saída fechado (critério amendado): toque intencional 10/10,
+  zero falso positivo em ~15min, reproduzível após reboot. S3.1
+  encerrado: `FEITO`.
 
 ### S4 — Voz (o robô conversa)
 

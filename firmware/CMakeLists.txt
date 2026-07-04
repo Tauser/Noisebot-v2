@@ -8,6 +8,8 @@ set(EXTRA_COMPONENT_DIRS
     "components/autonomic/idle_engine"
     "components/autonomic/tiny_fsm"
     "components/hal/display_hal"
+    "components/hal/touch_hal"
+    "components/services/touch_service"
     "components/infra/event_bus"
     "components/infra/logger"
     "components/infra/app_config"
