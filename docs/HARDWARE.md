@@ -29,48 +29,95 @@ externo e câmera SPI (compra).
 5. **GPIO0** = BOOT; **GPIO45/46** = straps (46: nunca sinal idle-HIGH).
 6. **GPIO43/44** = console CH343; **GPIO19/20** = USB nativo via hub.
 
-## 2. Mapa de pinos
+## 2. GPIOs por módulo
 
-| GPIO | Função | Dir. | Periférico | Status | Nota |
-| --- | --- | --- | --- | --- | --- |
-| 0 | BOOT | ← | strap | fixo | não usar |
-| 1 | Touchscreen INT | ← | `gpio` ISR | reservado | entra com a tela touch (pós-v2.0) |
-| 2 | Touch corporal | ← | `touch_sensor` TOUCH2 | validado v1 | fita de cobre |
-| 3 | Servo rail enable (MOSFET) | → | `gpio` | perfil B | pull-down externo → trilho B nasce desligado no boot; strap JTAG-sel tolerante |
-| 4 | I2C SDA | ↔ | `i2c_master` I2C0 | validado v1 | **barramento de expansão**: INA219 (corrente do trilho servo, perfil B), touch ctrl, IMU, fuel gauge |
-| 5 | I2C SCL | ↔ | idem | validado v1 | pull-up 4.7k |
-| 6 | SD DATA0 | ↔ | `sdmmc` 1-bit (matrix) | **SPIKE S0.3** | módulo microSD externo |
-| 7 | Monitor 5V | A | `adc_oneshot` ADC1_CH6 | validado v1 | divisor 68k/56k |
-| 8 | IMU INT | ← | `gpio` ISR | reservado | MPU-6050 (pós-v2.0) |
-| 9 | Câmera CS | → | `spi_master` SPI2 | **reservado (câmera adiada)** | slot para retorno da visão pós-v2.0 |
-| 10 | Display CS | → | `spi_master` SPI2 (FSPICS0) | **SPIKE S0.1** | IO MUX nativo |
-| 11 | SPI MOSI | → | SPI2 (FSPID) | **SPIKE S0.1** | compartilhado display+câmera futura |
-| 12 | SPI SCLK | → | SPI2 (FSPICLK) | **SPIKE S0.1** | IO MUX → 50 MHz+ |
-| 13 | SPI MISO | ← | SPI2 (FSPIQ) | **reservado (câmera adiada)** | display não usa MISO |
-| 14 | Display DC | → | `gpio` | **SPIKE S0.1** | |
-| 15 | SD CLK | → | `sdmmc` | **SPIKE S0.3** | |
-| 16 | SD CMD | ↔ | `sdmmc` | **SPIKE S0.3** | |
-| 17 | Servo PAN | → | **perfil B:** `ledc` PWM 50 Hz · **perfil A:** `uart` TX 1 Mbps | decisão 2026-07-02 | mesmos pinos nos dois perfis — upgrade é troca de casca do HAL |
-| 18 | Servo TILT | → | **perfil B:** `ledc` PWM 50 Hz · **perfil A:** `uart` RX (TTLinker) | idem | cabeamento é gate S6.1/S6.2 |
-| 19/20 | USB nativo D-/D+ | ↔ | `usb_serial_jtag`/CDC | fixo | livre para console/JTAG |
-| 21 | WS2812 externos | → | `rmt_tx` | validado v1 | level-shift p/ 5V (pixel sacrificial ou shifter) |
-| 33–37 | — | — | — | indisponíveis | ver §1 |
-| 38 | LED status onboard | → | `rmt_tx` | fixo na placa | WS2812 da placa |
-| 39 | Mic SD (I2S) | ← | `i2s_std` duplex | validado v1 | perde JTAG por pinos (usar USB-JTAG) |
-| 40 | Áudio BCLK | → | idem | validado v1 | compartilhado mic+spk |
-| 41 | Áudio WS/LRCK | → | idem | validado v1 | compartilhado |
-| 42 | Speaker DIN | → | idem | validado v1 | MAX98357A |
-| 43/44 | Console UART0 | ↔ | CH343 | fixo | programming/console |
-| 45/46 | — | — | straps | evitar | |
-| 47/48 | — | — | **1.8V** | **nunca** | domínio VDD_SPI do N32R16V |
+Resumo para montagem: use esta seção primeiro. A lista de pinos proibidos e
+reservados fica no fim da seção.
 
-Display ST7789: RST via SWRESET, sem BL, sem MISO (config validada no v1 a
-50 MHz) — mas aqui **CS é obrigatório** (GPIO10), porque o barramento SPI2 é
-compartilhado com a câmera.
+### Display ST7789 2" (S0.1/S2.1)
 
-Livres após alocação completa: nenhum dedicado (GPIO3 assumiu o enable do
-trilho de servo; 1/8 seguem reservados a touch/IMU futuros). Expansão
-adicional: I2C (4/5).
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| CS | 10 | SPI2 `FSPICS0` | **SPIKE S0.1** | obrigatório; barramento compartilhado |
+| MOSI | 11 | SPI2 `FSPID` | **SPIKE S0.1** | dados para display e câmera futura |
+| SCLK | 12 | SPI2 `FSPICLK` | **SPIKE S0.1** | IO MUX; alvo 50 MHz após validar |
+| DC | 14 | `gpio` | **SPIKE S0.1** | comando/dado |
+| RST | — | — | fixo | sem pino; reset via SWRESET |
+| BL | — | — | fixo | sem controle no firmware |
+| MISO | — | — | não usado | display não lê dados |
+
+### Câmera SPI futura (adiada)
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| CS | 9 | SPI2 | reservado | câmera adiada; não reaproveitar |
+| MISO | 13 | SPI2 `FSPIQ` | reservado | retorno da câmera futura |
+| MOSI | 11 | SPI2 | compartilhado | mesmo barramento do display |
+| SCLK | 12 | SPI2 | compartilhado | mesmo barramento do display |
+
+### microSD externo (S0.3/S1.3)
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| DATA0 | 6 | `sdmmc` 1-bit | **SPIKE S0.3** | módulo externo |
+| CLK | 15 | `sdmmc` | **SPIKE S0.3** | |
+| CMD | 16 | `sdmmc` | **SPIKE S0.3** | |
+
+### Áudio I2S (S4)
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| Mic SD | 39 | `i2s_std` duplex | validado v1 | INMP441 |
+| BCLK | 40 | `i2s_std` duplex | validado v1 | mic + speaker |
+| WS/LRCK | 41 | `i2s_std` duplex | validado v1 | mic + speaker |
+| Speaker DIN | 42 | `i2s_std` duplex | validado v1 | MAX98357A |
+
+### Servos e energia de motion (S6)
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| Servo rail enable | 3 | `gpio` | perfil B | MOSFET/load switch; pull-down externo obrigatório |
+| Servo PAN | 17 | perfil B: `ledc` PWM 50 Hz; perfil A: UART TX | decisão 2026-07-02 | mesmo pino nos dois perfis |
+| Servo TILT | 18 | perfil B: `ledc` PWM 50 Hz; perfil A: UART RX | decisão 2026-07-02 | cabeamento é gate S6.1/S6.2 |
+| Corrente do trilho | I2C 4/5 | INA219 | perfil B | proxy de stall por corrente |
+
+### LEDs (S3)
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| WS2812 externos | 21 | `rmt_tx` | validado v1 | usar level shift ou pixel sacrificial |
+| LED status onboard | 38 | `rmt_tx` | fixo na placa | WS2812 da própria placa |
+
+### Toque, IMU e expansão I2C
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| Touch corporal | 2 | `touch_sensor` TOUCH2 | validado v1 | fita de cobre |
+| I2C SDA | 4 | `i2c_master` I2C0 | validado v1 | INA219, touch ctrl, IMU, fuel gauge |
+| I2C SCL | 5 | `i2c_master` I2C0 | validado v1 | pull-up 4.7k |
+| Monitor 5V | 7 | `adc_oneshot` ADC1_CH6 | validado v1 | divisor 68k/56k |
+| Touchscreen INT | 1 | `gpio` ISR | reservado | pós-v2.0 |
+| IMU INT | 8 | `gpio` ISR | reservado | MPU-6050 pós-v2.0 |
+
+### USB, console e straps
+
+| Sinal | GPIO | Periférico | Status | Nota |
+| --- | --- | --- | --- | --- |
+| BOOT | 0 | strap | fixo | não usar |
+| USB nativo D-/D+ | 19/20 | `usb_serial_jtag`/CDC | fixo | console/JTAG USB |
+| Console UART0 | 43/44 | CH343 | fixo | programming/console |
+| Straps | 45/46 | strap | evitar | 46 nunca com sinal idle-HIGH |
+
+### Proibidos/indisponíveis
+
+| GPIO | Motivo | Regra |
+| --- | --- | --- |
+| 33/34 | não expostos no header | indisponíveis |
+| 35/36/37 | NC por causa da PSRAM octal | indisponíveis |
+| 47/48 | domínio VDD_SPI 1.8V | **nunca ligar lógica 3.3V** |
+
+Livres após alocação completa: nenhum dedicado. GPIO1/8 seguem reservados
+para touch/IMU futuros; expansão adicional deve entrar pelo I2C (4/5).
 
 ### Perfis de motion (decisão 2026-07-02)
 
