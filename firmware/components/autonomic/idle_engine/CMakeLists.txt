@@ -1,10 +1,8 @@
 idf_component_register(
-    SRCS "main.c"
+    SRCS "idle_engine.c"
     INCLUDE_DIRS "."
-    REQUIRES boot_manager watchdog wifi_setup ota mind_link display_hal renderer idle_engine
 )
 
-# -Werror no código do projeto (componentes próprios seguem o mesmo padrão).
 component_compile_options(
     -Wall
     -Wextra

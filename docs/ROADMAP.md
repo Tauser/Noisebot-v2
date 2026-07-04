@@ -773,7 +773,7 @@ feito antes de considerar S2.6 atendido.
 | S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `FEITO` |
 | S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `FEITO` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `FEITO` |
-| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
+| S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `EM ANDAMENTO` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
 | S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
 
@@ -997,6 +997,79 @@ feito antes de considerar S2.6 atendido.
   (`-Wall -Wextra -Werror`); `python tools/scan_secrets.py` limpo.
 - Sem gate de bancada nesta fatia (núcleo puro, sem hardware envolvido).
   S2.3 encerrado: `FEITO`.
+
+**Plano S2.4 (antes de implementar):**
+
+1. Núcleo C17 puro (`idle_engine.c/.h`) em `components/autonomic/`: o
+   catálogo de `VISUAL.md` §3 -- `SOFT_DRIFT` contínuo, processo de
+   Poisson de blink (`BLINK_BAR`/`DOUBLE_BLINK`, média 5s, piso 1.8s,
+   ~30% viram double) e agendamento ponderado dos motifs longos
+   (`CURIOUS_TILT` 30%, `HEAD_TILT_HOLD` 20%, `LOOK_DOWN_BLINK` 15%,
+   `LINE_BLINK` 15%, `SIDE_PEEK` 10%, `VERTICAL_SCAN`/`CROSS_SCAN`
+   5%+5%, a cada 15-40s em `IDLE` ou 5-13s em `ATTENTIVE`; `quiet` dobra
+   os intervalos). RNG embutido (xorshift32, semente injetada) em vez de
+   `esp_random()`, pra ficar host-testável byte a byte.
+2. Sem casca ainda (mesma regra do `event_bus`/`tiny_fsm`) -- só nasce
+   quando houver consumidor real; nesta fatia, `main.c` liga direto ao
+   `face_renderer` (S2.2) pra bring-up.
+3. `host_test` no mesmo commit: determinismo, semente 0 não trava o RNG,
+   `NULL` seguro, drift dentro da amplitude, `quiet` reduz frequência,
+   `ATTENTIVE` agenda motifs mais seguido que `IDLE`, `CURIOUS_TILT`
+   larga exatamente um olho, e o critério de aceite de `VISUAL.md` §3
+   verificado sobre 10 min simulados × 8 sementes (robusto o bastante
+   pra não depender de sorte de uma janela de 60s isolada).
+4. Ensaio de bancada de 60s -- só é possível para os motifs que o
+   renderer (S2.2) já sabe desenhar (gaze + abertura de olho:
+   `SOFT_DRIFT`, `BLINK_BAR`, `DOUBLE_BLINK`, `LINE_BLINK`,
+   `LOOK_DOWN_BLINK`, `SIDE_PEEK`, `VERTICAL_SCAN`/`CROSS_SCAN`).
+   `CURIOUS_TILT` (largura por olho) e `HEAD_TILT_HOLD` (roll) exigem
+   suporte que o renderer não tem -- gate completo (todos os motifs)
+   fica pendente até essa extensão.
+
+**Evidência S2.4 (2026-07-04):**
+
+- Implementado `firmware/components/autonomic/idle_engine` -- núcleo
+  C17 puro, sem FreeRTOS/ESP-IDF/`esp_random()`. Host-test cobre
+  determinismo, semente 0, `NULL` seguro, amplitude do drift, `quiet`
+  reduzindo frequência, `ATTENTIVE` vs `IDLE`, `CURIOUS_TILT` largando
+  um olho só, e o critério de aceite de `VISUAL.md` §3 sobre 10 min ×
+  8 sementes.
+- `main.c`: task de bring-up soma `SOFT_DRIFT` + blink à expressão
+  `NEUTRAL` e chama o `face_renderer` (S2.2), religando o back buffer a
+  cada `flush_and_swap()` -- mesmo padrão do S2.2.
+- **Três bugs reais achados em ensaio de bancada (N32R16V, COM5), só
+  visíveis com o robô ligado, não em host-test:**
+  - **Drift imperceptível:** a amplitude literal de `VISUAL.md` §3
+    (≤0.04, normalizado) mapeada pela escala de pixel do renderer
+    (`kGazeXTravel`/`kYTravel` do S2.2) dava menos de 1px de
+    movimento -- lia como parado. Retunado para uma amplitude prática
+    maior (`NB_IDLE_DRIFT_AMPLITUDE`), documentada no código com a
+    justificativa.
+  - **Desvio de olhar brusco/robótico:** `SIDE_PEEK`/`LOOK_DOWN_BLINK`
+    saltavam instantaneamente pro alvo (só suavizavam a saída, não a
+    entrada) e as varreduras usavam uma onda triangular com reversão
+    abrupta no pico. Corrigido com um envelope de suavização
+    (`ease_envelope()`, curva S de entrada/saída) e onda senoidal pras
+    varreduras -- confirmado em bancada como "bem melhor" depois do
+    fix.
+  - **Teto de pixel do renderer:** mesmo com amplitude/suavização
+    corrigidas, o alcance máximo do gaze no renderer (`kGazeXTravel=14`,
+    `kYTravel=32`, herdados do v1) permanecia curto demais neste
+    display. Aumentados para `kGazeXTravel=26`/`kYTravel=55` (dentro da
+    folga real de tela: ~50px de margem lateral por olho, ~72-76px de
+    folga vertical acima/abaixo de `kEyeBaseY`) -- confirmado em
+    bancada como "bem melhor" pelo usuário.
+- Gate local confirmado: `python tools/run_host_tests.py` verde
+  (`idle_engine` + núcleos inalterados, incluindo `face_renderer` após
+  o retune de `kGazeXTravel`/`kYTravel`); `idf.py build` limpo; `python
+  tools/scan_secrets.py` limpo.
+- **Pendente para `FEITO`:** `CURIOUS_TILT` (largura por olho) e
+  `HEAD_TILT_HOLD` (roll/inclinação) não têm como aparecer no display
+  ainda -- o renderer (S2.2) só suporta gaze e abertura de olho. O gate
+  completo (todos os motifs de `VISUAL.md` §3 confirmados numa sessão
+  de 60s) fica pendente até o renderer ganhar essas duas capacidades;
+  decisão explícita de escopo confirmada com o usuário (integrar só o
+  que já é suportado nesta fatia).
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
