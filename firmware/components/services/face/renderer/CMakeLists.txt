@@ -1,10 +1,9 @@
 idf_component_register(
-    SRCS "main.c"
-    INCLUDE_DIRS "."
-    REQUIRES boot_manager watchdog wifi_setup ota mind_link display_hal renderer
+    SRCS "renderer.c" "shell/nb_face_renderer_shell.cpp"
+    INCLUDE_DIRS "." "shell"
+    REQUIRES display_hal LovyanGFX
 )
 
-# -Werror no código do projeto (componentes próprios seguem o mesmo padrão).
 component_compile_options(
     -Wall
     -Wextra

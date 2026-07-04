@@ -14,6 +14,8 @@ set(EXTRA_COMPONENT_DIRS
     "components/infra/ota"
     "components/infra/nbp2"
     "components/services/mind_link"
+    "components/services/face/renderer"
+    "components/services/face/renderer/vendor/LovyanGFX"
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

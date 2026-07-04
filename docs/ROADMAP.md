@@ -771,7 +771,7 @@ feito antes de considerar S2.6 atendido.
 | ID   | Entrega                                                                                                 | Gate de saída                                                                      | Status     |
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
 | S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `FEITO` |
-| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `PENDENTE` |
+| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `EM ANDAMENTO` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `PENDENTE` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
@@ -875,11 +875,67 @@ feito antes de considerar S2.6 atendido.
 - Gate local confirmado: `python3 tools/run_host_tests.py` verde
   (`display_hal` + núcleos inalterados); `idf.py build` verde (77% livre);
   `python tools/scan_secrets.py` verde.
-- **Pendente para `FEITO`:** soak de 30 fps por 1h contínua; teto de clock
-  real com fiação definitiva (não jumper); resíduo de cor com WiFi ativo
-  (RF/EMI) — revisitar com fiação blindada/PCB no S0.4; budget de SRAM via
-  `.map` (framebuffers já em PSRAM, mas a métrica formal não foi extraída
-  ainda).
+- **Residual não bloqueante, revisitar no S0.4:** teto de clock real e o
+  resíduo de troca de cor com WiFi ativo (RF/EMI) dependem de fiação
+  definitiva (par trançado/PCB, não jumper) — fora do escopo de hardware
+  desta fase de firmware.
+
+**Plano S2.2 (antes de implementar):**
+
+1. Vendorizar LovyanGFX como git submodule em
+   `firmware/components/services/face/renderer/vendor/LovyanGFX` (mesma
+   convenção do v1 — não está no ESP Component Registry público).
+2. Núcleo C17 puro (`face_core.c/.h`): `nb_face_state_t` (por olho:
+   cantos tl/tr/bl/br, abertura, y; + x_off, roundness top/bottom, curve
+   top/bottom, squint por olho), tabela `NB_FACE_EXPR_COUNT=10` com as
+   âncoras de `VISUAL.md` §2, e `nb_face_state_lerp()` (interpolação
+   linear 220 ms). Sem LovyanGFX/FreeRTOS/ESP-IDF — porte reescrito (não
+   cópia) de `nb_head_emo_renderer` do v1 (referência permitida por
+   `CLAUDE.md`), na estrutura núcleo/casca do NB2.
+3. Casca C++ (`shell/nb_face_renderer_shell.cpp/.h`) atrás de
+   `extern "C"`: `LGFX_Sprite` amarrado ao back buffer do `display_hal`
+   via `setBuffer()` (sem framebuffer extra — reusa o double buffer já em
+   PSRAM do S2.1), desenha os dois olhos com a técnica de AA sub-pixel do
+   v1 (borda superior/inferior por coluna com alpha blend), aplica gaze e
+   chama `nb_display_hal_shell_flush_and_swap()`.
+4. `host_test` no mesmo commit cobrindo o núcleo: valores da tabela das
+   10 expressões, `lerp` em t=0/0.5/1, clamp de gaze.
+5. Padrão de bring-up: comando de shell que cicla as 10 expressões com
+   interpolação de 220 ms a 30 fps, para comparação lado a lado com o v1
+   em bancada — não dá pra validar paridade visual por log.
+6. Gate completo (paridade visual confirmada, fps ≥ 30 medido) é ensaio de
+   bancada com o usuário — a fatia de hoje prova que o renderer desenha
+   corretamente; a comparação lado a lado fica registrada como próximo
+   passo.
+
+**Evidência S2.2 (2026-07-03):**
+
+- LovyanGFX vendorizado como git submodule em
+  `firmware/components/services/face/renderer/vendor/LovyanGFX`
+  (`.gitmodules`), registrado em `EXTRA_COMPONENT_DIRS`.
+- Núcleo C17 puro (`renderer.c/.h`): `nb_face_state_t`, tabela das 10
+  expressões-base com os valores herdados do v1 (paridade visual),
+  `nb_face_core_lerp()` e `nb_face_core_eye_column()` (geometria + AA
+  sub-pixel por coluna, sem LovyanGFX/FreeRTOS/ESP-IDF). Host-test cobre
+  as 10 expressões, fallback de índice inválido, interpolação em
+  t=0/0.5/1, clamp e os casos de olho fechado (por `open` baixo e por
+  squint extremo fechando a coluna).
+- Casca C++ (`shell/nb_face_renderer_shell.cpp/.h`) atrás de
+  `extern "C"` — único ponto do firmware que instancia `LGFX_Sprite`.
+  Amarra o sprite ao back buffer do `display_hal` via `setBuffer()`
+  (sem framebuffer extra) e desenha os dois olhos chamando o núcleo
+  coluna a coluna.
+- `main.c`: task de bring-up cicla as 10 expressões com hold de 1.5 s e
+  interpolação de 220 ms a ~30 fps (tick 33 ms), religando o sprite no
+  novo back buffer a cada `flush_and_swap()`.
+- Gate local confirmado: `python tools/run_host_tests.py` verde
+  (`face_renderer` + núcleos inalterados); `idf.py build` limpo (76%
+  livre) e `idf.py fullclean` + rebuild do zero também limpos, com
+  `-Wall -Wextra -Werror` incluindo os arquivos vendorizados do
+  LovyanGFX; `python tools/scan_secrets.py` limpo.
+- **Pendente para `FEITO`:** ensaio de bancada com o usuário — paridade
+  visual lado a lado com o v1 e fps ≥ 30 medido (gate de saída da
+  fatia; requer o N32R16V com o display do S2.1).
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 

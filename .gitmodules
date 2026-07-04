@@ -1,0 +1,3 @@
+[submodule "firmware/components/services/face/renderer/vendor/LovyanGFX"]
+	path = firmware/components/services/face/renderer/vendor/LovyanGFX
+	url = https://github.com/lovyan03/LovyanGFX.git

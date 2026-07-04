@@ -9,11 +9,15 @@
  * backoff e nunca bloqueia o boot se o server estiver offline.
  * S1.8: confirmação local de imagem OTA pendente só depois do esqueleto subir
  * saudável; Secure Boot/flash encryption exigem gate de bancada explícito.
- * S2.1: display_hal — padrão de teste visual de bring-up numa task própria;
- * o renderer real entra em S2.2.
+ * S2.1: display_hal — driver ST7789 + double buffer PSRAM.
+ * S2.2: renderer paramétrico (face_renderer) — cicla as 10 expressões-base
+ * com interpolação de 220 ms, numa task própria, para comparação visual
+ * lado a lado com o v1 em bancada.
  * event_bus ainda não entra na sequência: sua casca só nasce quando houver
  * serviço publicando evento (ver README do componente).
  */
+
+#include <stdbool.h>
 
 #include "boot_manager.h"
 #include "freertos/FreeRTOS.h"
@@ -27,33 +31,65 @@
 #include "nb_ota_shell.h"
 #include "nb_mind_link_shell.h"
 #include "nb_display_hal_shell.h"
+#include "nb_face_renderer_shell.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
-#define NB_APP_MAIN_DISPLAY_TEST_STACK 4096u
-#define NB_APP_MAIN_DISPLAY_TEST_PRIO 8
+#define NB_APP_MAIN_FACE_DEMO_STACK 4096u
+#define NB_APP_MAIN_FACE_DEMO_PRIO 8
+#define NB_APP_MAIN_FACE_DEMO_TICK_MS 33u
+#define NB_APP_MAIN_FACE_DEMO_HOLD_MS 1500u
+#define NB_APP_MAIN_FACE_DEMO_TRANSITION_MS 220u
 
 static const char *TAG = "nb2";
 
-static void nb_app_main_display_test_task(void *arg)
+/* Cicla as NB_FACE_EXPR_COUNT expressões-base com interpolação de 220 ms
+ * (VISUAL.md §1/§2) — padrão de bring-up do S2.2 para comparação visual
+ * lado a lado com o v1; substitui o padrão de barras do S2.1. */
+static void nb_app_main_face_demo_task(void *arg)
 {
-    uint16_t *back;
-    esp_err_t err;
-    int frame = 0;
+    uint32_t from_expr = 0;
+    uint32_t to_expr = 1;
+    uint32_t elapsed_ms = 0;
+    bool transitioning = true;
 
     (void)arg;
 
     for (;;) {
-        back = nb_display_hal_shell_get_back_buffer();
-        nb_display_hal_shell_draw_test_pattern(back, frame * 2);
+        const nb_face_state_t *from = nb_face_core_get_expression((nb_face_expr_t)from_expr);
+        const nb_face_state_t *to = nb_face_core_get_expression((nb_face_expr_t)to_expr);
+        nb_face_state_t current;
 
-        err = nb_display_hal_shell_flush_and_swap();
+        if (transitioning) {
+            const float t = (float)elapsed_ms / (float)NB_APP_MAIN_FACE_DEMO_TRANSITION_MS;
+            nb_face_core_lerp(from, to, (t > 1.0f) ? 1.0f : t, &current);
+        } else {
+            current = *to;
+        }
+
+        nb_face_renderer_shell_draw(&current, 0.0f, 0.0f, 0xffffffU);
+
+        esp_err_t err = nb_display_hal_shell_flush_and_swap();
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "display flush falhou (%s)", esp_err_to_name(err));
         }
+        err = nb_face_renderer_shell_bind_buffer(nb_display_hal_shell_get_back_buffer());
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "bind do back buffer falhou (%s)", esp_err_to_name(err));
+        }
 
-        ++frame;
-        vTaskDelay(pdMS_TO_TICKS(33));
+        elapsed_ms += NB_APP_MAIN_FACE_DEMO_TICK_MS;
+        if (transitioning && elapsed_ms >= NB_APP_MAIN_FACE_DEMO_TRANSITION_MS) {
+            transitioning = false;
+            elapsed_ms = 0;
+        } else if (!transitioning && elapsed_ms >= NB_APP_MAIN_FACE_DEMO_HOLD_MS) {
+            from_expr = to_expr;
+            to_expr = (to_expr + 1u) % NB_FACE_EXPR_COUNT;
+            transitioning = true;
+            elapsed_ms = 0;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(NB_APP_MAIN_FACE_DEMO_TICK_MS));
     }
 }
 
@@ -101,8 +137,15 @@ void app_main(void)
     if (display_err != ESP_OK) {
         ESP_LOGE(TAG, "display_hal falhou (%s)", esp_err_to_name(display_err));
     } else {
-        xTaskCreate(nb_app_main_display_test_task, "display_test",
-                   NB_APP_MAIN_DISPLAY_TEST_STACK, NULL, NB_APP_MAIN_DISPLAY_TEST_PRIO, NULL);
+        esp_err_t bind_err =
+            nb_face_renderer_shell_bind_buffer(nb_display_hal_shell_get_back_buffer());
+        if (bind_err != ESP_OK) {
+            ESP_LOGE(TAG, "bind inicial do face_renderer falhou (%s)",
+                     esp_err_to_name(bind_err));
+        } else {
+            xTaskCreate(nb_app_main_face_demo_task, "face_demo", NB_APP_MAIN_FACE_DEMO_STACK,
+                       NULL, NB_APP_MAIN_FACE_DEMO_PRIO, NULL);
+        }
     }
 
     for (;;) {
