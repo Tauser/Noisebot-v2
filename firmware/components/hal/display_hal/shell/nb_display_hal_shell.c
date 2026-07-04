@@ -163,6 +163,18 @@ esp_err_t nb_display_hal_shell_init(void)
     if (err != ESP_OK) {
         return err;
     }
+    /* swap_xy sozinho deixa a imagem de cabeça para baixo nesta orientação
+     * de montagem -- o padrão de barras horizontais do bring-up (S2.1) não
+     * denunciava isso (uma faixa invertida verticalmente ainda parece um
+     * conjunto válido de faixas horizontais); só ficou visível com conteúdo
+     * assimétrico em cima/embaixo (S2.2, formas dos olhos). Depois do
+     * swap_xy (MV=1), os parâmetros mirror_x/mirror_y do esp_lcd mapeiam
+     * pros eixos físicos trocados -- testado mirror(false,true) e ainda
+     * ficou invertido, então o eixo que precisa espelhar aqui é o outro. */
+    err = esp_lcd_panel_mirror(s_panel, true, false);
+    if (err != ESP_OK) {
+        return err;
+    }
     err = esp_lcd_panel_disp_on_off(s_panel, true);
     if (err != ESP_OK) {
         return err;

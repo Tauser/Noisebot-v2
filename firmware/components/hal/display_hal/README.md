@@ -54,3 +54,13 @@ alocação em `shell_init`).
 de 30 fps por 1h com medição de artefato/SRAM via `.map`; esse teste
 prolongado fica registrado como próximo passo depois da confirmação visual
 inicial.
+
+**Orientação (bug real, achado no bring-up do S2.2):** `swap_xy(true)`
+sozinho deixava a imagem de cabeça para baixo nesta montagem. O padrão de
+barras horizontais do bring-up do S2.1 não denunciava isso — uma faixa
+invertida verticalmente ainda parece um conjunto válido de faixas
+horizontais; só ficou visível com conteúdo assimétrico em cima/embaixo
+(os olhos do renderer, S2.2). Depois do `swap_xy` (MV=1), os parâmetros
+`mirror_x`/`mirror_y` do `esp_lcd` mapeiam pros eixos físicos já trocados;
+`mirror(false, true)` não corrigiu, `mirror(true, false)` corrigiu —
+achado por teste direto em bancada, não por dedução do datasheet.

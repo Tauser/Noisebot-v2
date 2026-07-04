@@ -771,7 +771,7 @@ feito antes de considerar S2.6 atendido.
 | ID   | Entrega                                                                                                 | Gate de saída                                                                      | Status     |
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
 | S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `FEITO` |
-| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `EM ANDAMENTO` |
+| S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `FEITO` |
 | S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `PENDENTE` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
@@ -933,9 +933,24 @@ feito antes de considerar S2.6 atendido.
   livre) e `idf.py fullclean` + rebuild do zero também limpos, com
   `-Wall -Wextra -Werror` incluindo os arquivos vendorizados do
   LovyanGFX; `python tools/scan_secrets.py` limpo.
-- **Pendente para `FEITO`:** ensaio de bancada com o usuário — paridade
-  visual lado a lado com o v1 e fps ≥ 30 medido (gate de saída da
-  fatia; requer o N32R16V com o display do S2.1).
+- **Ensaio real em bancada (2026-07-03, N32R16V via COM5):** flash do
+  firmware e observação direta do usuário no display.
+  - Primeira observação: as 10 expressões apareciam de cabeça para
+    baixo. **Bug real no `display_hal` (S2.1), não no renderer** — o
+    padrão de barras horizontais do bring-up do S2.1 não denunciava
+    isso (uma faixa invertida verticalmente ainda parece um conjunto
+    válido de faixas horizontais); só ficou visível com conteúdo
+    assimétrico em cima/embaixo (os olhos). Corrigido em
+    `nb_display_hal_shell_init()`: depois do `swap_xy(true)`, os eixos
+    de `esp_lcd_panel_mirror()` mapeiam pros eixos físicos já trocados
+    — testado `mirror(false, true)` (não corrigiu) e `mirror(true,
+    false)` (corrigiu), por tentativa direta em bancada, não por
+    dedução do datasheet.
+  - Depois da correção: orientação certa, as 10 expressões batendo
+    com o v1; transições suaves, sem travamento perceptível (fps ≥ 30
+    confirmado a olho pelo usuário).
+- Gate de saída fechado: paridade visual com v1 confirmada lado a lado
+  e fps ≥ 30 medido. S2.2 encerrado: `FEITO`.
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
