@@ -55,6 +55,7 @@ def main() -> int:
             str(test),
             "-o",
             str(exe),
+            "-lm",
         ]
         print("host-tests: compile", test.relative_to(ROOT))
         subprocess.run(cmd, cwd=ROOT, check=True)
