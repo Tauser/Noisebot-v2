@@ -772,7 +772,7 @@ feito antes de considerar S2.6 atendido.
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- |
 | S2.1 | `display_hal` (ST7789 SPI 50 MHz, 3 pinos, double buffer PSRAM, wrapper `extern "C"`)                   | padrão de teste a 30 fps por 1 h; zero artefato; SRAM inalterada (gate do `.map`)  | `FEITO` |
 | S2.2 | Renderer paramétrico (10 expressões de `VISUAL.md` §2, interpolação 220 ms, AA sub-pixel)               | paridade visual com v1 confirmada lado a lado; fps ≥ 30 medido                     | `FEITO` |
-| S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `PENDENTE` |
+| S2.3 | `tiny_fsm` (8 estados + modos, `BEHAVIOR.md` §1) **nascendo com o teste de invariante X→IDLE**          | host-test cobre 100% das transições × modos; invariante verde                      | `FEITO` |
 | S2.4 | `idle_engine` (catálogo de motifs de `VISUAL.md` §3: blink Poisson, curious tilt, head tilt, look-down) | critério de 60 s de `VISUAL.md` §3 atendido em bancada; parâmetros documentados    | `PENDENTE` |
 | S2.5 | `emotion_core` v0 (vetor+decaimento+âncoras, `BEHAVIOR.md` §2) modulando neutral/idle                   | host-test de decaimento, clamp e integração de estímulo; efeito visível em bancada | `PENDENTE` |
 | S2.6 | Gate visual da fase                                                                                     | soak 48 h face viva sem crash; budgets de fps/PSRAM registrados como baseline      | `PENDENTE` |
@@ -951,6 +951,52 @@ feito antes de considerar S2.6 atendido.
     confirmado a olho pelo usuário).
 - Gate de saída fechado: paridade visual com v1 confirmada lado a lado
   e fps ≥ 30 medido. S2.2 encerrado: `FEITO`.
+
+**Plano S2.3 (antes de implementar):**
+
+1. Núcleo C17 puro (`tiny_fsm.c/.h`) em `components/autonomic/` (primeiro
+   componente da camada L4) — os 8 estados de `BEHAVIOR.md` §1, os 3
+   modos (`quiet`/`companion`/`maintenance`) como flags persistentes
+   (sobrevivem a troca de estado, só mudam por evento explícito), e as
+   regras de §1.2 (safety vence tudo, touch vence fala, wake ignorado em
+   `SLEEPING`+`quiet`, `SAFE_MODE` pegajoso).
+2. Estado transitório (`nb_fsm_transient_t`) que cada estado não-IDLE
+   liga (motif de atenção, boca, reação de toque, olhos fechados, ícones
+   de erro, gaze) — zerado por completo toda vez que a máquina pousa em
+   `IDLE`, não importa de onde veio nem quais modos estavam ativos. Isso
+   opera diretamente a regra de `ARCHITECTURE.md` §4 sem depender de
+   `face_service`/`led_service` (que ainda não existem nesta fase).
+3. Sem FreeRTOS/ESP-IDF/event_bus e sem casca ainda — mesma regra do
+   `event_bus` em S1.2: a casca só nasce quando um consumidor real
+   (`reflex_engine`, S3.2) precisar traduzir eventos do bus pra esta API.
+4. `host_test` no mesmo commit: toda aresta documentada transiciona
+   certo; toda combinação (estado, evento) não-documentada é no-op;
+   `FAULT`/`FAULT_CRITICAL` vencem de qualquer estado (exceto
+   `SAFE_MODE`, pegajoso); wake ignorado em `SLEEPING`+`quiet`; modos
+   persistem através de troca de estado; e o invariante X→IDLE cruzado
+   com todas as combinações de modo.
+
+**Evidência S2.3 (2026-07-04):**
+
+- Implementado `firmware/components/autonomic/tiny_fsm` — primeiro
+  componente em `components/autonomic/` (camada L4). Núcleo C17 puro,
+  sem FreeRTOS/ESP-IDF/event_bus.
+- Host-test cobre: as 18 arestas documentadas de `BEHAVIOR.md` §1/§1.2;
+  todas as combinações (estado, evento) não-documentadas como no-op
+  (varredura exaustiva `NB_FSM_STATE_COUNT × NB_FSM_EVENT_COUNT`);
+  `FAULT`/`FAULT_CRITICAL` de qualquer estado exceto `SAFE_MODE`;
+  `SAFE_MODE` pegajoso (nenhum evento tira de lá); wake ignorado em
+  `SLEEPING` só quando modo `quiet` ativo (touch/wake_hour não são
+  bloqueados); modos persistindo através de troca de estado; e o
+  invariante X→IDLE (gate H7) para as 8 transições que pousam em `IDLE`
+  × 5 combinações de modo — inclusive o caso de resíduo (gaze ligado em
+  `ATTENTIVE`, herdado por `RESPONDING` que não mexe em gaze por si só,
+  zerado só ao pousar em `IDLE`).
+- Gate local confirmado: `python tools/run_host_tests.py` verde
+  (`tiny_fsm` + núcleos inalterados); `idf.py build` limpo
+  (`-Wall -Wextra -Werror`); `python tools/scan_secrets.py` limpo.
+- Sem gate de bancada nesta fatia (núcleo puro, sem hardware envolvido).
+  S2.3 encerrado: `FEITO`.
 
 ### S3 — Toque, LEDs e reflexos (pet completo offline)
 
