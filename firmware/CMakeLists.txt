@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 # Regra: -Wall -Wextra -Werror em todo código do projeto (ver CLAUDE.md).
 
 set(EXTRA_COMPONENT_DIRS
+    "components/autonomic/emotion_core"
     "components/autonomic/idle_engine"
     "components/autonomic/tiny_fsm"
     "components/hal/display_hal"

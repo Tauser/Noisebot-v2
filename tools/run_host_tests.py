@@ -38,6 +38,12 @@ def main() -> int:
         print("host-tests: nenhum teste encontrado")
         return 1
 
+    # Núcleos puros podem incluir o header de outro núcleo puro adjacente
+    # (ex.: emotion_core usa o enum de expressões do renderer, ARCHITECTURE.md
+    # §2 -- L4 chamando L3). Todos os diretórios de núcleo entram no include
+    # path de todo mundo; são só headers, sem símbolo pra linkar.
+    component_dirs = sorted({test.parent.parent for test in tests})
+
     for test in tests:
         component_dir = test.parent.parent
         exe = BUILD / f"{component_dir.name}_{test.stem}"
@@ -50,7 +56,7 @@ def main() -> int:
             "-Wall",
             "-Wextra",
             "-Werror",
-            f"-I{component_dir}",
+            *[f"-I{d}" for d in component_dirs],
             str(component_dir / f"{component_dir.name}.c"),
             str(test),
             "-o",
