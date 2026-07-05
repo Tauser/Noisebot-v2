@@ -1,7 +1,7 @@
 idf_component_register(
-    SRCS "reflex_engine.c" "shell/nb_reflex_engine_shell.c"
+    SRCS "circadian_core.c" "shell/nb_circadian_core_shell.c"
     INCLUDE_DIRS "." "shell"
-    REQUIRES tiny_fsm emotion_core event_bus touch_service led_service circadian_core
+    REQUIRES tiny_fsm app_config
     PRIV_REQUIRES esp_timer
 )
 

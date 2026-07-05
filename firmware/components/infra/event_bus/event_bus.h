@@ -37,6 +37,10 @@ typedef enum {
     NB_EVENT_TYPE_VOICE = 1,
     NB_EVENT_TYPE_SAFETY = 2,
     NB_EVENT_TYPE_MIND_HINT = 3,
+    /* S3.4: mind_link_shell (L3) publica TIME_SYNC aqui em vez de chamar
+     * circadian_core (L4) direto -- "camada chama só pra baixo", cross-
+     * layer não-adjacente sempre via bus (ARCHITECTURE.md §2). */
+    NB_EVENT_TYPE_TIME_SYNC = 4,
 } nb_event_type_t;
 
 typedef enum {

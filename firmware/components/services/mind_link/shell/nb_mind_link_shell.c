@@ -14,6 +14,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nb_event_bus_shell.h"
 #include "nb_mind_link_token_shell.h"
 #include "nbp2.h"
 #include "sdkconfig.h"
@@ -216,9 +217,26 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
     case NBP2_MSG_HEARTBEAT:
         nb_mind_link_session_on_heartbeat_received(&s_session, now_ms);
         break;
-    case NBP2_MSG_TIME_SYNC:
-        ESP_LOGD(TAG, "TIME_SYNC recebido (nao usado ainda)");
+    case NBP2_MSG_TIME_SYNC: {
+        nbp2_msg_time_sync_t ts;
+
+        if (nbp2_decode_time_sync(frame->payload, frame->payload_len, &ts) == NBP2_OK) {
+            /* server_mono_ms (compensação de RTT) fica pra quando isso
+             * importar de verdade -- por ora o payload leva só unix_ms.
+             * Publica no bus em vez de chamar circadian_core (L4) direto
+             * -- mind_link é L3, cross-layer não-adjacente vai por bus
+             * (ARCHITECTURE.md §2, S3.4). */
+            nb_event_t bus_event = {
+                .type = NB_EVENT_TYPE_TIME_SYNC,
+                .priority = NB_EVENT_PRIORITY_NORMAL,
+                .timestamp_ms = now_ms,
+                .payload_len = (uint8_t)sizeof(ts.unix_ms),
+            };
+            memcpy(bus_event.payload, &ts.unix_ms, sizeof(ts.unix_ms));
+            nb_event_bus_shell_publish(&bus_event);
+        }
         break;
+    }
     default:
         ESP_LOGD(TAG, "frame tipo 0x%04x ignorado", (unsigned)frame->type);
         break;

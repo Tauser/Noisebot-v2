@@ -19,6 +19,14 @@ static const nb_config_descriptor_t s_descriptors[NB_CONFIG_KEY_COUNT] = {
         .min_value = { .u32 = 0u },
         .max_value = { .u32 = 255u },
     },
+    [NB_CONFIG_KEY_LAST_KNOWN_UNIX_TIME_S] = {
+        .key = NB_CONFIG_KEY_LAST_KNOWN_UNIX_TIME_S,
+        .name = "last_unix_time_s",
+        .type = NB_CONFIG_TYPE_U32,
+        .default_value = { .u32 = 0u }, /* 0 = nunca sincronizado (epoch) */
+        .min_value = { .u32 = 0u },
+        .max_value = { .u32 = 0xffffffffu },
+    },
 };
 
 void nb_config_init(nb_config_t *config)

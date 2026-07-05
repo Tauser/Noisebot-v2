@@ -1222,7 +1222,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | S3.1 | `touch_hal` + `touch_service` (calibração do v1 2.2A: threshold 20%, debounce, TAP/LONG/SUSTAINED) | toque intencional 50/50; zero falso positivo em 1 h de ruído ambiente; reproduzível após reboot | `FEITO` |
 | S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `FEITO` |
 | S3.3 | `led_service` (WS2812 no 21; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `FEITO` |
-| S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `PENDENTE` |
+| S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `FEITO` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `PENDENTE` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `PENDENTE` |
 
@@ -1430,6 +1430,111 @@ só correção de typo no ROADMAP.
   priority=1 fsm_event=7` correspondente). Critério de paridade (linguagem
   de LED coerente com estado, sem flicker) confirmado.
 - Gate de saída fechado. S3.3 encerrado: `FEITO`.
+
+**Decisões de escopo S3.4 (2026-07-05, decisão do usuário):**
+
+- Relógio circadiano vira componente novo dedicado `circadian_core` (L4,
+  responsabilidade única, mesmo padrão de `reflex_engine`/`emotion_core`/
+  `led_service`) em vez de entrar dentro do `idle_engine` (redação literal
+  de `BEHAVIOR.md` §5, tratada como nota de comportamento, não fronteira
+  de componente -- `ARCHITECTURE.md` não reserva o nome em lugar nenhum).
+- Sem servidor real enviando `TIME_SYNC` ainda (protocolo já tem
+  codegen -- `protocol/generated/c/nbp2.c` -- mas nada no `server/` chama
+  `encode_time_sync`): gate validado com **relógio injetado acelerado**
+  em bancada (1 dia comprimido em poucos minutos), mesmo padrão do pulso
+  sintético do `emotion_core` antes do toque real (S2.5→S3.1). Decodificar
+  `TIME_SYNC` no `mind_link_shell` mesmo assim (custo baixo, contrato já
+  gerado) -- só não terá produtor real até o server implementar.
+
+**Plano S3.4 (antes de implementar):**
+
+1. `circadian_core` (`components/autonomic/circadian_core`, L4, núcleo
+   C17 puro): âncora de tempo (`unix_ms` + referência monotônica local,
+   `nb_circadian_core_set_time_anchor`) + `tick(dt_ms)` que avança o
+   monotônico local e resolve fase do dia a partir de `unix_ms` estimado.
+   4 fases (`NIGHT`/`DAWN`/`DAY`/`DUSK`, limiares de hora tunáveis por
+   `#define`, travados por host-test): `DAY` brilho 1.0; `NIGHT` piso
+   ~0.05 + `quiet_mode`; `DAWN`/`DUSK` rampa linear entre os dois ao longo
+   da janela de 2h -- é essa rampa contínua (não um crossfade à parte) que
+   dá a "entrada/saída suave" de `SLEEPING` exigida pelo gate: a claim de
+   `led_service` já recalcula cor/brilho a cada frame, então uma curva de
+   brilho circadiano que já está no piso quando `SLEEP`/`WAKE_HOUR`
+   disparam evita o "pop" visual. Sem âncora ainda: default neutro
+   (`DAY`, brilho 1.0, `has_time_source=false`) -- nunca força
+   comportamento noturno antes de saber a hora de verdade.
+2. `app_config` ganha `NB_CONFIG_KEY_LAST_KNOWN_UNIX_TIME_S` (u32,
+   segundos desde epoch) -- fallback "contador local + último horário
+   NVS" de `BEHAVIOR.md` §5, reaproveitando o get/set genérico já
+   existente (nenhum código de NVS novo).
+3. `shell/nb_circadian_core_shell.c/.h`: no init, carrega o último horário
+   conhecido do NVS (via `app_config`) e ancora; sem valor salvo (primeiro
+   boot), semeia um horário de bancada arbitrário (~20h, início de DUSK)
+   documentado como só-pra-demo. Persiste o horário estimado periodicamente
+   (a cada poucos minutos) de volta no NVS. `tick(dt_ms, &fsm)`: aplica
+   `dt_ms` acelerado (constante de bancada, dia comprimido em minutos) ao
+   núcleo, detecta borda de entrada em `NIGHT` (dispara
+   `NB_FSM_EVENT_SLEEP` repetidamente até `tiny_fsm` confirmar `SLEEPING`
+   -- não briga se a máquina estiver ocupada em outro estado) e borda de
+   entrada em `DAWN` (dispara `NB_FSM_EVENT_WAKE_HOUR` até sair de
+   `SLEEPING`). Devolve a fase/brilho/quiet_mode resolvidos pro chamador
+   aplicar em `idle_engine`/`led_service`.
+4. `mind_link_shell`: troca o `case NBP2_MSG_TIME_SYNC` (hoje só loga
+   "não usado ainda") por `nbp2_decode_time_sync` +
+   `nb_circadian_core_shell_set_time_anchor(unix_ms, esp_timer_get_time()/
+   1000)` -- mesma base de clock (`esp_timer`) já usada por
+   `reflex_engine_shell`/`touch_service_shell`, sem descasamento entre
+   tasks.
+5. `main.c`: religa a task de face -- `nb_led_service_shell_set_
+   brightness_scale` deixa de ser chamada uma vez com `0.15f` fixo e
+   passa a receber a saída do `circadian_core` a cada frame;
+   `nb_idle_engine_set_mode` passa a receber `quiet_mode` do circadiano
+   (atenção seguindo `NB_IDLE_ATTENTION_IDLE`, sem mudança de escopo
+   além do pedido).
+6. `host_test` no mesmo commit: limiares de fase por hora, brilho pleno
+   em `DAY`/piso em `NIGHT`, rampa monotônica em `DAWN`/`DUSK`,
+   `quiet_mode` só em `NIGHT`, default neutro sem âncora, recalibração
+   por `set_time_anchor`, avanço de `now_unix_ms` com o monotônico,
+   `NULL` seguro.
+7. Gate: host-test verde + `idf.py build` limpo + ensaio de bancada com
+   relógio acelerado (dia comprimido em minutos) observando pelo menos
+   um ciclo completo dormir→acordar; invariante X→IDLE do `tiny_fsm`
+   continua coberta (nenhuma mudança nele).
+
+**Evidência S3.4 (2026-07-05):**
+
+- Implementado `circadian_core` (núcleo C17 puro, fases NIGHT/DAWN/DAY/
+  DUSK por hora, rampa contínua de brilho em DAWN/DUSK, `quiet_mode` só em
+  NIGHT, default neutro sem âncora) + `app_config` ganhou
+  `NB_CONFIG_KEY_LAST_KNOWN_UNIX_TIME_S` (fallback NVS). `shell/nb_
+  circadian_core_shell` semeia bancada em 20h no primeiro boot, aplica
+  relógio acelerado (240x, 1 dia = 6min), dispara `SLEEP`/`WAKE_HOUR` com
+  retry nas bordas de fase, persiste horário no NVS periodicamente.
+  `mind_link_shell` decodifica `TIME_SYNC` (`nbp2_decode_time_sync`) e
+  publica no `event_bus` (não chama `circadian_core` direto -- mind_link é
+  L3, circadian_core é L4, cross-layer só via bus); `reflex_engine_shell`
+  (único leitor do bus) despacha pro `circadian_core_shell`. `main.c`:
+  `led_service.brightness_scale` e `idle_engine.quiet_mode` passam a vir
+  do circadiano a cada frame, substituindo o valor fixo de 15% do S3.3.
+- Gate local: `run_host_tests.py` verde (16 componentes, incluindo
+  `circadian_core`); `idf.py build` limpo; `scan_secrets.py` limpo.
+- **Ensaio de bancada real (2026-07-05, N32R16V via COM5, relógio
+  acelerado):** semeado em 20h (DUSK). Log real: `SLEEP aplicado --
+  entrando em NIGHT` aos ~31,8s (esperado ~30s = 7200s/240, janela de
+  DUSK); `WAKE_HOUR aplicado -- entrando em DAWN` aos ~151,8s (esperado
+  ~150s = 30s+28800s/240, janela de NIGHT) -- os dois logs só imprimem
+  quando `tiny_fsm` **confirma** o estado (`SLEEPING` alcançado/
+  abandonado), então são prova direta de que dormiu e acordou nos
+  horários certos, não só que o evento foi disparado. `fps` estável em
+  30.3 antes/depois de ambas as transições.
+- **Observação registrada, não bloqueia o gate:** falhas intermitentes de
+  alocação DMA no `display_hal` (`ESP_ERR_NO_MEM` em `setup_dma_priv_
+  buffer`) correlacionadas com tentativas de reconexão do `mind_link`
+  (sem server rodando) -- `heap_livre`/`psram_livre` seguem estáveis ao
+  longo da sessão (sem drift, não é vazamento) e o `circadian_core` não
+  toca display/SPI/DMA. Fica como débito técnico pra investigar quando
+  fizer sentido (contenção de SRAM interna entre WiFi e DMA de SPI),
+  não é regressão desta subfase.
+- Gate de saída fechado. S3.4 encerrado: `FEITO`.
 
 ### S4 — Voz (o robô conversa)
 

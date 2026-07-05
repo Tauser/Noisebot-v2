@@ -4,6 +4,7 @@
 
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "nb_circadian_core_shell.h"
 #include "nb_event_bus_shell.h"
 #include "nb_led_service_shell.h"
 #include "nb_touch_service_shell.h"
@@ -63,8 +64,19 @@ nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb
     uint32_t now_ms = (uint32_t)(esp_timer_get_time() / 1000);
     nb_reflex_reaction_t reaction;
 
+    /* Único leitor do event_bus (FIFO de leitor único -- não dá pra ter
+     * dois consumidores fazendo poll do mesmo bus, S3.4): também
+     * despacha NB_EVENT_TYPE_TIME_SYNC pro circadian_core_shell (mesma
+     * camada L4, chamada direta, não é cross-layer). */
     nb_event_t event;
     while (nb_event_bus_shell_poll(&event) == NB_EVENT_BUS_OK) {
+        if (event.type == NB_EVENT_TYPE_TIME_SYNC && event.payload_len == sizeof(uint64_t)) {
+            uint64_t unix_ms = 0u;
+            memcpy(&unix_ms, event.payload, sizeof(unix_ms));
+            nb_circadian_core_shell_apply_time_sync(unix_ms);
+            continue;
+        }
+
         if (event.type != NB_EVENT_TYPE_TOUCH || event.payload_len != sizeof(nb_touch_event_payload_t)) {
             continue;
         }

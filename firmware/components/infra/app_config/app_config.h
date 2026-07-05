@@ -36,7 +36,11 @@ typedef enum {
     /* Contador de boots consecutivos que falharam em fase crítica; usado
      * pelo `boot_manager` para decidir SAFE_MODE persistente. */
     NB_CONFIG_KEY_BOOT_FAIL_STREAK = 1,
-    NB_CONFIG_KEY_COUNT = 2,
+    /* Último horário conhecido (segundos desde epoch Unix), usado pelo
+     * `circadian_core` como fallback quando não há TIME_SYNC real ainda
+     * (BEHAVIOR.md §5: "contador local + último horário NVS"). */
+    NB_CONFIG_KEY_LAST_KNOWN_UNIX_TIME_S = 2,
+    NB_CONFIG_KEY_COUNT = 3,
 } nb_config_key_t;
 
 typedef union {
