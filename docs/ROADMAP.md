@@ -1685,12 +1685,83 @@ server v1 (refactor).
 | ID   | Entrega                                                                                                                       | Gate de saída                                                                                                              | Status     |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | S4.1 | `audio_hal` I2S full-duplex 16 kHz (mic+spk no mesmo barramento)                                                              | loopback limpo; zero underrun em 30 min com render ativo (re-valida S0.3 na árvore real)                                   | `PENDENTE` |
+| S4.1a | `display_hal`: eliminar bounce buffer do flush SPI, DMA direto da PSRAM                                                      | medição registrada (fps/latência de flush/SRAM) antes×depois; soak sem regressão visual; se inviável na versão do IDF, documentar limitação e manter fatiamento em bandas como solução permanente | `PENDENTE` |
 | S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests**                         | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-\* verdes                             | `PENDENTE` |
 | S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `PENDENTE` |
 | S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `PENDENTE` |
 | S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper                                                   | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
 | S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM                                                        | intents respondem com LLM desligada; latência < 1 s                                                                        | `PENDENTE` |
 | S4.7 | Gate de voz                                                                                                                   | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
+
+**Plano S4.1 (antes de implementar):**
+
+1. `nb_hw_config.h` ganha as constantes do barramento I2S compartilhado
+   (`HARDWARE.md`: BCLK 40, WS/LRCK 41, mic DIN 39/INMP441, speaker DOUT
+   42/MAX98357A -- um único periférico I2S, full-duplex nativo via canais
+   TX+RX no mesmo `i2s_port_t`, não dois barramentos).
+2. `audio_hal` (`components/hal/audio_hal`, L0): núcleo C17 puro mínimo --
+   só o que é matemática pura e reaproveitável (`nb_audio_hal_rms_s16()`
+   pra medir nível de sinal, útil tanto pro ensaio de loopback quanto pro
+   VAD leve de `wake_service` em S4.2). Sem lógica de ring
+   buffer/backpressure aqui -- isso é `audio_service` (L3), fora de
+   escopo de S4.1 (VOICE.md §5).
+3. `shell/nb_audio_hal_shell.c/.h`: `i2s_new_channel()` com TX+RX no
+   mesmo `I2S_NUM_0` (full-duplex automático por ambos os canais
+   compartilharem config, API `driver/i2s_std.h` do ESP-IDF v5.5 --
+   `i2s_channel_init_std_mode()` por canal com `clk_cfg` 16kHz/`slot_cfg`
+   16-bit mono igual nos dois, `gpio_cfg` com `din`/`dout` trocados e
+   `mclk`/pino não usado do lado oposto em `I2S_GPIO_UNUSED`). Atenção:
+   a macro de slot mono do ESP32-S3 fixa `slot_mask=I2S_STD_SLOT_BOTH`
+   independente do argumento -- `slot_mask` precisa ser sobrescrito
+   explicitamente pra `I2S_STD_SLOT_LEFT` (ou o lado certo do INMP441)
+   depois da macro default. `i2s_channel_register_event_callback()` com
+   `on_recv_q_ovf`/`on_send_q_ovf` conta underrun/overflow (contador
+   simples, exposto por getter) -- é a métrica direta do gate.
+   `read()`/`write()` usam `i2s_channel_read`/`i2s_channel_write`
+   (bloqueantes, com timeout).
+4. `main.c`: task de bring-up temporária (mesmo padrão do touch em S3.1
+   antes do reflex_engine existir) -- gera um tom de teste (ex. 440Hz)
+   pro speaker enquanto lê o mic em loop, loga RMS do mic e contadores de
+   underrun/overflow periodicamente (junto do heartbeat existente).
+   Substituída quando `audio_service`/`wake_service` existirem (S4.2+).
+5. `host_test`: `nb_audio_hal_rms_s16()` com senoide sintética
+   (RMS conhecido analiticamente), silêncio (RMS=0), `NULL` seguro. Sem
+   host-test de I2S real (é HAL de hardware, mesma regra de `led_hal`
+   -- núcleo puro é só o RMS).
+6. Gate: host-test verde + `idf.py build` limpo + ensaio de bancada real
+   --toque físico/áudio: tom tocado é ouvido de verdade, RMS do mic capta
+   sinal (não fica em zero/silêncio), zero underrun/overflow em 30 min
+   com a task de face (render) ativa em paralelo -- fecha também o S0.3
+   nunca executado (contenção render+I2S; SD fica de fora, componente
+   `sdmmc` ainda não existe).
+
+**Plano S4.1a (antes de implementar):**
+
+Item de `display_hal`, não de áudio -- não bloqueia S4.2+. Nasceu da
+contenção real de SRAM interna DMA-capable entre o bounce buffer de
+150 KB do `esp_lcd_panel_io_spi` e os descritores DMA do `audio_hal`
+(S4.1), resolvida ali com fatiamento do flush em bandas
+(`nb_display_hal_shell.c`). O fatiamento é a correção que fecha o gate de
+S4.1; esta subfase busca a solução tecnicamente superior -- sem cópia
+intermediária nenhuma.
+
+1. Investigar por que `esp_lcd_panel_io_spi` (ESP-IDF v5.5.4) nunca seta
+   `SPI_TRANS_DMA_USE_PSRAM` nas transações que monta (`gpspi/spi_master.c`
+   linha ~1216, já referenciado no comentário de topo de
+   `nb_display_hal_shell.c`) -- limitação da versão do IDF, exigência de
+   alinhamento do buffer, ou falta de flag exposta pela API do `esp_lcd`
+   pra esse caso.
+2. Se viável: substituir o fluxo atual (fatiamento em bandas +
+   `esp_cache_msync` manual por banda) por DMA direto do framebuffer em
+   PSRAM -- sem bounce, sem cópia, sem serialização banda-a-banda.
+3. Medição registrada (P5, `docs/QUALITY.md`) comparando antes×depois:
+   fps do render, latência de flush ponta-a-ponta, uso de SRAM interna
+   livre. Soak sem regressão visual (mesmo critério de S2.6).
+4. Se não for viável nesta versão do IDF: documentar a limitação (link
+   pro issue/changelog do IDF se existir) e manter o fatiamento em bandas
+   como solução permanente -- não como gambiarra provisória.
+5. Gate: medição registrada + soak sem regressão + (se aplicável) fps ≥
+   baseline de S2.6.
 
 ### S5 — Visão (presença e identidade) — **FASE ADIADA**
 
