@@ -23,4 +23,13 @@
  * futuro hardcodar o pino se vier a usá-lo. */
 #define NB_HW_GPIO_LED_STATUS_ONBOARD 38u
 
+/* audio_hal (S4.1): I2S full-duplex compartilhado -- um único periférico,
+ * BCLK/WS comuns ao mic (INMP441) e ao speaker (MAX98357A), HARDWARE.md.
+ * Sem MCLK (nenhum dos dois precisa). */
+#define NB_HW_GPIO_I2S_BCLK 40u
+#define NB_HW_GPIO_I2S_WS 41u
+#define NB_HW_GPIO_I2S_DIN 39u  /* mic (INMP441) -- canal RX */
+#define NB_HW_GPIO_I2S_DOUT 42u /* speaker (MAX98357A) -- canal TX */
+#define NB_HW_AUDIO_SAMPLE_RATE_HZ 16000u
+
 #endif

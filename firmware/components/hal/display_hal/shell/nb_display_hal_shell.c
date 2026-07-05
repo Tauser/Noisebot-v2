@@ -30,10 +30,22 @@
  * com o sync manual — o clock nunca foi o problema. */
 #define NB_DISPLAY_HAL_PIXEL_CLOCK_HZ (40 * 1000 * 1000)
 
+/* S4.1: o flush era um único draw_bitmap de 320x240x2 = 150 KB. Como o
+ * esp_lcd_panel_io_spi não faz DMA direto da PSRAM (use_psram=false, ver
+ * comentário acima), o spi_master aloca um bounce buffer interno
+ * DMA-capable do tamanho da transferência a cada frame. Depois que o I2S
+ * (audio_hal) subiu e passou a consumir SRAM interna DMA-capable do mesmo
+ * pool, esse bounce de 150 KB deixou de caber -> setup_dma_priv_buffer
+ * falhava com ESP_ERR_NO_MEM em todo flush (tela congelava num frame
+ * cortado, render seguia normal por trás). Fatiar o flush em bandas
+ * horizontais deixa cada bounce pequeno (~19 KB @ 30 linhas) e sempre
+ * alocável mesmo com o I2S ativo, mantendo o framebuffer em PSRAM e o I2S
+ * DMA em SRAM (invariantes do CLAUDE.md). 240 linhas / 8 = 30 exatas. */
+#define NB_DISPLAY_HAL_FLUSH_BANDS 8u
+
 static const char *TAG = "display_hal";
 static nb_display_hal_t s_hal;
 static esp_lcd_panel_handle_t s_panel;
-static size_t s_buffer_bytes;
 
 /* esp_lcd_panel_draw_bitmap() no SPI é assíncrono: enfileira a transferência
  * DMA e retorna antes de os pixels saírem pela SPI. Um frame cheio
@@ -66,8 +78,6 @@ esp_err_t nb_display_hal_shell_init(void)
     uint16_t *buffer_b;
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_err_t err;
-
-    s_buffer_bytes = buffer_bytes;
 
     /* esp_cache_msync() exige endereço alinhado à linha de cache (32 bytes
      * no ESP32-S3) -- heap_caps_malloc não garante isso, só o tamanho já
@@ -193,36 +203,51 @@ uint16_t *nb_display_hal_shell_get_back_buffer(void)
 esp_err_t nb_display_hal_shell_flush_and_swap(void)
 {
     esp_err_t err;
-    uint16_t *back_buffer;
+    uint16_t *const back_buffer = nb_display_hal_get_back_buffer(&s_hal);
+    const int width = (int)NB_DISPLAY_HAL_WIDTH;
+    const int height = (int)NB_DISPLAY_HAL_HEIGHT;
+    const int band_rows = (height + (int)NB_DISPLAY_HAL_FLUSH_BANDS - 1) /
+                          (int)NB_DISPLAY_HAL_FLUSH_BANDS;
 
-    /* Barreira: espera a transferência DMA anterior terminar antes de enfileirar
-     * a próxima e trocar os buffers. Garante uma única transferência em voo e
-     * que o buffer prestes a ser reusado não está mais sendo lido pelo DMA. */
+    /* Envia o frame em bandas horizontais, serializando banda a banda pelo
+     * s_trans_done: uma única transferência (e um único bounce interno) em
+     * voo por vez. Cada banda começa em endereço e tem tamanho múltiplos de
+     * 32 bytes (offset = y0*320*2, tamanho = linhas*320*2), então o
+     * esp_cache_msync continua com o alinhamento que ele exige. */
+    for (int y0 = 0; y0 < height; y0 += band_rows) {
+        int y1 = y0 + band_rows;
+        if (y1 > height) {
+            y1 = height;
+        }
+        uint16_t *const band = back_buffer + (size_t)y0 * (size_t)width;
+        const size_t band_bytes = (size_t)(y1 - y0) * (size_t)width * sizeof(uint16_t);
+
+        /* Espera a banda anterior terminar antes de enfileirar a próxima. */
+        xSemaphoreTake(s_trans_done, portMAX_DELAY);
+
+        /* esp_lcd_panel_io_spi não seta SPI_TRANS_DMA_USE_PSRAM, então o
+         * spi_master não sincroniza cache sozinho pra buffers em PSRAM (ver
+         * comentário no topo). Sem isso o DMA pode ler dado ainda em cache
+         * -> corrupção de cor (confirmado em bancada). */
+        err = esp_cache_msync(band, band_bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+        if (err != ESP_OK) {
+            xSemaphoreGive(s_trans_done);
+            return err;
+        }
+
+        err = esp_lcd_panel_draw_bitmap(s_panel, 0, y0, width, y1, band);
+        if (err != ESP_OK) {
+            /* Banda não enfileirada: devolve o token para não travar o loop. */
+            xSemaphoreGive(s_trans_done);
+            return err;
+        }
+    }
+
+    /* Só troca os buffers depois que a última banda saiu: aí o back buffer
+     * não está mais sendo lido pelo DMA. */
     xSemaphoreTake(s_trans_done, portMAX_DELAY);
-
-    back_buffer = nb_display_hal_get_back_buffer(&s_hal);
-
-    /* esp_lcd_panel_io_spi não seta SPI_TRANS_DMA_USE_PSRAM nas transações
-     * que monta, então o spi_master não sincroniza cache sozinho pra
-     * buffers em PSRAM (ver comentário no topo do arquivo). Sem isso o DMA
-     * pode ler dado ainda não escrito de volta da cache -> corrupção de
-     * cor, independente de clock ou fiação (confirmado em bancada). */
-    err = esp_cache_msync(back_buffer, s_buffer_bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-    if (err != ESP_OK) {
-        xSemaphoreGive(s_trans_done);
-        return err;
-    }
-
-    err = esp_lcd_panel_draw_bitmap(s_panel, 0, 0, NB_DISPLAY_HAL_WIDTH, NB_DISPLAY_HAL_HEIGHT,
-                                    back_buffer);
-    if (err != ESP_OK) {
-        /* Não houve transferência em voo: devolve o token para não travar o
-         * próximo flush. */
-        xSemaphoreGive(s_trans_done);
-        return err;
-    }
-
     nb_display_hal_swap(&s_hal);
+    xSemaphoreGive(s_trans_done);
     return ESP_OK;
 }
 

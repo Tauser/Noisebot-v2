@@ -14,6 +14,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/hal/touch_hal"
     "components/hal/nb_hw_config"
     "components/hal/led_hal"
+    "components/hal/audio_hal"
     "components/services/touch_service"
     "components/services/led_service"
     "components/infra/event_bus"

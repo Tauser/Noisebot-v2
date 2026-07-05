@@ -43,6 +43,10 @@
  * (fire-and-forget, sem bloquear se o server estiver offline).
  * mind_link_shell decodifica TIMER_SET/TIMER_CANCEL e publica no
  * event_bus; reflex_engine_shell despacha pro schedule_core_shell.
+ * S4.1: audio_hal (I2S full-duplex 16kHz, GPIO39-42) numa task de
+ * bring-up temporária -- toca um tom de teste continuamente enquanto lê
+ * o mic, loga RMS + contadores de overflow/timeout periodicamente.
+ * Substituída quando audio_service/wake_service existirem (S4.2+).
  */
 
 #include <stdbool.h>
@@ -69,9 +73,13 @@
 #include "nb_led_service_shell.h"
 #include "nb_circadian_core_shell.h"
 #include "nb_schedule_core_shell.h"
+#include "nb_audio_hal_shell.h"
+#include "audio_hal.h"
+#include "nb_hw_config.h"
 #include "idle_engine.h"
 #include "emotion_core.h"
 #include "tiny_fsm.h"
+#include <math.h>
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
@@ -85,6 +93,23 @@
 #define NB_APP_MAIN_TOUCH_STACK 3072u
 #define NB_APP_MAIN_TOUCH_PRIO 8
 #define NB_APP_MAIN_TOUCH_TICK_MS 20u /* 50Hz, mesma cadência do v1 */
+#define NB_APP_MAIN_AUDIO_STACK 4096u
+#define NB_APP_MAIN_AUDIO_PRIO 18 /* VOICE.md §6: audio_io > wake/vad(16) > mind_link(12) > render(8) */
+#define NB_APP_MAIN_AUDIO_TONE_HZ 500u
+/* Causa raiz real do bug de bancada (N32R16V, 2026-07-06): o buffer de
+ * escrita tem que fornecer pelo menos tanto áudio quanto o loop consome
+ * em tempo real por iteração, senão o TX passa fome (starvation) a cada
+ * volta -- 128 amostras (8ms) por loop de ~16ms (pautado pelo read() de
+ * 256 amostras) alimentava metade do necessário, gerando tx_ovf crescente
+ * quase 1-pra-1 com cada iteração e contenção real com o SPI do display
+ * (reduzir dma_desc_num/frame_num sozinho não resolvia -- o problema era
+ * taxa de alimentação, não capacidade de buffer). Igual ao chunk de
+ * leitura agora: 256 amostras = 8 períodos inteiros de 500Hz, sem clique. */
+#define NB_APP_MAIN_AUDIO_TONE_SAMPLES 256u
+#define NB_APP_MAIN_AUDIO_TONE_AMPLITUDE 8000.0f
+#define NB_APP_MAIN_AUDIO_READ_CHUNK 256u /* VOICE.md §4: granularidade de streaming */
+#define NB_APP_MAIN_AUDIO_IO_TIMEOUT_MS 200u
+#define NB_APP_MAIN_AUDIO_LOG_PERIOD_US 5000000ll /* 5s, mesmo padrão do fps de face_demo */
 
 static const char *TAG = "nb2";
 
@@ -229,6 +254,67 @@ static void nb_app_main_face_demo_task(void *arg)
     }
 }
 
+/* S4.1: bring-up temporário do audio_hal -- toca um tom de 400Hz (período
+ * inteiro em 40 amostras a 16kHz, sem clique de junção entre blocos)
+ * continuamente enquanto lê o mic, logando RMS + contadores de
+ * overflow/timeout a cada ~5s (mesma cadência do fps de face_demo).
+ * Sem vTaskDelay: read/write bloqueantes já pautam o loop no ritmo real
+ * do DMA I2S. Substituído quando audio_service/wake_service existirem. */
+static void nb_app_main_audio_task(void *arg)
+{
+    static int16_t tone[NB_APP_MAIN_AUDIO_TONE_SAMPLES];
+    static int16_t mic_buf[NB_APP_MAIN_AUDIO_READ_CHUNK];
+    int64_t next_log_us;
+
+    (void)arg;
+
+    for (uint32_t i = 0; i < NB_APP_MAIN_AUDIO_TONE_SAMPLES; ++i) {
+        /* M_PI não é garantido pelo newlib sem _GNU_SOURCE -- constante
+         * local, mesma prática de idle_engine (NB_IDLE_PI). Fase pela
+         * razão tone_hz/sample_rate (não pelo tamanho do buffer) -- dá
+         * um número inteiro de períodos (4x 32 amostras) sem clique de
+         * junção no fim do buffer. */
+        const float pi = 3.14159265358979323846f;
+        const float phase =
+            2.0f * pi * (float)NB_APP_MAIN_AUDIO_TONE_HZ * (float)i / (float)NB_HW_AUDIO_SAMPLE_RATE_HZ;
+        tone[i] = (int16_t)(NB_APP_MAIN_AUDIO_TONE_AMPLITUDE * sinf(phase));
+    }
+
+    next_log_us = esp_timer_get_time() + NB_APP_MAIN_AUDIO_LOG_PERIOD_US;
+
+    esp_err_t last_write_err = ESP_OK;
+    esp_err_t last_read_err = ESP_OK;
+    uint32_t loop_count = 0;
+
+    for (;;) {
+        size_t written = 0;
+        last_write_err = nb_audio_hal_shell_write(tone, NB_APP_MAIN_AUDIO_TONE_SAMPLES,
+                                                  NB_APP_MAIN_AUDIO_IO_TIMEOUT_MS, &written);
+
+        size_t read_count = 0;
+        last_read_err = nb_audio_hal_shell_read(mic_buf, NB_APP_MAIN_AUDIO_READ_CHUNK,
+                                                NB_APP_MAIN_AUDIO_IO_TIMEOUT_MS, &read_count);
+        ++loop_count;
+
+        const int64_t now_us = esp_timer_get_time();
+        if (now_us >= next_log_us) {
+            next_log_us = now_us + NB_APP_MAIN_AUDIO_LOG_PERIOD_US;
+            const float rms = nb_audio_hal_rms_s16(mic_buf, read_count);
+            ESP_LOGI(TAG, "audio_bringup: loops=%u write_err=%s(%d) written=%u read_err=%s(%d) read=%u",
+                    (unsigned)loop_count, esp_err_to_name(last_write_err), (int)last_write_err,
+                    (unsigned)written, esp_err_to_name(last_read_err), (int)last_read_err,
+                    (unsigned)read_count);
+            loop_count = 0;
+            ESP_LOGI(TAG,
+                    "audio_bringup: mic_rms=%.1f rx_ovf=%u tx_ovf=%u rx_timeout=%u tx_timeout=%u",
+                    (double)rms, (unsigned)nb_audio_hal_shell_get_rx_overflow_count(),
+                    (unsigned)nb_audio_hal_shell_get_tx_overflow_count(),
+                    (unsigned)nb_audio_hal_shell_get_rx_timeout_count(),
+                    (unsigned)nb_audio_hal_shell_get_tx_timeout_count());
+        }
+    }
+}
+
 /* touch_service (S3.1) a 50Hz -- publica no event_bus (S3.2, dentro do
  * shell), quem consome é reflex_engine_shell na task de face. */
 static void nb_app_main_touch_task(void *arg)
@@ -322,6 +408,26 @@ void app_main(void)
     } else {
         xTaskCreate(nb_app_main_touch_task, "touch", NB_APP_MAIN_TOUCH_STACK, NULL,
                    NB_APP_MAIN_TOUCH_PRIO, NULL);
+    }
+
+    /* S4.1: audio_hal (I2S full-duplex) -- bring-up temporário até
+     * audio_service/wake_service existirem. Bug real de bancada
+     * (N32R16V, 2026-07-06): display cortando com ESP_ERR_NO_MEM
+     * constante depois que este task subia -- causa raiz é contenção real
+     * de SRAM interna DMA-capable entre o bounce buffer de 150 KB do
+     * esp_lcd_panel_io_spi (framebuffer em PSRAM, sem SPI_TRANS_DMA_USE_PSRAM,
+     * ver nb_display_hal_shell.c) e os descritores DMA do I2S deste
+     * componente -- exatamente a contenção render+I2S que o gate de S4.1
+     * exige fechar (re-valida S0.3). Corrigido fatiando o flush do
+     * display em bandas (nb_display_hal_shell.c); reduzir
+     * dma_desc_num/dma_frame_num aqui (audio_hal_shell) é mantido como
+     * margem de segurança de memória adicional. */
+    esp_err_t audio_err = nb_audio_hal_shell_init();
+    if (audio_err != ESP_OK) {
+        ESP_LOGE(TAG, "audio_hal falhou (%s) -- seguindo sem audio", esp_err_to_name(audio_err));
+    } else {
+        xTaskCreate(nb_app_main_audio_task, "audio_bringup", NB_APP_MAIN_AUDIO_STACK, NULL,
+                   NB_APP_MAIN_AUDIO_PRIO, NULL);
     }
 
     uint32_t heartbeat_count = 0;
