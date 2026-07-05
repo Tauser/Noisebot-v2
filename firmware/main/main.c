@@ -28,6 +28,9 @@
  * S1.2), reflex_engine_shell drena e aplica delta afetivo + evento de
  * FSM. Pulso sintético de emotion_core (substituto do toque real) removido:
  * o vetor agora só recebe estímulo real de toque.
+ * S3.3: led_service (WS2812 GPIO21, RMT) segue o estado do tiny_fsm a
+ * cada frame; reflex_engine_shell dispara o overlay de toque no mesmo
+ * lugar que já aplica em emotion_core/tiny_fsm.
  */
 
 #include <stdbool.h>
@@ -51,6 +54,7 @@
 #include "nb_touch_service_shell.h"
 #include "nb_event_bus_shell.h"
 #include "nb_reflex_engine_shell.h"
+#include "nb_led_service_shell.h"
 #include "idle_engine.h"
 #include "emotion_core.h"
 #include "tiny_fsm.h"
@@ -111,6 +115,7 @@ static void nb_app_main_face_demo_task(void *arg)
         nb_idle_engine_tick(&idle, NB_APP_MAIN_FACE_DEMO_TICK_MS, &idle_out);
         const nb_reflex_priority_t active_priority =
             nb_reflex_engine_shell_tick(&emotion, &fsm);
+        nb_led_service_shell_tick(nb_tiny_fsm_get_state(&fsm), NB_APP_MAIN_FACE_DEMO_TICK_MS);
 
         const nb_face_expr_t nearest = nb_emotion_core_nearest_expression(&emotion);
         if (nearest != to_expr) {
@@ -224,6 +229,15 @@ void app_main(void)
      * poll (face/reflex). */
     ESP_ERROR_CHECK(nb_event_bus_shell_init());
     nb_reflex_engine_shell_init();
+
+    esp_err_t led_err = nb_led_service_shell_init();
+    if (led_err != ESP_OK) {
+        ESP_LOGE(TAG, "led_service falhou (%s) -- seguindo sem LED", esp_err_to_name(led_err));
+    } else {
+        /* Brilho fixo em 15% -- fonte circadiano real (hora do dia) fica
+         * pro S3.4, aqui é só o valor default aplicado ao mecanismo. */
+        nb_led_service_shell_set_brightness_scale(0.15f);
+    }
 
     esp_err_t wifi_err = nb_wifi_setup_shell_init();
     if (wifi_err != ESP_OK) {

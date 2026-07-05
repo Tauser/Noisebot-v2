@@ -1221,7 +1221,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | ---- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
 | S3.1 | `touch_hal` + `touch_service` (calibração do v1 2.2A: threshold 20%, debounce, TAP/LONG/SUSTAINED) | toque intencional 50/50; zero falso positivo em 1 h de ruído ambiente; reproduzível após reboot | `FEITO` |
 | S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `FEITO` |
-| S3.3 | `led_service` (WS2812 no 46; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `PENDENTE` |
+| S3.3 | `led_service` (WS2812 no 21; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `FEITO` |
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `PENDENTE` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `PENDENTE` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `PENDENTE` |
@@ -1360,6 +1360,76 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
   < 80ms (`QUALITY.md`).
 - Gate de saída fechado: host-test da arbitragem verde + latência real de
   bancada medida e dentro do budget. S3.2 encerrado: `FEITO`.
+
+**Correção de escopo (2026-07-04, decisão do usuário):** o pino do WS2812
+na tabela de S3.3 estava registrado como GPIO46 -- inconsistente com
+`HARDWARE.md`/`VISUAL.md` (GPIO21, 2x WS2812 externos em cadeia) e com
+GPIO46 sendo strap pin ("nunca sinal idle-HIGH", `HARDWARE.md`). Corrigido
+pra GPIO21 antes de iniciar a implementação; nenhuma mudança de pino real,
+só correção de typo no ROADMAP.
+
+**Plano S3.3 (antes de implementar):**
+
+1. `nb_hw_config.h` (componente novo, `components/hal/nb_hw_config`,
+   header-only): centraliza `NB_HW_GPIO_TOUCH2`/`NB_HW_TOUCH_CHANNEL` (2),
+   `NB_HW_GPIO_WS2812` (21), `NB_HW_LED_COUNT` (2), reserva
+   `NB_HW_GPIO_LED_STATUS_ONBOARD` (38, fora de escopo -- LED de status
+   embutido da placa, não expressivo, `HARDWARE.md`). `touch_hal` migra o
+   `#define` local de GPIO pra essa constante (débito de CLAUDE.md §Código
+   corrigido nesta subfase, decisão do usuário).
+2. `led_hal` (L0, `components/hal/led_hal`): casca fina sobre
+   `espressif/led_strip` (RMT), GPIO21, 2 LEDs em cadeia -- sem lógica
+   não-trivial pra extrair, só `shell/` (sem núcleo separado, mesma regra
+   de P3 ser "pra lógica não-trivial"). Primeiro uso do component manager
+   no v2 (`idf_component.yml`).
+3. `led_service` (L3, `components/services/led_service`): núcleo C17 puro
+   reaproveitando `nb_fsm_state_t` do `tiny_fsm` (sem duplicar enum, mesmo
+   padrão de `emotion_core`↔`renderer`). Tabela estado→(cor, período de
+   respiração) de `VISUAL.md` §6 (IDLE quente ~6s, ATTENTIVE frio médio,
+   SLEEPING ~2%, ERROR vermelho intermitente **nunca suprimido**, TOUCH
+   flash quente+fade longo como overlay); BOOT/SAFE_MODE sem cor definida
+   em VISUAL.md -- branco frio/laranja como default de engenharia
+   (documentado no README). Modelo two-layer (base+overlay) e prioridade
+   herdados do v1 (ERROR/SAFE_MODE nunca suprimidos por overlay). Brilho
+   circadiano: multiplicador `[0,1]` injetado -- driver real de
+   hora-do-dia fica pro S3.4, aqui só o mecanismo. Gamma 2.2 na saída.
+   `tick()` retorna se o frame mudou (dirty-flag) pra casca só escrever no
+   RMT quando necessário -- mecanismo direto contra flicker, herdado do
+   v1.
+4. `shell/nb_led_service_shell.c/.h`: tick por frame com o estado do
+   `tiny_fsm` + `dt_ms`; `nb_led_service_shell_trigger_touch()` disparado
+   por `reflex_engine_shell` quando aplica evento de toque (mesmo lugar
+   que já aplica em `emotion_core`/`tiny_fsm` -- reaproveita a arbitragem
+   existente, sem duplicar lógica de prioridade).
+5. `host_test` no mesmo commit: tabela estado→cor/período, prioridade
+   (ERROR nunca suprimido por overlay), overlay de toque dispara e volta
+   ao base sozinho, brilho circadiano clampado e aplicado corretamente,
+   gamma em pontos conhecidos, dirty-flag correto, `NULL` seguro.
+6. `main.c`: religa `led_service_shell` na task de face (mesmo tick de
+   33ms) e no `reflex_engine_shell`.
+7. Gate: host-test + `idf.py build` limpo + checagem visual em bancada
+   (sem flicker, respiração perceptível, flash de toque visível).
+
+**Evidência S3.3 (2026-07-05):**
+
+- Implementado `nb_hw_config.h` (header-only, GPIO2/canal touch, GPIO21
+  WS2812, GPIO38 status onboard reservado); `touch_hal` migrado. `led_hal`
+  (casca fina sobre `espressif/led_strip`, primeiro uso do component
+  manager no v2). Núcleo `led_service` (tabela estado→cor/onda de
+  `VISUAL.md` §6, two-layer base+overlay, ERROR/SAFE_MODE nunca
+  suprimidos, brilho circadiano mecanismo, gamma 2.2, dirty-flag).
+  `reflex_engine_shell` dispara o overlay de toque no mesmo lugar que já
+  aplica em `emotion_core`/`tiny_fsm`.
+- Gate local: `run_host_tests.py` verde (15 componentes, incluindo
+  `led_service`); `idf.py build` limpo (`espressif/led_strip 3.0.3`
+  resolvido via component manager); `scan_secrets.py` limpo.
+- **Ensaio de bancada real (2026-07-05, N32R16V via COM5, 2x WS2812 em
+  GPIO21):** `led_hal OK -- GPIO21, 2 LEDs` no boot, sem erro de RMT.
+  Observação visual do usuário: **respiração suave do IDLE sem flicker**,
+  **flash quente bem visível no toque** (log confirma `reaction event=0
+  priority=1 fsm_event=7` correspondente). Critério de paridade (linguagem
+  de LED coerente com estado, sem flicker) confirmado.
+- Gate de saída fechado. S3.3 encerrado: `FEITO`.
 
 ### S4 — Voz (o robô conversa)
 

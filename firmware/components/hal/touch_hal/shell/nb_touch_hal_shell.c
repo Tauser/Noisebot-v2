@@ -8,9 +8,8 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nb_hw_config.h"
 
-#define NB_TOUCH_HAL_SHELL_GPIO 2
-#define NB_TOUCH_HAL_SHELL_CHANNEL 2
 #define NB_TOUCH_HAL_SHELL_SETTLE_MS 200u
 #define NB_TOUCH_HAL_SHELL_CALIB_SAMPLES 10u
 #define NB_TOUCH_HAL_SHELL_CALIB_SAMPLE_INTERVAL_MS 10u /* 10 amostras em 100ms */
@@ -47,7 +46,7 @@ esp_err_t nb_touch_hal_shell_init(uint32_t *out_baseline)
         .charge_speed = TOUCH_CHARGE_SPEED_7,
         .init_charge_volt = TOUCH_INIT_CHARGE_VOLT_DEFAULT,
     };
-    err = touch_sensor_new_channel(s_sens_handle, NB_TOUCH_HAL_SHELL_CHANNEL, &chan_cfg,
+    err = touch_sensor_new_channel(s_sens_handle, NB_HW_TOUCH_CHANNEL, &chan_cfg,
                                    &s_chan_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "new_channel falhou: %s", esp_err_to_name(err));
@@ -82,8 +81,8 @@ esp_err_t nb_touch_hal_shell_init(uint32_t *out_baseline)
 
     *out_baseline = nb_touch_hal_compute_baseline(samples, NB_TOUCH_HAL_SHELL_CALIB_SAMPLES);
     s_initialized = true;
-    ESP_LOGI(TAG, "touch_hal OK -- GPIO%d canal %d, baseline=%u", NB_TOUCH_HAL_SHELL_GPIO,
-             NB_TOUCH_HAL_SHELL_CHANNEL, (unsigned)*out_baseline);
+    ESP_LOGI(TAG, "touch_hal OK -- GPIO%d canal %d, baseline=%u", NB_HW_GPIO_TOUCH2,
+             NB_HW_TOUCH_CHANNEL, (unsigned)*out_baseline);
     return ESP_OK;
 }
 

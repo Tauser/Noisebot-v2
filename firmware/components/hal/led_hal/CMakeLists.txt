@@ -1,8 +1,7 @@
 idf_component_register(
-    SRCS "reflex_engine.c" "shell/nb_reflex_engine_shell.c"
-    INCLUDE_DIRS "." "shell"
-    REQUIRES tiny_fsm emotion_core event_bus touch_service led_service
-    PRIV_REQUIRES esp_timer
+    SRCS "shell/nb_led_hal_shell.c"
+    INCLUDE_DIRS "shell"
+    REQUIRES nb_hw_config led_strip
 )
 
 component_compile_options(

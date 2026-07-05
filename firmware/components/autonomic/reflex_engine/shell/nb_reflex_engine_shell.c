@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "nb_event_bus_shell.h"
+#include "nb_led_service_shell.h"
 #include "nb_touch_service_shell.h"
 #include "touch_service.h"
 
@@ -45,6 +46,12 @@ static void apply_reaction(const nb_reflex_reaction_t *reaction, nb_emotion_stat
         if (nb_tiny_fsm_get_state(fsm) == NB_FSM_STATE_IDLE) {
             nb_reflex_engine_force_clear(&s_engine);
         }
+    }
+    /* S3.3: flash de toque no LED -- mesmo gatilho que já move
+     * emotion_core/tiny_fsm (VISUAL.md §6, overlay ignorado sozinho pelo
+     * núcleo de led_service se ERROR/SAFE_MODE estiver ativo). */
+    if (reaction->fsm_event == NB_FSM_EVENT_TOUCH) {
+        nb_led_service_shell_trigger_touch();
     }
 }
 
