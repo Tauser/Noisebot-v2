@@ -41,7 +41,28 @@ typedef enum {
      * circadian_core (L4) direto -- "camada chama só pra baixo", cross-
      * layer não-adjacente sempre via bus (ARCHITECTURE.md §2). */
     NB_EVENT_TYPE_TIME_SYNC = 4,
+    /* S3.5: mind_link_shell publica TIMER_SET/TIMER_CANCEL aqui em vez de
+     * chamar schedule_core (L4) direto -- mesma regra do TIME_SYNC. */
+    NB_EVENT_TYPE_TIMER = 5,
 } nb_event_type_t;
+
+/* Payload de NB_EVENT_TYPE_TIMER -- cabe nos 16 bytes de nb_event_t.payload
+ * (8+4+4). Definido aqui (L1 infra, não em schedule_core/L4) porque quem
+ * publica (mind_link_shell, L3) não pode incluir um header de camada
+ * superior só por causa de um tipo de payload -- event_bus é o ponto
+ * neutro que os dois lados (mind_link L3, schedule_core/reflex_engine L4)
+ * já incluem (S3.5). Rótulo de TIMER_SET remoto não cabe aqui (fica vazio,
+ * ver README de schedule_core). */
+typedef enum {
+    NB_SCHEDULE_EVENT_ACTION_SET = 0,
+    NB_SCHEDULE_EVENT_ACTION_CANCEL = 1,
+} nb_schedule_event_action_t;
+
+typedef struct {
+    uint64_t fire_at_unix_ms; /* só relevante pra SET */
+    uint32_t timer_id;
+    nb_schedule_event_action_t action;
+} nb_schedule_event_payload_t;
 
 typedef enum {
     NB_EVENT_AUDIT_PUBLISHED = 0,

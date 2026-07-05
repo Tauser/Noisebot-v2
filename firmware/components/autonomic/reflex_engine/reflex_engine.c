@@ -67,6 +67,9 @@ static const nb_reflex_table_entry_t NB_REFLEX_TABLE[NB_REFLEX_STIMULUS_COUNT] =
     [NB_REFLEX_STIMULUS_IDLE_LONG] = {
         NB_REFLEX_PRIORITY_UNCLAIMED, -0.10f, -0.10f, NB_FSM_EVENT_COUNT, 0u,
     },
+    [NB_REFLEX_STIMULUS_TIMER_FIRED] = {
+        NB_REFLEX_PRIORITY_HINT, 0.30f, 0.35f, NB_FSM_EVENT_COUNT, 4000u,
+    },
 };
 
 void nb_reflex_engine_init(nb_reflex_engine_t *engine) {

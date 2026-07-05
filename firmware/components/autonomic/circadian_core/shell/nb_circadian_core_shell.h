@@ -26,6 +26,9 @@ extern "C" {
 
 void nb_circadian_core_shell_init(void);
 
+/* unix_ms estimado agora (S3.5: fonte de hora do schedule_core). */
+uint64_t nb_circadian_core_shell_now_unix_ms(void);
+
 /* Recalibra a âncora com um TIME_SYNC real. Chamado por reflex_engine_shell
  * (mesma camada L4, único leitor do event_bus -- FIFO de leitor único, não
  * dá pra ter dois consumidores fazendo poll do mesmo bus) quando drena um

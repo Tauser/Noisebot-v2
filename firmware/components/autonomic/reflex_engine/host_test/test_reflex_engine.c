@@ -153,6 +153,22 @@ static void test_unknown_stimulus_is_noop(void) {
     CHECK(!reaction.has_affect_delta);
 }
 
+/* S3.5: disparo de timer reaproveita a banda P3/HINT (não abre uma 5ª
+ * banda de claim) e tem afeto levemente positivo (chamar atenção, não
+ * alarmar). */
+static void test_timer_fired_claims_hint_band_with_positive_affect(void) {
+    nb_reflex_engine_t engine;
+    nb_reflex_reaction_t reaction;
+
+    nb_reflex_engine_init(&engine);
+    nb_reflex_engine_on_stimulus(&engine, NB_REFLEX_STIMULUS_TIMER_FIRED, 0u, &reaction);
+
+    CHECK(reaction.active_priority == NB_REFLEX_PRIORITY_HINT);
+    CHECK(reaction.has_affect_delta);
+    CHECK(reaction.delta_valence > 0.0f);
+    CHECK(reaction.delta_arousal > 0.0f);
+}
+
 static void test_null_is_safe(void) {
     nb_reflex_reaction_t reaction;
 
@@ -173,6 +189,7 @@ int main(void) {
     test_tick_reclassifies_sustained_touch_by_duration();
     test_force_clear_zeroes_stack_regardless_of_expiry();
     test_unknown_stimulus_is_noop();
+    test_timer_fired_claims_hint_band_with_positive_affect();
     test_null_is_safe();
 
     if (failures == 0) {

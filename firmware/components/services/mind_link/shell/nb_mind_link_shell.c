@@ -29,6 +29,14 @@ static const char *TAG = "mind_link";
 static nb_mind_link_session_t s_session;
 static TaskHandle_t s_task_handle;
 
+/* S3.5: disparo de timer pedido de fora da task (main.c/schedule_core_shell)
+ * -- flag simples em vez de socket compartilhado entre tasks (só a task de
+ * mind_link possui `sock`; enviar de outra task arriscaria interleaving de
+ * send() concorrente). Único produtor (main.c), único consumidor (esta
+ * task), suficiente sem fila/mutex. */
+static volatile bool s_pending_timer_fired;
+static volatile uint32_t s_pending_timer_fired_id;
+
 typedef struct {
     uint8_t data[NB_MIND_LINK_FRAME_BUF_CAP];
     size_t len;
@@ -153,6 +161,21 @@ static bool nb_mind_link_shell_send_heartbeat(int sock, uint32_t counter, uint32
                                          (uint16_t)payload_len);
 }
 
+static bool nb_mind_link_shell_send_timer_fired(int sock, uint32_t timer_id, uint32_t seq)
+{
+    nbp2_msg_event_timer_fired_t event;
+    uint8_t payload[32];
+    size_t payload_len;
+
+    event.timer_id = timer_id;
+
+    if (nbp2_encode_event_timer_fired(&event, payload, sizeof(payload), &payload_len) != NBP2_OK) {
+        return false;
+    }
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_EVENT_TIMER_FIRED, seq, payload,
+                                         (uint16_t)payload_len);
+}
+
 /* Extrai um frame completo do acumulador, se houver. Descarta byte a byte
  * até achar um SOF válido (resync) e descarta o frame inteiro em caso de
  * CRC ruim ou tamanho absurdo, para nunca travar em lixo de socket. */
@@ -237,10 +260,60 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
         }
         break;
     }
+    case NBP2_MSG_TIMER_SET: {
+        nbp2_msg_timer_set_t ts;
+
+        if (nbp2_decode_timer_set(frame->payload, frame->payload_len, &ts) == NBP2_OK) {
+            /* Rótulo não cabe nos 16 bytes do payload do bus (fica vazio
+             * pro timer criado remotamente, README de schedule_core).
+             * Publica no bus em vez de chamar schedule_core (L4) direto
+             * -- mesma regra do TIME_SYNC (S3.4). */
+            nb_event_t bus_event = {
+                .type = NB_EVENT_TYPE_TIMER,
+                .priority = NB_EVENT_PRIORITY_NORMAL,
+                .timestamp_ms = now_ms,
+                .payload_len = (uint8_t)sizeof(nb_schedule_event_payload_t),
+            };
+            nb_schedule_event_payload_t sched_payload = {
+                .fire_at_unix_ms = ts.fire_at_unix_ms,
+                .timer_id = ts.timer_id,
+                .action = NB_SCHEDULE_EVENT_ACTION_SET,
+            };
+            memcpy(bus_event.payload, &sched_payload, sizeof(sched_payload));
+            nb_event_bus_shell_publish(&bus_event);
+        }
+        break;
+    }
+    case NBP2_MSG_TIMER_CANCEL: {
+        nbp2_msg_timer_cancel_t tc;
+
+        if (nbp2_decode_timer_cancel(frame->payload, frame->payload_len, &tc) == NBP2_OK) {
+            nb_event_t bus_event = {
+                .type = NB_EVENT_TYPE_TIMER,
+                .priority = NB_EVENT_PRIORITY_NORMAL,
+                .timestamp_ms = now_ms,
+                .payload_len = (uint8_t)sizeof(nb_schedule_event_payload_t),
+            };
+            nb_schedule_event_payload_t sched_payload = {
+                .fire_at_unix_ms = 0u,
+                .timer_id = tc.timer_id,
+                .action = NB_SCHEDULE_EVENT_ACTION_CANCEL,
+            };
+            memcpy(bus_event.payload, &sched_payload, sizeof(sched_payload));
+            nb_event_bus_shell_publish(&bus_event);
+        }
+        break;
+    }
     default:
         ESP_LOGD(TAG, "frame tipo 0x%04x ignorado", (unsigned)frame->type);
         break;
     }
+}
+
+void nb_mind_link_shell_notify_timer_fired(uint32_t timer_id)
+{
+    s_pending_timer_fired_id = timer_id;
+    s_pending_timer_fired = true;
 }
 
 static void nb_mind_link_shell_task(void *arg)
@@ -293,6 +366,23 @@ static void nb_mind_link_shell_task(void *arg)
                     ESP_LOGW(TAG, "falha ao enviar HEARTBEAT");
                     nb_mind_link_session_on_disconnected(&s_session);
                     break;
+                }
+            }
+
+            /* S3.5: EVENT_TIMER_FIRED é fire-and-forget -- sem READY, o
+             * reflexo local já disparou de qualquer jeito (schedule_core_
+             * shell/reflex_engine_shell não dependem do envio pro server),
+             * então só descarta o pendente sem tentar reenviar depois
+             * (protocolo não define backlog/reenvio pra este evento). */
+            if (s_pending_timer_fired) {
+                const uint32_t timer_id = s_pending_timer_fired_id;
+                s_pending_timer_fired = false;
+                if (nb_mind_link_session_get_state(&s_session) == NB_MIND_LINK_STATE_READY) {
+                    if (nb_mind_link_shell_send_timer_fired(sock, timer_id, ++heartbeat_counter)) {
+                        ESP_LOGI(TAG, "EVENT_TIMER_FIRED enviado -- id=%u", (unsigned)timer_id);
+                    } else {
+                        ESP_LOGW(TAG, "falha ao enviar EVENT_TIMER_FIRED -- id=%u", (unsigned)timer_id);
+                    }
                 }
             }
 

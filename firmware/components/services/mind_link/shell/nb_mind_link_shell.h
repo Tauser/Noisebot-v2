@@ -20,6 +20,12 @@ esp_err_t nb_mind_link_shell_init(void);
 
 nb_mind_link_state_t nb_mind_link_shell_get_state(void);
 
+/* S3.5: pede o envio de EVENT_TIMER_FIRED (fire-and-forget -- sem sessão
+ * READY, o reflexo local já disparou de qualquer jeito e o pedido é só
+ * descartado, sem reenvio depois). Chamada de fora da task de mind_link
+ * (main.c/schedule_core_shell), por isso não recebe o socket direto. */
+void nb_mind_link_shell_notify_timer_fired(uint32_t timer_id);
+
 #ifdef __cplusplus
 }
 #endif

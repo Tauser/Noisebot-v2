@@ -9,6 +9,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/autonomic/tiny_fsm"
     "components/autonomic/reflex_engine"
     "components/autonomic/circadian_core"
+    "components/autonomic/schedule_core"
     "components/hal/display_hal"
     "components/hal/touch_hal"
     "components/hal/nb_hw_config"

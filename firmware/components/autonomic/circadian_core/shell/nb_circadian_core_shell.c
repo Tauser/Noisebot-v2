@@ -43,6 +43,13 @@ void nb_circadian_core_shell_init(void) {
     s_initialized = true;
 }
 
+uint64_t nb_circadian_core_shell_now_unix_ms(void) {
+    if (!s_initialized) {
+        return 0u;
+    }
+    return nb_circadian_core_now_unix_ms(&s_core);
+}
+
 void nb_circadian_core_shell_apply_time_sync(uint64_t unix_ms) {
     if (!s_initialized) {
         return;

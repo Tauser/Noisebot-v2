@@ -7,6 +7,7 @@
 #include "nb_circadian_core_shell.h"
 #include "nb_event_bus_shell.h"
 #include "nb_led_service_shell.h"
+#include "nb_schedule_core_shell.h"
 #include "nb_touch_service_shell.h"
 #include "touch_service.h"
 
@@ -56,6 +57,25 @@ static void apply_reaction(const nb_reflex_reaction_t *reaction, nb_emotion_stat
     }
 }
 
+void nb_reflex_engine_shell_apply_stimulus(nb_reflex_stimulus_t stimulus, nb_emotion_state_t *emotion,
+                                           nb_tiny_fsm_t *fsm) {
+    if (!s_initialized) {
+        return;
+    }
+    const uint32_t now_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    nb_reflex_reaction_t reaction;
+    nb_reflex_engine_on_stimulus(&s_engine, stimulus, now_ms, &reaction);
+    apply_reaction(&reaction, emotion, fsm);
+
+    /* S3.5: disparo de timer reaproveita o overlay visual do toque (mesma
+     * linguagem de VISUAL.md §6, sem overlay dedicado nesta fatia) -- só
+     * aqui, uma vez por chamada, não a cada tick com a claim P3 ainda
+     * ativa. */
+    if (stimulus == NB_REFLEX_STIMULUS_TIMER_FIRED) {
+        nb_led_service_shell_trigger_touch();
+    }
+}
+
 nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb_tiny_fsm_t *fsm) {
     if (!s_initialized) {
         return NB_REFLEX_PRIORITY_UNCLAIMED;
@@ -74,6 +94,17 @@ nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb
             uint64_t unix_ms = 0u;
             memcpy(&unix_ms, event.payload, sizeof(unix_ms));
             nb_circadian_core_shell_apply_time_sync(unix_ms);
+            continue;
+        }
+
+        if (event.type == NB_EVENT_TYPE_TIMER && event.payload_len == sizeof(nb_schedule_event_payload_t)) {
+            nb_schedule_event_payload_t payload;
+            memcpy(&payload, event.payload, sizeof(payload));
+            if (payload.action == NB_SCHEDULE_EVENT_ACTION_SET) {
+                nb_schedule_core_shell_handle_set(payload.timer_id, payload.fire_at_unix_ms);
+            } else {
+                nb_schedule_core_shell_handle_cancel(payload.timer_id);
+            }
             continue;
         }
 

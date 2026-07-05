@@ -37,6 +37,12 @@
  * tiny_fsm nas bordas de fase. mind_link_shell publica TIME_SYNC no
  * event_bus; reflex_engine_shell (único leitor do bus) despacha pro
  * circadian_core_shell.
+ * S3.5: schedule_core (timers/alarmes locais, NVS) tickado por frame;
+ * cada disparo aplica NB_REFLEX_STIMULUS_TIMER_FIRED (reflexo local:
+ * emoção + overlay de LED) e pede EVENT_TIMER_FIRED ao mind_link
+ * (fire-and-forget, sem bloquear se o server estiver offline).
+ * mind_link_shell decodifica TIMER_SET/TIMER_CANCEL e publica no
+ * event_bus; reflex_engine_shell despacha pro schedule_core_shell.
  */
 
 #include <stdbool.h>
@@ -62,6 +68,7 @@
 #include "nb_reflex_engine_shell.h"
 #include "nb_led_service_shell.h"
 #include "nb_circadian_core_shell.h"
+#include "nb_schedule_core_shell.h"
 #include "idle_engine.h"
 #include "emotion_core.h"
 #include "tiny_fsm.h"
@@ -74,6 +81,7 @@
 #define NB_APP_MAIN_FACE_DEMO_TICK_MS 33u
 #define NB_APP_MAIN_FPS_LOG_WINDOW_US 5000000ll /* janela de 5s pro fps medido */
 #define NB_APP_MAIN_FACE_DEMO_TRANSITION_MS 220u
+#define NB_APP_MAIN_LED_BRIGHTNESS_CAP 0.15f
 #define NB_APP_MAIN_TOUCH_STACK 3072u
 #define NB_APP_MAIN_TOUCH_PRIO 8
 #define NB_APP_MAIN_TOUCH_TICK_MS 20u /* 50Hz, mesma cadência do v1 */
@@ -121,13 +129,29 @@ static void nb_app_main_face_demo_task(void *arg)
         const nb_circadian_output_t circadian =
             nb_circadian_core_shell_tick(NB_APP_MAIN_FACE_DEMO_TICK_MS, &fsm);
         nb_idle_engine_set_mode(&idle, circadian.quiet_mode, NB_IDLE_ATTENTION_IDLE);
-        nb_led_service_shell_set_brightness_scale(circadian.brightness_scale);
+        /* Teto de brilho em 15% -- pedido do usuário, 2026-07-05. Mantém a
+         * variação circadiana (mais escuro à noite) mas nunca passa de 15%
+         * do brilho nominal do LED. */
+        nb_led_service_shell_set_brightness_scale(circadian.brightness_scale *
+                                                  NB_APP_MAIN_LED_BRIGHTNESS_CAP);
 
         nb_emotion_core_tick(&emotion, NB_APP_MAIN_FACE_DEMO_TICK_MS);
         nb_idle_engine_tick(&idle, NB_APP_MAIN_FACE_DEMO_TICK_MS, &idle_out);
         const nb_reflex_priority_t active_priority =
             nb_reflex_engine_shell_tick(&emotion, &fsm);
         nb_led_service_shell_tick(nb_tiny_fsm_get_state(&fsm), NB_APP_MAIN_FACE_DEMO_TICK_MS);
+
+        /* S3.5: cada timer disparado aplica o reflexo local (emoção +
+         * overlay de LED, dentro de apply_stimulus) e pede o envio de
+         * EVENT_TIMER_FIRED -- fire-and-forget, não bloqueia se o mind_link
+         * não estiver READY. */
+        uint32_t fired_timer_ids[NB_SCHEDULE_MAX_TIMERS];
+        const uint32_t fired_count =
+            nb_schedule_core_shell_tick(fired_timer_ids, NB_SCHEDULE_MAX_TIMERS);
+        for (uint32_t i = 0; i < fired_count; ++i) {
+            nb_reflex_engine_shell_apply_stimulus(NB_REFLEX_STIMULUS_TIMER_FIRED, &emotion, &fsm);
+            nb_mind_link_shell_notify_timer_fired(fired_timer_ids[i]);
+        }
 
         const nb_face_expr_t nearest = nb_emotion_core_nearest_expression(&emotion);
         if (nearest != to_expr) {
@@ -250,6 +274,9 @@ void app_main(void)
     /* S3.4: brilho circadiano passa a vir do circadian_core a cada frame
      * (nb_app_main_face_demo_task), substituindo o valor fixo de 15%. */
     nb_circadian_core_shell_init();
+
+    /* S3.5: timers/alarmes locais, persistidos em NVS. */
+    nb_schedule_core_shell_init();
 
     esp_err_t wifi_err = nb_wifi_setup_shell_init();
     if (wifi_err != ESP_OK) {

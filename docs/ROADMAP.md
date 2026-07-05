@@ -1223,7 +1223,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `FEITO` |
 | S3.3 | `led_service` (WS2812 no 21; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `FEITO` |
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `FEITO` |
-| S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `PENDENTE` |
+| S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `FEITO` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `PENDENTE` |
 
 **Plano S3.1 (antes de implementar):**
@@ -1535,6 +1535,95 @@ só correção de typo no ROADMAP.
   fizer sentido (contenção de SRAM interna entre WiFi e DMA de SPI),
   não é regressão desta subfase.
 - Gate de saída fechado. S3.4 encerrado: `FEITO`.
+
+**Plano S3.5 (antes de implementar):**
+
+1. `schedule_core` (`components/autonomic/schedule_core`, L4, núcleo C17
+   puro): array fixo `NB_SCHEDULE_MAX_TIMERS=8` slots (`timer_id`,
+   `fire_at_unix_ms`, `label[65]`), disparo one-shot em `unix_ms` absoluto
+   (sem recorrência -- protocolo `TIMER_SET`/`TIMER_CANCEL`/`EVENT_
+   TIMER_FIRED`, já com codegen, não define campo de recorrência).
+   `create()` faz upsert por `timer_id` (id já existente = atualiza,
+   suporta retry idempotente do protocolo sem duplicar); `cancel()` libera
+   o slot; `tick(now_unix_ms)` varre os slots e devolve os ids vencidos
+   (slot liberado no mesmo tick -- nunca dispara duas vezes). Layout
+   compatível com blob de NVS (sem ponteiros).
+2. `shell/nb_schedule_core_shell.c/.h`: persiste o array inteiro em NVS
+   (namespace próprio `"nb_sched"`, blob único, mesmo padrão de
+   `mind_link_token_shell`, que já usa `nvs_set_blob`/`get_blob` -- o
+   modelo escalar por chave do `app_config` não serve pra um array de
+   slots) a cada mutação (criar/cancelar/disparar) -- cobre "reboot não
+   perde nem duplica": ao reiniciar, carrega o array salvo; se algum timer
+   já venceu enquanto desligado, dispara no primeiro tick (atrasado, mas
+   dispara -- "não perde") e o slot já sai liberado do disparo ("não
+   duplica"). `tick(dt_ms)` usa `nb_circadian_core_shell_now_unix_ms()`
+   (novo getter) como fonte de hora.
+3. `event_bus` ganha `NB_EVENT_TYPE_TIMER` (payload `{fire_at_unix_ms,
+   timer_id, action SET|CANCEL}`, rótulo não cabe nos 16 bytes -- truncado/
+   vazio pra timer criado remotamente, rótulo completo só importa quando
+   houver criação local por voz em S4.6). `mind_link_shell` decodifica
+   `TIMER_SET`/`TIMER_CANCEL` (`nbp2_decode_timer_set/cancel`, protocolo já
+   gerado) e publica no bus -- `mind_link` é L3, `schedule_core` é L4,
+   "camada chama só pra baixo" proíbe L3 chamando L4 direto.
+   `reflex_engine_shell` (único leitor do bus, mesmo padrão de `TIME_SYNC`→
+   `circadian_core` em S3.4) despacha `NB_EVENT_TYPE_TIMER` pro
+   `schedule_core_shell`.
+4. `reflex_engine`: novo estímulo `NB_REFLEX_STIMULUS_TIMER_FIRED`,
+   banda P3 (HINT) -- reaproveita a banda de "hint da mente" em vez de
+   abrir uma 5ª banda de claim (evitaria renumerar `nb_reflex_priority_t`
+   sem necessidade); delta afetivo leve/positivo. `reflex_engine_shell`
+   ganha `nb_reflex_engine_shell_apply_stimulus()` pública, pra
+   `main.c` aplicar o disparo do timer reaproveitando `on_stimulus`/
+   `apply_reaction` já existentes (inclui o overlay de toque do
+   `led_service` -- mesma linguagem visual, sem overlay dedicado nesta
+   fatia). "Som local" de `BEHAVIOR.md` §5 fica pra quando `audio_hal`
+   existir (S4.1) -- não há alto-falante ligado ainda.
+5. `mind_link_shell` ganha `nb_mind_link_shell_send_timer_fired(timer_id)`
+   (`nbp2_encode_event_timer_fired`, mesmo `send_frame` genérico de
+   HEARTBEAT/HELLO): chamada direta de `main.c` quando um timer dispara
+   (L4→L3, camada adjacente, sem precisar de bus) -- gated em
+   `NB_MIND_LINK_STATE_READY`; sem server conectado, o envio é só
+   descartado (fire-and-forget, protocolo não define reenvio) e o
+   reflexo local (emoção+LED) já disparou de qualquer jeito -- cobre
+   "disparo com server offline funciona".
+6. `main.c`: religa `schedule_core_shell` na task de face -- tick por
+   frame, aplica `apply_stimulus`+`send_timer_fired` pra cada id disparado.
+7. `host_test` no mesmo commit: criar/cancelar/disparar, upsert por id
+   repetido, array cheio, disparo em lote na ordem certa, nenhum disparo
+   duplicado, `NULL` seguro.
+8. Gate: host-test verde + `idf.py build` limpo + ensaio de bancada
+   (criar timer curto, observar reflexo local disparar; reboot no meio
+   não perde nem duplica -- reaproveita o relógio acelerado de S3.4 pra
+   não precisar esperar minutos reais).
+
+**Evidência S3.5 (2026-07-05):**
+
+- Implementado `schedule_core` (núcleo C17 puro, array fixo de 8 slots,
+  upsert por `timer_id`, disparo one-shot limpando o slot no mesmo tick).
+  `shell/nb_schedule_core_shell` persiste em NVS (namespace `"nb_sched"`,
+  blob único) a cada mutação. `event_bus` ganhou `NB_EVENT_TYPE_TIMER`
+  (payload definido em `event_bus.h`, não em `schedule_core.h` -- mind_link
+  é L3 e não pode incluir header de L4 só por causa de um tipo de payload,
+  correção de design no meio da implementação). `mind_link_shell` decodifica
+  `TIMER_SET`/`TIMER_CANCEL` e publica no bus; `reflex_engine_shell` (único
+  leitor) despacha pro `schedule_core_shell`. Disparo aplica
+  `NB_REFLEX_STIMULUS_TIMER_FIRED` (banda P3/HINT) via nova
+  `nb_reflex_engine_shell_apply_stimulus()` e pede `EVENT_TIMER_FIRED` ao
+  mind_link via flag simples (fire-and-forget, sem socket compartilhado
+  entre tasks).
+- Gate local: `run_host_tests.py` verde (17 componentes, incluindo
+  `schedule_core`); `idf.py build` limpo; `scan_secrets.py` limpo.
+- **Ensaio de bancada real (2026-07-05, N32R16V via COM5):** criado timer
+  de teste via chamada direta (sem server ainda) com disparo em ~20s
+  reais (relógio acelerado 240x de S3.4). Log real: `TIMER_SET aplicado
+  -- id=1` seguido de `disparou -- id=1 now_unix_ms=76807440` ~20,3s
+  depois (esperado ~20s) -- criar/disparar confirmado.
+  **Reboot no meio:** reset físico via `esptool` ~8s após criar (antes do
+  disparo). Log pós-reset: `restaurado do NVS -- 1 timers` (timer pendente
+  sobreviveu ao reset -- "não perde") seguido de exatamente **uma** linha
+  `disparou -- id=1` no total (sem duplicar). Hook de bancada removido do
+  `main.c` antes do commit.
+- Gate de saída fechado. S3.5 encerrado: `FEITO`.
 
 ### S4 — Voz (o robô conversa)
 

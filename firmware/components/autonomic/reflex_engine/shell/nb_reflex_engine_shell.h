@@ -27,6 +27,13 @@ void nb_reflex_engine_shell_init(void);
  * decidir se sobrepõe motifs de idle. */
 nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb_tiny_fsm_t *fsm);
 
+/* S3.5: aplica um estímulo pontual (hoje só NB_REFLEX_STIMULUS_TIMER_FIRED,
+ * disparado por schedule_core_shell) reaproveitando on_stimulus/
+ * apply_reaction já existentes -- inclui o overlay de toque do
+ * led_service (mesma linguagem visual, sem overlay dedicado nesta fatia). */
+void nb_reflex_engine_shell_apply_stimulus(nb_reflex_stimulus_t stimulus, nb_emotion_state_t *emotion,
+                                           nb_tiny_fsm_t *fsm);
+
 #ifdef __cplusplus
 }
 #endif

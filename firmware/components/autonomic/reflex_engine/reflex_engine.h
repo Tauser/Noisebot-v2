@@ -66,6 +66,10 @@ typedef enum {
     NB_REFLEX_STIMULUS_WAKING_UP,
     NB_REFLEX_STIMULUS_MOTION_FAULT,
     NB_REFLEX_STIMULUS_IDLE_LONG,
+    /* S3.5: disparo de schedule_core -- banda P3/HINT reaproveitada em
+     * vez de abrir uma 5ª banda de claim (evitaria renumerar
+     * nb_reflex_priority_t sem necessidade). */
+    NB_REFLEX_STIMULUS_TIMER_FIRED,
     NB_REFLEX_STIMULUS_COUNT,
 } nb_reflex_stimulus_t;
 
