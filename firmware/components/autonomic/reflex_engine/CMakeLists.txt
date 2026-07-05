@@ -1,7 +1,7 @@
 idf_component_register(
-    SRCS "touch_service.c" "shell/nb_touch_service_shell.c"
+    SRCS "reflex_engine.c" "shell/nb_reflex_engine_shell.c"
     INCLUDE_DIRS "." "shell"
-    REQUIRES touch_hal event_bus
+    REQUIRES tiny_fsm emotion_core event_bus touch_service
     PRIV_REQUIRES esp_timer
 )
 

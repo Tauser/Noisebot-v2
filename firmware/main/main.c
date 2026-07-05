@@ -22,13 +22,12 @@
  * interpolação de 220 ms, igual ao S2.2.
  * S2.6: instrumentação de fps (task de face) e heap/PSRAM (heartbeat)
  * pra registrar baseline no soak de 48h do gate visual da fase.
- * S3.1: touch_hal + touch_service (GPIO2/TOUCH2) numa task própria a
- * 50Hz -- log de TAP/LONG_PRESS/SUSTAINED/WAKE pro ensaio de bancada
- * (toque intencional 50/50, zero falso positivo em 1h de ruído
- * ambiente). Ainda não liga em emotion/idle/face -- isso é o
- * reflex_engine, S3.2.
- * event_bus ainda não entra na sequência: sua casca só nasce quando houver
- * serviço publicando evento (ver README do componente).
+ * S3.1: touch_hal + touch_service (GPIO2/TOUCH2) numa task própria a 50Hz.
+ * S3.2: reflex_engine liga touch_service a emotion_core/tiny_fsm --
+ * touch_service_shell publica no event_bus (primeira casca real do bus,
+ * S1.2), reflex_engine_shell drena e aplica delta afetivo + evento de
+ * FSM. Pulso sintético de emotion_core (substituto do toque real) removido:
+ * o vetor agora só recebe estímulo real de toque.
  */
 
 #include <stdbool.h>
@@ -50,8 +49,11 @@
 #include "nb_display_hal_shell.h"
 #include "nb_face_renderer_shell.h"
 #include "nb_touch_service_shell.h"
+#include "nb_event_bus_shell.h"
+#include "nb_reflex_engine_shell.h"
 #include "idle_engine.h"
 #include "emotion_core.h"
+#include "tiny_fsm.h"
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
@@ -61,13 +63,6 @@
 #define NB_APP_MAIN_FACE_DEMO_TICK_MS 33u
 #define NB_APP_MAIN_FPS_LOG_WINDOW_US 5000000ll /* janela de 5s pro fps medido */
 #define NB_APP_MAIN_FACE_DEMO_TRANSITION_MS 220u
-/* Precisa ser bem maior que a constante de decaimento (~60s até <5% do
- * pico, BEHAVIOR.md §2) -- bug real achado em bancada: com 15s o pulso
- * seguinte chegava antes do vetor decair, acumulando (0.6*e^-15/tau ainda
- * é maioria do pulso) até travar perto do teto, oscilando entre
- * HAPPY/CURIOUS sem nunca voltar pra NEUTRAL. 90s dá folga real pro
- * decaimento completar entre pulsos. */
-#define NB_APP_MAIN_EMOTION_STIMULUS_PERIOD_MS 90000u
 #define NB_APP_MAIN_TOUCH_STACK 3072u
 #define NB_APP_MAIN_TOUCH_PRIO 8
 #define NB_APP_MAIN_TOUCH_TICK_MS 20u /* 50Hz, mesma cadência do v1 */
@@ -75,18 +70,19 @@
 static const char *TAG = "nb2";
 
 /* idle_engine (S2.4) sobrepõe motifs de VISUAL.md §3 à expressão-âncora
- * mais próxima do vetor do emotion_core (S2.5). Um pulso de estímulo
- * sintético a cada ~90s substitui o toque real (S3.1, ainda não existe),
- * pra tornar visível em bancada a subida + decaimento pra NEUTRAL —
- * critério de VISUAL.md §2/BEHAVIOR.md §2. */
+ * mais próxima do vetor do emotion_core (S2.5). S3.2: reflex_engine_shell
+ * drena o event_bus (toque real, publicado por touch_service_shell) e
+ * aplica delta afetivo + evento de tiny_fsm a cada frame; enquanto uma
+ * claim P0-P3 (safety/touch/fala/hint) está ativa, os motifs de idle (P5)
+ * ficam suprimidos sem serem destruídos -- voltam sozinhos ao expirar. */
 static void nb_app_main_face_demo_task(void *arg)
 {
     nb_idle_engine_t idle;
     nb_emotion_state_t emotion;
+    nb_tiny_fsm_t fsm;
     nb_face_expr_t from_expr = NB_FACE_EXPR_NEUTRAL;
     nb_face_expr_t to_expr = NB_FACE_EXPR_NEUTRAL;
     uint32_t transition_elapsed_ms = 0;
-    uint32_t since_stimulus_ms = 0;
     bool transitioning = false;
     uint32_t fps_frame_count = 0;
     int64_t fps_window_start_us = esp_timer_get_time();
@@ -104,6 +100,8 @@ static void nb_app_main_face_demo_task(void *arg)
 
     nb_idle_engine_init(&idle, esp_random());
     nb_emotion_core_init(&emotion);
+    nb_tiny_fsm_init(&fsm);
+    nb_tiny_fsm_apply_event(&fsm, NB_FSM_EVENT_BOOT_OK);
 
     for (;;) {
         nb_idle_output_t idle_out;
@@ -111,13 +109,8 @@ static void nb_app_main_face_demo_task(void *arg)
 
         nb_emotion_core_tick(&emotion, NB_APP_MAIN_FACE_DEMO_TICK_MS);
         nb_idle_engine_tick(&idle, NB_APP_MAIN_FACE_DEMO_TICK_MS, &idle_out);
-
-        since_stimulus_ms += NB_APP_MAIN_FACE_DEMO_TICK_MS;
-        if (since_stimulus_ms >= NB_APP_MAIN_EMOTION_STIMULUS_PERIOD_MS) {
-            since_stimulus_ms = 0;
-            /* Pulso positivo (substitui TOUCH_TAP real, BEHAVIOR.md §2). */
-            nb_emotion_core_apply_stimulus(&emotion, 0.6f, 0.4f);
-        }
+        const nb_reflex_priority_t active_priority =
+            nb_reflex_engine_shell_tick(&emotion, &fsm);
 
         const nb_face_expr_t nearest = nb_emotion_core_nearest_expression(&emotion);
         if (nearest != to_expr) {
@@ -144,8 +137,13 @@ static void nb_app_main_face_demo_task(void *arg)
         } else {
             current = *nb_face_core_get_expression(to_expr);
         }
-        current.open_l *= idle_out.open_l;
-        current.open_r *= idle_out.open_r;
+        /* P0-P3 (safety/touch/fala/hint) suprimem os motifs de idle sem
+         * destruí-los -- ao expirar a claim, o overlay volta sozinho
+         * (BEHAVIOR.md §3). */
+        if (active_priority > NB_REFLEX_PRIORITY_HINT) {
+            current.open_l *= idle_out.open_l;
+            current.open_r *= idle_out.open_r;
+        }
 
         int64_t t1 = esp_timer_get_time();
         logic_us_sum += t1 - t0;
@@ -190,8 +188,8 @@ static void nb_app_main_face_demo_task(void *arg)
     }
 }
 
-/* touch_service (S3.1) a 50Hz -- log de eventos pro ensaio de bancada.
- * Ainda não liga em emotion/idle/face; isso é o reflex_engine (S3.2). */
+/* touch_service (S3.1) a 50Hz -- publica no event_bus (S3.2, dentro do
+ * shell), quem consome é reflex_engine_shell na task de face. */
 static void nb_app_main_touch_task(void *arg)
 {
     TickType_t last_wake_tick = xTaskGetTickCount();
@@ -221,6 +219,11 @@ void app_main(void)
              (unsigned)report.total_duration_ms);
 
     ESP_ERROR_CHECK(nb_watchdog_shell_init(NB_APP_MAIN_WATCHDOG_TIMEOUT_MS));
+
+    /* S3.2: event_bus antes de qualquer task que publique (touch) ou faça
+     * poll (face/reflex). */
+    ESP_ERROR_CHECK(nb_event_bus_shell_init());
+    nb_reflex_engine_shell_init();
 
     esp_err_t wifi_err = nb_wifi_setup_shell_init();
     if (wifi_err != ESP_OK) {

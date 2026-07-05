@@ -37,6 +37,13 @@ typedef enum {
     NB_TOUCH_STATE_SUSTAINED_ACTIVE,
 } nb_touch_state_t;
 
+/* Payload publicado no event_bus (NB_EVENT_TYPE_TOUCH) pela casca -- cabe
+ * nos 16 bytes de nb_event_t.payload (S3.2, consumido por reflex_engine). */
+typedef struct {
+    nb_touch_event_t event;
+    uint32_t duration_ms;
+} nb_touch_event_payload_t;
+
 typedef struct {
     nb_touch_state_t state;
     uint32_t press_ms;

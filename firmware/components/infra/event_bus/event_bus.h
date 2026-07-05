@@ -29,6 +29,16 @@ typedef enum {
     NB_EVENT_PRIORITY_SAFETY = 1,
 } nb_event_priority_t;
 
+/* IDs de nb_event_t.type. Reservados desde S3.2 para os produtores
+ * previstos em S4/S6 (BEHAVIOR.md §2) mesmo sem shell de entrada ainda --
+ * evita rediscutir o enum quando voz/safety/mind-hint chegarem. */
+typedef enum {
+    NB_EVENT_TYPE_TOUCH = 0,
+    NB_EVENT_TYPE_VOICE = 1,
+    NB_EVENT_TYPE_SAFETY = 2,
+    NB_EVENT_TYPE_MIND_HINT = 3,
+} nb_event_type_t;
+
 typedef enum {
     NB_EVENT_AUDIT_PUBLISHED = 0,
     NB_EVENT_AUDIT_DROPPED = 1,

@@ -1,6 +1,7 @@
 idf_component_register(
-    SRCS "event_bus.c"
-    INCLUDE_DIRS "."
+    SRCS "event_bus.c" "shell/nb_event_bus_shell.c"
+    INCLUDE_DIRS "." "shell"
+    PRIV_REQUIRES freertos
 )
 
 component_compile_options(

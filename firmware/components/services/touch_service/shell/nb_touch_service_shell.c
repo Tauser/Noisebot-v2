@@ -1,8 +1,12 @@
 #include "nb_touch_service_shell.h"
 
+#include <string.h>
+
 #include "nb_touch_hal_shell.h"
+#include "nb_event_bus_shell.h"
 
 #include "esp_log.h"
+#include "esp_timer.h"
 
 static const char *TAG = "touch_service";
 static nb_touch_service_t s_svc;
@@ -64,6 +68,25 @@ void nb_touch_service_shell_update(uint32_t dt_ms)
                  (unsigned)s_svc.threshold_on);
         if (s_event_cb != NULL) {
             s_event_cb(evt);
+        }
+
+        /* S3.2: publica no event_bus pro reflex_engine consumir --
+         * timestamp real (esp_timer, us -> ms) é o que vira a métrica de
+         * latência estímulo->reação (budget < 80ms p95, QUALITY.md). */
+        nb_touch_event_payload_t payload = {
+            .event = evt,
+            .duration_ms = nb_touch_service_get_duration_ms(&s_svc),
+        };
+        nb_event_t bus_event = {
+            .type = NB_EVENT_TYPE_TOUCH,
+            .priority = NB_EVENT_PRIORITY_NORMAL,
+            .timestamp_ms = (uint32_t)(esp_timer_get_time() / 1000),
+            .payload_len = (uint8_t)sizeof(payload),
+        };
+        memcpy(bus_event.payload, &payload, sizeof(payload));
+        nb_event_bus_status_t bus_status = nb_event_bus_shell_publish(&bus_event);
+        if (bus_status != NB_EVENT_BUS_OK) {
+            ESP_LOGW(TAG, "event_bus publish falhou (status=%d)", (int)bus_status);
         }
     }
 }

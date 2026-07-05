@@ -1220,7 +1220,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | ID   | Entrega                                                                                            | Gate de saída                                                                                   | Status     |
 | ---- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
 | S3.1 | `touch_hal` + `touch_service` (calibração do v1 2.2A: threshold 20%, debounce, TAP/LONG/SUSTAINED) | toque intencional 50/50; zero falso positivo em 1 h de ruído ambiente; reproduzível após reboot | `FEITO` |
-| S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `PENDENTE` |
+| S3.2 | `reflex_engine` (tabela estímulo→reação com prioridades; touch→afeto integra emotion+face)         | host-test da tabela de arbitragem (conflitos touch×idle×sleep); reação < 80 ms p95 medida       | `FEITO` |
 | S3.3 | `led_service` (WS2812 no 46; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `PENDENTE` |
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `PENDENTE` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `PENDENTE` |
@@ -1286,6 +1286,80 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 - Gate de saída fechado (critério amendado): toque intencional 10/10,
   zero falso positivo em ~15min, reproduzível após reboot. S3.1
   encerrado: `FEITO`.
+
+**Plano S3.2 (antes de implementar):**
+
+1. `reflex_engine` (`components/autonomic/reflex_engine`, L4): núcleo C17
+   puro. Tipos: `nb_reflex_priority_t` (P0 safety/erro > P1 touch reflexo >
+   P2 fala > P3 hint da mente > P4 emoção mapeada > P5 motifs de idle > P6
+   baseline, per `BEHAVIOR.md` §3); `nb_reflex_stimulus_t` com os 13
+   estímulos locais de `BEHAVIOR.md` §2 (TOUCH_TAP/LONG/WARM_PULSE/DEEP/
+   CARESS/RELEASE, VOICE_START/LOUD/SOFT, AUDIO_PLAYING, ENTERING_SLEEP,
+   WAKING_UP, MOTION_FAULT, IDLE_LONG) + WAKE de toque -- estímulos sem
+   produtor ainda (voz, safety, mind-hint) entram na tabela desde já, sem
+   shell de entrada, pra não retrabalhar o enum em S4/S6.
+2. Tabela estática estímulo→(prioridade, Δvalence, Δarousal, evento
+   `tiny_fsm` opcional, duração do efeito). Estado interno: pilha de
+   reações ativas por prioridade com expiração -- camada superior suspende
+   a inferior sem destruí-la (retoma ao expirar); empate de prioridade →
+   mais recente vence.
+3. `nb_reflex_engine_tick(engine, dt_ms, touch_is_pressed,
+   touch_duration_ms, &out_reaction)`: reclassifica toque contínuo
+   (TAP→LONG→WARM_PULSE 3-8s→DEEP >8s→CARESS >15s conforme duração de
+   `touch_service`), expira reações vencidas, decide a reação vencedora do
+   tick. Nunca disputa com `tiny_fsm`: X→IDLE sempre zera a pilha até
+   baseline.
+4. `event_bus` ganha `nb_event_type_t` real (hoje inexistente): IDs
+   reservados para TOUCH, VOICE, SAFETY, MIND_HINT (só TOUCH com produtor
+   nesta subfase) -- primeira casca real do bus. `touch_service_shell`
+   passa a publicar `NB_EVENT_TYPE_TOUCH` (payload `{touch_event,
+   duration_ms}`) em vez de só callback direto.
+5. `shell/nb_reflex_engine_shell.c/.h` (L4): task que faz poll do bus,
+   chama `nb_reflex_engine_tick`, aplica a reação vencedora chamando
+   `nb_emotion_core_apply_stimulus`, `nb_tiny_fsm_apply_event`,
+   `nb_idle_engine_set_mode`. Timestamp de chegada (bus) vs. aplicação vira
+   a métrica dos 80ms p95 (medida em bancada, não em host-test).
+6. `main.c`: remove o pulso sintético de 90s do `emotion_core` (decisão do
+   usuário, 2026-07-04 -- estímulo real de toque substitui; IDLE_LONG
+   entra como estímulo real na tabela, não como hack ad hoc). Conecta
+   `touch_service_shell` → bus → `reflex_engine_shell`; unifica as tasks de
+   face/emotion/idle/touch sob o reflex_engine.
+7. `host_test` no mesmo commit: tabela de arbitragem completa (conflitos
+   touch×idle×sleep), suspensão sem destruição e retomada, reclassificação
+   de toque contínuo nos thresholds corretos, empate de prioridade → mais
+   recente vence, invariante X→IDLE preservada (pilha zera em IDLE).
+8. Ensaio de bancada com toque real (GPIO2): medir latência estímulo→
+   reação visível via timestamps do bus, confirmar p95 < 80ms.
+
+**Evidência S3.2 (2026-07-04, parcial):**
+
+- Implementado `reflex_engine` (núcleo C17 puro) com a tabela completa de
+  BEHAVIOR.md §2/§3, arbitragem por pilha de claims com expiração,
+  reclassificação de toque contínuo por duração, `force_clear` para a
+  invariante X→IDLE. Host-test cobre arbitragem (safety>touch>fala>hint),
+  suspensão sem destruição e retomada, empate na mesma banda, toque
+  contínuo nos thresholds corretos, `NULL` seguro.
+- `event_bus` ganhou sua primeira casca real (`shell/nb_event_bus_shell.c`,
+  instância única + critical section) e `nb_event_type_t` (TOUCH com
+  produtor; VOICE/SAFETY/MIND_HINT reservados pra S4/S6).
+  `touch_service_shell` publica `NB_EVENT_TYPE_TOUCH`; `reflex_engine_shell`
+  drena, aplica delta afetivo em `emotion_core` e evento em `tiny_fsm`
+  (que também ganhou seu primeiro uso real em `main.c` -- antes só tinha
+  host-test). Pulso sintético de 90s do `emotion_core` removido.
+- Gate local fechado: `python tools/run_host_tests.py` verde (todos os
+  14 componentes, incluindo `reflex_engine`/`tiny_fsm`); `idf.py build`
+  limpo; `python tools/scan_secrets.py` limpo.
+- **Ensaio de bancada real (2026-07-04, N32R16V via COM5, fita de cobre em
+  GPIO2):** log de latência adicionado em `reflex_engine_shell`
+  (`latency_ms` = chegada no bus, timestamp de `esp_timer` em
+  `touch_service_shell` → aplicação em `emotion_core`/`tiny_fsm`). Sessão
+  de toques reais: **12 TAP + 2 LONG_PRESS + 2 SUSTAINED, 16 reações
+  capturadas**, todas com `priority=1` (P1 touch) e `fsm_event=7`
+  (`NB_FSM_EVENT_TOUCH`) corretos -- zero evento espúrio/WAKE.
+  Latências: min 3ms, max 31ms, **p95 ≈ 31ms** -- bem dentro do budget de
+  < 80ms (`QUALITY.md`).
+- Gate de saída fechado: host-test da arbitragem verde + latência real de
+  bancada medida e dentro do budget. S3.2 encerrado: `FEITO`.
 
 ### S4 — Voz (o robô conversa)
 

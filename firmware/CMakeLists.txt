@@ -7,6 +7,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/autonomic/emotion_core"
     "components/autonomic/idle_engine"
     "components/autonomic/tiny_fsm"
+    "components/autonomic/reflex_engine"
     "components/hal/display_hal"
     "components/hal/touch_hal"
     "components/services/touch_service"

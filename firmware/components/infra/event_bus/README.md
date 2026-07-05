@@ -13,5 +13,10 @@ Contrato inicial de S1.2:
 - ring de auditoria guarda publish/drop/poll com contadores de pendência;
 - a casca FreeRTOS entra apenas quando houver serviços publicando eventos.
 
-O núcleo não assume concorrência interna. A casca futura deve serializar
-`publish/poll` com critical section ou task dona do bus.
+O núcleo não assume concorrência interna. A casca serializa `publish/poll`
+com critical section (`portENTER_CRITICAL`/`portEXIT_CRITICAL`).
+
+**S3.2:** primeira casca real (`shell/nb_event_bus_shell.c`, instância única
+protegida por critical section) — `touch_service_shell` publica
+`NB_EVENT_TYPE_TOUCH`, `reflex_engine_shell` faz o poll. `nb_event_type_t`
+já reserva IDs para VOICE/SAFETY/MIND_HINT (S4/S6), sem produtor ainda.
