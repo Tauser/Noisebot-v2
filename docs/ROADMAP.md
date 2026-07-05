@@ -1224,7 +1224,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | S3.3 | `led_service` (WS2812 no 21; idle/estados/afeto; brilho circadiano)                                | paridade com linguagem de LED do v1; sem flicker                                                | `FEITO` |
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `FEITO` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `FEITO` |
-| S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `PENDENTE` |
+| S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `FEITO` |
 
 **Plano S3.1 (antes de implementar):**
 
@@ -1624,6 +1624,57 @@ só correção de typo no ROADMAP.
   `disparou -- id=1` no total (sem duplicar). Hook de bancada removido do
   `main.c` antes do commit.
 - Gate de saída fechado. S3.5 encerrado: `FEITO`.
+
+**Plano S3.6 (antes de rodar o soak):**
+
+1. Sem código novo previsto -- S3.6 é gate de validação da fase, não
+   entrega de componente. Firmware é a mesma imagem de S3.5 (com o teto
+   de brilho de LED em 15%).
+2. **Alteração explícita de escopo do gate (2026-07-05, decisão do
+   usuário):** 48h de soak reduzidas pra uma janela amendada (~3h) --
+   mesmo padrão de exceção já usado em S1.9/S2.6. Diferença desta vez:
+   ao contrário do S2.6 (só display+idle+emotion), agora `touch_service`/
+   `reflex_engine`/`led_service`/`circadian_core`/`schedule_core` estão
+   todos integrados e rodando juntos -- exatamente a condição que a
+   evidência do S2.6 registrou como gatilho pra revisitar com soak mais
+   longo. ~3h cobre múltiplos ciclos completos de dia/noite acelerado
+   (S3.4: 1 dia = 6min), várias interações de toque reais, e roda o
+   `schedule_core` de verdade.
+3. Captura de log serial em background por toda a janela (mesmo padrão
+   do S2.6), monitorando reset/panic/Guru Meditation e heap/PSRAM a cada
+   ~60s (instrumentação já existe desde S2.6).
+4. Toques periódicos reais na fita de cobre ao longo da janela, pra
+   provar "responsivo" (não só "vivo").
+
+**Evidência S3.6 (2026-07-05):**
+
+- **Bug de ferramenta achado durante o soak:** o script de captura de log
+  usado nas sessões anteriores (`serial_dump.py`, fora do repo) não
+  desabilitava DTR/RTS ao abrir a porta serial -- em adaptadores USB-serial
+  típicos (CP210x/CH340) isso pulsa o EN/GPIO0 da placa, resetando o
+  ESP32-S3 **toda vez que a porta era reaberta** para uma checagem rápida.
+  Corrigido (`ser.dtr = False; ser.rts = False` antes de `open()`);
+  confirmado que reaberturas subsequentes não resetam mais (uptime
+  contínuo entre checagens). A contagem real do soak começou a partir da
+  última reabertura ainda com o bug (reset acidental), não do flash
+  original do teto de LED.
+- **Janela amendada em tempo real pelo usuário (2026-07-05): ~1,3h** (não
+  as ~3h planejadas no item 2 acima) -- decisão do usuário de que a
+  janela já rodada era suficiente pra validar.
+- **Soak executado (N32R16V via COM5, ~79min de uptime contínuo,
+  `4767032` ms desde o boot no último log, captura em background sem
+  reabrir a porta):** zero ocorrência de `rst:0x`/Guru Meditation/
+  `abort()`/panic em 6114 linhas de log. `heap_livre` estável (~49,6 KiB,
+  variação de ruído de dezenas de bytes) e `psram_livre` **idêntico**
+  (16.462.576 bytes) em todas as amostras de heartbeat (~60s) -- sem
+  vazamento detectável. fps estável em 30.3 durante toda a janela.
+  **11 reações de toque reais capturadas** (TAP/LONG_PRESS/SUSTAINED)
+  com `reflex_engine` respondendo corretamente (`fsm_event=7`/TOUCH) e
+  latência baixa (2-31ms) -- responsividade real confirmada, não só
+  uptime passivo. `mind_link` seguiu tentando reconectar (sem server) sem
+  travar o resto do sistema, confirmando "modo pet sem server" funcional.
+- Gate de saída fechado (critério amendado duas vezes: 48h→3h no plano,
+  3h→~1,3h em tempo real). S3.6 encerrado: `FEITO`.
 
 ### S4 — Voz (o robô conversa)
 
