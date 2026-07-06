@@ -47,6 +47,12 @@
  * bring-up temporária -- toca um tom de teste continuamente enquanto lê
  * o mic, loga RMS + contadores de overflow/timeout periodicamente.
  * Substituída quando audio_service/wake_service existirem (S4.2+).
+ * S3.7 completo, item 3 (acoplamentos, RFC-VIDA-V2.md §7): brilho do LED
+ * idle passa a ser multiplicado também por idle_out.breath_scale (mesmo
+ * fator que já modula a abertura dos olhos) -- respiração e LED em fase,
+ * mesmo clock, sem estado duplicado. Única mudança fora do idle_engine
+ * prevista pro item 3 (os demais acoplamentos -- blink×sacada, roll
+ * segue gaze -- ficam inteiros dentro do núcleo).
  */
 
 #include <stdbool.h>
@@ -155,14 +161,18 @@ static void nb_app_main_face_demo_task(void *arg)
         const nb_circadian_output_t circadian =
             nb_circadian_core_shell_tick(NB_APP_MAIN_FACE_DEMO_TICK_MS, &fsm);
         nb_idle_engine_set_mode(&idle, circadian.quiet_mode, NB_IDLE_ATTENTION_IDLE);
-        /* Teto de brilho em 15% -- pedido do usuário, 2026-07-05. Mantém a
-         * variação circadiana (mais escuro à noite) mas nunca passa de 15%
-         * do brilho nominal do LED. */
-        nb_led_service_shell_set_brightness_scale(circadian.brightness_scale *
-                                                  NB_APP_MAIN_LED_BRIGHTNESS_CAP);
 
         nb_emotion_core_tick(&emotion, NB_APP_MAIN_FACE_DEMO_TICK_MS);
         nb_idle_engine_tick(&idle, NB_APP_MAIN_FACE_DEMO_TICK_MS, &idle_out);
+        /* Teto de brilho em 15% -- pedido do usuário, 2026-07-05. Mantém a
+         * variação circadiana (mais escuro à noite) mas nunca passa de 15%
+         * do brilho nominal do LED. S3.7 completo, item 3 (acoplamentos,
+         * RFC-VIDA-V2.md §7 "respiração ... em fase com o LED idle"):
+         * multiplica pelo mesmo breath_scale que já modula open_l/open_r
+         * no idle_engine -- mesmo sinal, mesma fase, sem clock separado. */
+        nb_led_service_shell_set_brightness_scale(circadian.brightness_scale *
+                                                  NB_APP_MAIN_LED_BRIGHTNESS_CAP *
+                                                  idle_out.breath_scale);
         const nb_reflex_priority_t active_priority =
             nb_reflex_engine_shell_tick(&emotion, &fsm);
         nb_led_service_shell_tick(nb_tiny_fsm_get_state(&fsm), NB_APP_MAIN_FACE_DEMO_TICK_MS);

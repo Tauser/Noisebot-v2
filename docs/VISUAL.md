@@ -63,12 +63,17 @@ motifs de S2.4 (segunda tabela) só roda na config legada
 | Respiração | `nb_breath.c` | Fator 1±2% (período ~6 s) sobre `open_l`/`open_r`, aplicado depois do blink. |
 | Atenção | `nb_attention.c` | FSM `FIXATE⇄SACCADE`: fixação 0.5–3 s com micro-tremor (amplitude 0.06, suavizado, retunado em bancada), sacada 80 ms ease-out pra alvo em `[-0.35,0.35]²`, ~40% de viés de retorno ao centro. Substitui `SOFT_DRIFT`. |
 | Postura | `nb_posture.c` | FSM `HOLD⇄TRANSITION`: a cada 30–90 s, deriva ~400 ms pra uma nova micro-pose (roll/gaze offset/assimetria pequenos) que vira o novo repouso — nunca repete a pose exata. Soma-se a `tilt`/`gaze`/`width_l`-`width_r`. |
+| Energia | `nb_energy.c` | Nível contínuo de sonolência [0,1] a partir de tédio + ativação + `quiet_mode`; descansa a pálpebra (até 25% mais fechada) e espaça o blink (até 2×). Entradas reais (tédio/ativação) ainda não ligadas por nenhuma casca — só o núcleo existe. |
 
+**Acoplamentos ligados:** blink×sacada (sacada dispara blink de fato,
+respeitando exclusividade de slot); roll segue gaze com ~100ms de atraso
+(filtro passa-baixa, ganho sutil); respiração em fase com o LED idle
+(`main.c` multiplica o brilho pelo mesmo fator que modula os olhos).
 Blink independente (Poisson, mesmos parâmetros da tabela legada abaixo)
-continua ativo nas duas configs. O restante do RFC §7 (motor de energia,
-acoplamentos blink×sacada, LED em fase com a respiração, gestos
-`CHECK_IN`/`SLOW_BLINK`/`SIGH`) ainda não está implementado — ver "Plano
-S3.7 completo" em `docs/ROADMAP.md` pro estado de cada item.
+continua ativo nas duas configs. Ainda faltam: gestos `CHECK_IN`/
+`SLOW_BLINK`/`SIGH` e a fiação real de tédio/ativação pro motor de
+energia — ver "Plano S3.7 completo" em `docs/ROADMAP.md` pro estado de
+cada item.
 
 **Catálogo legado (`NB_IDLE_V2_SPIKE=0`, S2.4)** — calibrado contra o EMO
 (v1 `IDLE_REFERENCE.md`, análise por olho de vídeo real):

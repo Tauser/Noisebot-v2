@@ -125,8 +125,43 @@ zero mudança de comportamento na config legada.
 público) alimenta os dois sinais que o núcleo não pode calcular sozinho
 — **ainda não chamado por nenhuma casca**: sem essa chamada, o robô nunca
 fica sonolento visivelmente (defaults 0/0.0). A fiação real (tédio vindo
-de `reflex_engine`, ativação vindo de `emotion_core`) fica pro item 3
-("acoplamentos") do "Plano S3.7 completo" — mesma exceção documentada no
-`ROADMAP.md` (única saída do "zero mudança fora do idle_engine" prevista
-pra esta fase, e mesmo assim não foi necessária: os sinais entram por
+de `reflex_engine`, ativação vindo de `emotion_core`) continua em aberto,
+sem item específico do plano ainda assinado pra ela — o item 3 abaixo
+cobriu os três acoplamentos que o RFC lista explicitamente, não essa
+fiação de entrada (mesma exceção documentada no `ROADMAP.md`, e mesmo
+assim não foi necessária pro que o item 3 cobriu: os sinais entram por
 parâmetro, sem tocar `circadian_core`).
+
+## S3.7 completo — item 3: acoplamentos + blink unificado
+
+Três acoplamentos do RFC §7, todos sobre a mesma base já construída nos
+itens 1-2:
+
+- **Blink×sacada.** `nb_idle_engine_init()` registra
+  `nb_attention_set_saccade_callback()` (exposto no spike, sem uso até
+  agora) apontando pra `on_attention_saccade()`: quando uma sacada
+  começa, dispara `start_blink_motif()` de verdade — mas só se o slot
+  estiver livre (`active_motif == NONE`), preservando a exclusividade já
+  existente. Como `start_blink_motif()` já resorteia
+  `next_blink_at_ms` no final, o blink independente (Poisson) e o
+  disparado por sacada caem no mesmo agendador sem precisar de mecanismo
+  novo — a "fusão" que o RFC pede.
+- **Roll segue gaze com ~100ms de atraso.** Novo campo
+  `roll_gaze_lag_x` (filtro passa-baixa do `drift_x` já resolvido, tau
+  100ms), somado ao `tilt` com ganho pequeno (0.15) — sutil, cabeça
+  acompanha o olhar sem copiar o valor inteiro. Também é estado
+  transitório: `nb_idle_engine_reset_transient()` zera junto com a
+  postura (invariante H7).
+- **Respiração em fase com o LED idle.** Único ponto que sai do
+  `idle_engine`: `nb_idle_output_t` ganha `breath_scale` (o mesmo fator
+  que já modula `open_l`/`open_r`, sempre 1.0 em `!NB_IDLE_V2_SPIKE`);
+  `main.c` multiplica o brilho do LED por esse valor, mesmo clock, sem
+  estado duplicado — LED e respiração literalmente compartilham o sinal,
+  não só o período.
+
+Host-tests: maioria das transições `FIXATE→SACCADE` do motor de atenção
+dispara um blink (tolerância pra quando o slot já está ocupado); o filtro
+de roll nunca sai do envelope do gaze e nunca copia o valor instantâneo
+(prova que é atraso, não passagem direta). Suíte inteira verde nas duas
+configs de flag; build limpo — confirmação visual da fase (LED×respiração)
+fica pra bancada.

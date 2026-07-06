@@ -22,7 +22,11 @@ static void test_init_is_deterministic(void)
 
     nb_idle_engine_init(&a, 42);
     nb_idle_engine_init(&b, 42);
-    CHECK(memcmp(&a, &b, sizeof(a)) == 0);
+    /* Não dá pra memcmp a struct inteira aqui (S3.7 completo item 3): o
+     * callback de blink×sacada guarda ctx=&engine, um ponteiro
+     * self-referencial que necessariamente difere entre duas instâncias
+     * em endereços diferentes -- byte igual não é o contrato, saída igual
+     * é (comparada tick a tick abaixo). */
 
     for (int i = 0; i < 1000; ++i) {
         nb_idle_output_t out_a;
@@ -350,9 +354,15 @@ static void test_spike_reset_transient_zeroes_posture(void)
     CHECK(e.posture_v2.gaze_x == 0.0f && e.posture_v2.gaze_y == 0.0f);
     CHECK(e.posture_v2.asymmetry == 0.0f);
 
+    /* out.tilt não é mais só a postura (item 3 "acoplamentos" somou
+     * roll-segue-gaze, que reset_transient também zera -- ver abaixo --
+     * mas volta a se afastar de 0 no tick seguinte, seguindo o gaze da
+     * atenção, que não é resetada aqui de propósito: só a postura é
+     * invariante H7 nesta etapa). width_l/width_r continuam simétricos
+     * porque só a postura contribui pra assimetria. */
+    CHECK(e.roll_gaze_lag_x == 0.0f);
     nb_idle_output_t out;
     nb_idle_engine_tick(&e, TICK_MS, &out);
-    CHECK(out.tilt == 0.0f);
     CHECK(out.width_l == out.width_r);
 }
 
@@ -401,6 +411,58 @@ static void test_spike_energy_droops_eyelid_and_slows_blink(void)
     }
     CHECK(compared);
 }
+
+/* Blink×sacada (RFC §7, "acoplamentos", item 3): a maioria das
+ * transições FIXATE->SACCADE do motor de atenção dispara um blink de
+ * fato (slot livre) -- não é 100% porque, raramente, um blink
+ * independente já está em curso quando a sacada começa. */
+static void test_spike_saccade_triggers_blink(void)
+{
+    nb_idle_engine_t e;
+    uint32_t saccades = 0;
+    uint32_t saccades_with_blink = 0;
+
+    nb_idle_engine_init(&e, 17);
+    for (uint32_t ms = 0; ms < 600000u; ms += TICK_MS) { /* 10 min simulados */
+        const nb_attention_phase_t before = e.attention_v2.phase;
+        const nb_idle_motif_t motif_before = e.active_motif;
+
+        nb_idle_engine_tick(&e, TICK_MS, NULL);
+
+        if (before == NB_ATTENTION_FIXATE && e.attention_v2.phase == NB_ATTENTION_SACCADE) {
+            ++saccades;
+            if (motif_before == NB_IDLE_MOTIF_NONE &&
+                (e.active_motif == NB_IDLE_MOTIF_BLINK_BAR ||
+                 e.active_motif == NB_IDLE_MOTIF_DOUBLE_BLINK)) {
+                ++saccades_with_blink;
+            }
+        }
+    }
+    CHECK(saccades > 20); /* estatisticamente robusto sobre 10 min simulados */
+    /* Tolerância: nem toda sacada pega o slot livre (blink independente
+     * pode já estar em curso), mas a esmagadora maioria deve pegar. */
+    CHECK(saccades_with_blink > saccades * 8u / 10u);
+}
+
+/* Roll segue gaze com atraso (RFC §7, "acoplamentos", item 3): o filtro
+ * passa-baixa nunca sai do envelope do gaze e nunca copia o valor
+ * instantâneo (prova que é atraso, não passagem direta). */
+static void test_spike_roll_follows_gaze_with_lag(void)
+{
+    nb_idle_engine_t e;
+    int lag_differs_from_instantaneous_gaze = 0;
+
+    nb_idle_engine_init(&e, 4);
+    for (uint32_t ms = 0; ms < 60000u; ms += TICK_MS) {
+        nb_idle_engine_tick(&e, TICK_MS, NULL);
+        CHECK(e.roll_gaze_lag_x >= -NB_ATTENTION_ENVELOPE - 0.01f &&
+             e.roll_gaze_lag_x <= NB_ATTENTION_ENVELOPE + 0.01f);
+        if (e.roll_gaze_lag_x != e.drift_x) {
+            lag_differs_from_instantaneous_gaze = 1;
+        }
+    }
+    CHECK(lag_differs_from_instantaneous_gaze);
+}
 #endif /* NB_IDLE_V2_SPIKE */
 
 int main(void)
@@ -425,6 +487,8 @@ int main(void)
     test_spike_posture_contributes_to_output();
     test_spike_reset_transient_zeroes_posture();
     test_spike_energy_droops_eyelid_and_slows_blink();
+    test_spike_saccade_triggers_blink();
+    test_spike_roll_follows_gaze_with_lag();
 #endif
 
     if (failures == 0) {

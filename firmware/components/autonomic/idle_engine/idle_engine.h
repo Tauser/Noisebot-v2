@@ -69,6 +69,13 @@ typedef struct {
     float width_r;
     float tilt;         /* [-1, 1]: assimetria de HEAD_TILT_HOLD */
     nb_idle_motif_t active_motif;
+
+    /* S3.7 completo, item 3 (acoplamentos): fator de respiração deste
+     * tick (mesmo valor aplicado a open_l/open_r sob NB_IDLE_V2_SPIKE) --
+     * exposto pra casca sincronizar o LED idle em fase com a respiração
+     * (RFC §7, "respiração ... em fase com o LED idle"). Sempre 1.0 em
+     * !NB_IDLE_V2_SPIKE. */
+    float breath_scale;
 } nb_idle_output_t;
 
 /* Métricas acumuladas -- usadas pelo host-test pra checar o critério de
@@ -125,6 +132,11 @@ typedef struct {
     uint32_t energy_boredom_ms;
     float energy_arousal;
 
+    /* S3.7 completo, item 3 (acoplamentos): "roll segue gaze com ~100ms
+     * de atraso" (RFC §7) -- filtro passa-baixa do gaze horizontal,
+     * somado ao tilt em compute_output() sob NB_IDLE_V2_SPIKE. */
+    float roll_gaze_lag_x;
+
     nb_idle_metrics_t metrics;
 } nb_idle_engine_t;
 
@@ -153,9 +165,10 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
 const nb_idle_metrics_t *nb_idle_engine_get_metrics(const nb_idle_engine_t *engine);
 
 /* Invariante H7 (ARCHITECTURE.md §4): zera o estado transitório dos
- * motores contínuos (hoje: postura, via nb_posture_reset_to_center()) ao
- * entrar em IDLE -- a deriva recomeça do centro dali. Gancho exposto,
- * ainda não chamado por nenhuma casca ("Plano S3.7 completo", item 3
+ * motores contínuos (postura, via nb_posture_reset_to_center(); e o lag
+ * de roll-segue-gaze do item 3 "acoplamentos") ao entrar em IDLE -- a
+ * deriva recomeça do centro dali. Gancho exposto, ainda não chamado por
+ * nenhuma casca ("Plano S3.7 completo", item 3
  * "acoplamentos" liga isso a um evento real de tiny_fsm/main.c). */
 void nb_idle_engine_reset_transient(nb_idle_engine_t *engine);
 

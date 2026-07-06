@@ -33,6 +33,13 @@
 #define NB_ENERGY_MAX_EYELID_DROOP 0.25f
 #define NB_ENERGY_MAX_BLINK_SLOWDOWN 1.0f /* multiplicador extra no teto: 1x + 1x = 2x */
 
+/* Acoplamentos (S3.7 completo, item 3, RFC-VIDA-V2.md §7): "roll segue
+ * gaze com ~100ms de atraso" -- filtro passa-baixa do gaze horizontal
+ * (tau abaixo), ganho pequeno pra ficar sutil (cabeça acompanha o olhar,
+ * não copia o valor inteiro). */
+#define NB_IDLE_ROLL_FOLLOWS_GAZE_TAU_MS 100.0f
+#define NB_IDLE_ROLL_FOLLOWS_GAZE_GAIN 0.15f
+
 static uint32_t xorshift32(uint32_t *state)
 {
     uint32_t x = *state;
@@ -180,6 +187,23 @@ static void start_blink_motif(nb_idle_engine_t *e)
     e->next_blink_at_ms = sample_next_blink_ms(e);
 }
 
+#if NB_IDLE_V2_SPIKE
+/* Acoplamento blink×sacada (RFC-VIDA-V2.md §7, "Plano S3.7 completo" item
+ * 3): dispara um blink de fato quando uma sacada começa, respeitando a
+ * exclusividade de slot (não interrompe um motif já em andamento).
+ * start_blink_motif() já resorteia next_blink_at_ms no final -- o blink
+ * independente (Poisson) e o disparado por sacada usam o mesmo
+ * agendador, "fundidos" sem precisar de um mecanismo novo. */
+static void on_attention_saccade(void *ctx)
+{
+    nb_idle_engine_t *e = (nb_idle_engine_t *)ctx;
+
+    if (e->active_motif == NB_IDLE_MOTIF_NONE) {
+        start_blink_motif(e);
+    }
+}
+#endif
+
 #if !NB_IDLE_V2_SPIKE
 static void start_long_motif(nb_idle_engine_t *e)
 {
@@ -241,6 +265,7 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
     out->width_r = 1.0f;
     out->tilt = 0.0f;
     out->active_motif = e->active_motif;
+    out->breath_scale = 1.0f; /* sobrescrito abaixo sob NB_IDLE_V2_SPIKE */
 
     const uint32_t elapsed = e->now_ms - e->motif_started_ms;
 
@@ -330,6 +355,7 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
                                          NB_BREATH_AMPLITUDE_DEFAULT);
     out->open_l *= breath;
     out->open_r *= breath;
+    out->breath_scale = breath;
 
     /* Energia (nb_energy.h, S3.7 completo item 2): pálpebra descansa mais
      * fechada conforme a sonolência sobe -- multiplicativo, então o blink
@@ -348,6 +374,11 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
     out->tilt += e->posture_v2.roll;
     out->width_l += e->posture_v2.asymmetry;
     out->width_r -= e->posture_v2.asymmetry;
+
+    /* "Roll segue gaze com ~100ms de atraso" (RFC §7, item 3): soma um
+     * ganho pequeno do gaze horizontal já suavizado (nb_idle_engine_tick
+     * atualiza roll_gaze_lag_x). */
+    out->tilt += e->roll_gaze_lag_x * NB_IDLE_ROLL_FOLLOWS_GAZE_GAIN;
 #endif
 }
 
@@ -368,6 +399,11 @@ void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed)
      * pode receber o mesmo estado inicial de engine->rng_state sem
      * acoplar as duas sequências de sorteio. */
     nb_attention_init(&engine->attention_v2, engine->rng_state ^ 0x1234567u);
+#if NB_IDLE_V2_SPIKE
+    /* Blink×sacada (S3.7 completo, item 3) -- inócuo sob !NB_IDLE_V2_SPIKE
+     * já que attention_v2 nunca é tickado ali. */
+    nb_attention_set_saccade_callback(&engine->attention_v2, on_attention_saccade, engine);
+#endif
     /* Semente derivada, distinta da de attention_v2 (mesma lógica acima). */
     nb_posture_init(&engine->posture_v2, engine->rng_state ^ 0x87654321u);
     nb_energy_init(&engine->energy_v2); /* sem RNG -- não precisa de semente */
@@ -379,6 +415,10 @@ void nb_idle_engine_reset_transient(nb_idle_engine_t *engine)
         return;
     }
     nb_posture_reset_to_center(&engine->posture_v2);
+    /* Roll-segue-gaze (item 3, "acoplamentos") também é estado
+     * transitório -- reseta junto pra não carregar residual de fora de
+     * IDLE pra dentro (mesma disciplina do H7). */
+    engine->roll_gaze_lag_x = 0.0f;
 }
 
 void nb_idle_engine_set_mode(nb_idle_engine_t *engine, bool quiet_mode,
@@ -422,6 +462,14 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
      * chamando ainda). quiet_mode é o mesmo campo já usado acima. */
     nb_energy_tick(&engine->energy_v2, dt_ms, engine->energy_boredom_ms, engine->energy_arousal,
                   engine->quiet_mode);
+    /* "Roll segue gaze com ~100ms de atraso" (RFC §7, item 3): filtro
+     * passa-baixa do gaze horizontal já resolvido acima. */
+    {
+        const float roll_lag_alpha =
+            clampf((float)dt_ms / NB_IDLE_ROLL_FOLLOWS_GAZE_TAU_MS, 0.0f, 1.0f);
+        engine->roll_gaze_lag_x +=
+            (engine->drift_x - engine->roll_gaze_lag_x) * roll_lag_alpha;
+    }
 #else
     /* SOFT_DRIFT: em vez de ruído tick-a-tick (que em bancada lia como
      * parado -- passo pequeno demais pra ser visível), o gaze desliza

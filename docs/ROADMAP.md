@@ -1819,15 +1819,23 @@ doc — o RFC assume coisas que não são verdade hoje):
    mais espaçado + pálpebra mais fechada no sonolento. Suíte inteira verde
    nas duas configs de flag; build limpo; zero mudança fora do
    `idle_engine`.
-3. **Acoplamentos + blink unificado:** liga `nb_attention_set_saccade_callback()`
-   a um blink de fato (blink×sacada); respiração em fase com o LED idle
-   (fiação nova em `main.c`); roll segue gaze com ~100ms de atraso. Funde
-   os processos de blink independente + gancho de sacada + motor de
-   energia num agendador único. Host-tests: envelope de Poisson/refratário
-   preservado (média 5s, refratário 1.8s, ~28% duplos); LED×respiração
-   sincronizados dentro de tolerância. Gate: host-test verde, build
-   limpo, confirmação visual em bancada (fase é coisa que só se vê ao
-   vivo).
+3. **Acoplamentos + blink unificado** — **`FEITO` (2026-07-06).** Liga
+   `nb_attention_set_saccade_callback()` a um blink de fato (blink×sacada,
+   registrado em `nb_idle_engine_init()`, respeita a exclusividade de
+   slot); `start_blink_motif()` já resorteia `next_blink_at_ms` no final,
+   então o blink independente e o de sacada caem no mesmo agendador sem
+   mecanismo novo. Roll segue gaze com atraso ~100ms (`roll_gaze_lag_x`,
+   filtro passa-baixa, ganho 0.15, soma-se a `tilt`; também é estado
+   transitório zerado por `nb_idle_engine_reset_transient()`).
+   Respiração em fase com o LED idle: única mudança fora do
+   `idle_engine` — `nb_idle_output_t` ganha `breath_scale` e `main.c`
+   multiplica o brilho do LED por ele (mesmo clock, sem estado
+   duplicado). Fiação real de tédio/ativação pro motor de energia (item
+   2) continua em aberto, sem item específico assinado ainda. Host-tests:
+   maioria das transições `FIXATE→SACCADE` dispara blink; roll nunca sai
+   do envelope do gaze e nunca copia o valor instantâneo. Suíte inteira
+   verde nas duas configs de flag; build limpo; confirmação visual da
+   fase (LED×respiração) pendente de bancada.
 4. **Gestos nomeados** `CHECK_IN` (~1×/1-3min), `SLOW_BLINK`, `SIGH`:
    fisiologia/automanutenção (RFC §2, Regra da Causa — não é "atenção"
    fingida), slot exclusivo com motif/gesto em curso, `quiet_mode`
