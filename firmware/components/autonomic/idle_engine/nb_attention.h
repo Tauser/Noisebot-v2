@@ -25,7 +25,13 @@ extern "C" {
 #define NB_ATTENTION_FIXATION_MIN_MS 500u
 #define NB_ATTENTION_FIXATION_MAX_MS 3000u
 #define NB_ATTENTION_SACCADE_MS 80u
-#define NB_ATTENTION_TREMOR_AMPLITUDE 0.02f
+/* Amplitude retunada em bancada (2026-07-06): o valor literal do RFC
+ * (0.02) mapeia pra bem menos de 1px na escala de gaze do renderer
+ * (kGazeXTravel=14, kYTravel=32, mesma conta de NB_IDLE_DRIFT_AMPLITUDE em
+ * idle_engine.c) -- por isso, depois de suavizado (ver
+ * NB_ATTENTION_TREMOR_TAU_MS abaixo), o tremor ficava invisível de novo.
+ * 0.06 mapeia pra ~1-2px, mantendo a intenção "sutil" sem ficar sub-pixel. */
+#define NB_ATTENTION_TREMOR_AMPLITUDE 0.06f
 /* Tremor suavizado (bug real de bancada, 2026-07-06: ruído branco
  * resorteado a cada tick de 20-33ms lia como "flicker" de alta frequência
  * em vez de vida sutil -- mesma classe de problema que SOFT_DRIFT já
