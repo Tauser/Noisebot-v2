@@ -26,6 +26,26 @@ static volatile uint32_t s_tx_overflow_count;
 static volatile uint32_t s_rx_timeout_count;
 static volatile uint32_t s_tx_timeout_count;
 
+static void nb_audio_hal_shell_reset_state(void) {
+    s_tx_handle = NULL;
+    s_rx_handle = NULL;
+    s_initialized = false;
+}
+
+static void nb_audio_hal_shell_cleanup_partial_init(void) {
+    if (s_tx_handle != NULL) {
+        i2s_channel_disable(s_tx_handle);
+    }
+    if (s_rx_handle != NULL) {
+        i2s_channel_disable(s_rx_handle);
+    }
+    if (s_tx_handle != NULL || s_rx_handle != NULL) {
+        i2s_del_channel(s_tx_handle);
+        s_tx_handle = NULL;
+        s_rx_handle = NULL;
+    }
+}
+
 static bool IRAM_ATTR on_send_q_ovf(i2s_chan_handle_t handle, i2s_event_data_t *event, void *user_ctx) {
     (void)handle;
     (void)event;
@@ -46,6 +66,12 @@ esp_err_t nb_audio_hal_shell_init(void) {
     if (s_initialized) {
         return ESP_ERR_INVALID_STATE;
     }
+
+    nb_audio_hal_shell_reset_state();
+    s_rx_overflow_count = 0u;
+    s_tx_overflow_count = 0u;
+    s_rx_timeout_count = 0u;
+    s_tx_timeout_count = 0u;
 
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     chan_cfg.dma_desc_num = NB_AUDIO_HAL_DMA_DESC_NUM;
@@ -82,6 +108,7 @@ esp_err_t nb_audio_hal_shell_init(void) {
     err = i2s_channel_init_std_mode(s_tx_handle, &std_cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "init TX falhou: %s", esp_err_to_name(err));
+        nb_audio_hal_shell_cleanup_partial_init();
         return err;
     }
 
@@ -90,22 +117,35 @@ esp_err_t nb_audio_hal_shell_init(void) {
     err = i2s_channel_init_std_mode(s_rx_handle, &std_cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "init RX falhou: %s", esp_err_to_name(err));
+        nb_audio_hal_shell_cleanup_partial_init();
         return err;
     }
 
     i2s_event_callbacks_t tx_callbacks = {.on_send_q_ovf = on_send_q_ovf};
-    i2s_channel_register_event_callback(s_tx_handle, &tx_callbacks, NULL);
+    err = i2s_channel_register_event_callback(s_tx_handle, &tx_callbacks, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "callback TX falhou: %s", esp_err_to_name(err));
+        nb_audio_hal_shell_cleanup_partial_init();
+        return err;
+    }
     i2s_event_callbacks_t rx_callbacks = {.on_recv_q_ovf = on_recv_q_ovf};
-    i2s_channel_register_event_callback(s_rx_handle, &rx_callbacks, NULL);
+    err = i2s_channel_register_event_callback(s_rx_handle, &rx_callbacks, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "callback RX falhou: %s", esp_err_to_name(err));
+        nb_audio_hal_shell_cleanup_partial_init();
+        return err;
+    }
 
     err = i2s_channel_enable(s_tx_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "enable TX falhou: %s", esp_err_to_name(err));
+        nb_audio_hal_shell_cleanup_partial_init();
         return err;
     }
     err = i2s_channel_enable(s_rx_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "enable RX falhou: %s", esp_err_to_name(err));
+        nb_audio_hal_shell_cleanup_partial_init();
         return err;
     }
 
