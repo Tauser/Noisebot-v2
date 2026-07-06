@@ -37,3 +37,46 @@ o bastante pra não depender de sorte de uma janela de 60s isolada.
 usuário, incluindo `CURIOUS_TILT` (largura) e `HEAD_TILT_HOLD` (roll)
 depois de o renderer (S2.2) ganhar suporte a `width_l`/`width_r`/`tilt`
 em `nb_face_renderer_shell_draw()`.
+
+## S3.7 — spike go/no-go (idle v2)
+
+Flag de compilação `NB_IDLE_V2_SPIKE` (`idle_engine.h`, ligada por padrão
+nesta fase): desliga o sorteio dos motifs longos de S2.4 e liga dois
+núcleos novos, também C17 puros e host-testáveis isoladamente
+(`docs/RFC-VIDA-V2.md` §7):
+
+- **`nb_breath.c/.h`** — função pura `nb_breath_scale(now_ms, period_ms,
+  amp)`: fator multiplicativo (1 ± 2%, período ~6s) aplicado sobre
+  `open_l`/`open_r` depois do blink, modulando a altura dos olhos.
+- **`nb_attention.c/.h`** — FSM `FIXATE⇄SACCADE`: fixação de 0.5-3s com
+  micro-tremor (≤0.02), sacada de 80ms (ease-out) para um alvo em
+  `[-0.35,0.35]²` com ~40% de viés de retorno ao centro. Alimenta
+  `drift_x`/`drift_y` no lugar do `SOFT_DRIFT` antigo. Expõe
+  `nb_attention_set_saccade_callback()` (gancho pra acoplar blink×sacada
+  — só exposto e testado neste spike, o acoplamento real fica pro "Plano
+  S3.7 completo" pós-go).
+
+O blink independente (Poisson) **não muda** nas duas configs. `main.c`
+continua chamando `nb_idle_engine_tick()` sem nenhuma alteração — a troca
+de comportamento é inteira interna ao núcleo (`idle_engine.c` decide via
+`#if NB_IDLE_V2_SPIKE` o que alimenta `drift_x`/`drift_y` e se aplica
+`nb_breath_scale()`), preservando "zero mudança fora do idle_engine" do
+escopo do spike.
+
+Rodar a suíte de host-tests nas duas configs (`tools/run_host_tests.py`):
+
+```
+python tools/run_host_tests.py                                    # spike ligado (padrão do header)
+NB_HOST_TEST_CFLAGS="-DNB_IDLE_V2_SPIKE=0" python tools/run_host_tests.py  # motifs longos de S2.4
+```
+
+`tools/run_host_tests.py` foi generalizado para compilar todos os `.c` de
+um componente (não só `<componente>.c>`) e aceitar `NB_HOST_TEST_CFLAGS`
+como defines extras — necessário pra `nb_breath.c`/`nb_attention.c`
+conviverem com `idle_engine.c` no mesmo componente e pra rodar a suíte
+inteira (incluindo o invariante X→IDLE do `tiny_fsm`) nas duas configs de
+flag sem duplicar scripts.
+
+**Pendente (gate manual, fora de host-test):** vídeo A/B de 30s + Turing
+de mesa, fps/heap/toque em bancada — ver `docs/ROADMAP.md` "Plano S3.7 —
+passo 0", item 5. Build limpo prova compilação, não comportamento.
