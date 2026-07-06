@@ -1,0 +1,3074 @@
+# S4.1 audio soak start=2026-07-06T04:05:48.1741671-03:00 port=COM5 baud=115200
+I (13139) nb2: alive
+I (14145) nb2: alive
+I (15154) nb2: alive
+I (16160) nb2: alive
+W (16748) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (16871) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.41 flush_ms=40.32
+I (17147) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (17148) nb2: audio_bringup: mic_rms=82.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (17161) nb2: alive
+I (18161) nb2: alive
+I (19161) nb2: alive
+I (20161) nb2: alive
+I (21161) nb2: alive
+I (21912) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.33 flush_ms=40.45
+I (22155) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (22156) nb2: audio_bringup: mic_rms=71.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (22165) nb2: alive
+I (23165) nb2: alive
+I (24165) nb2: alive
+I (25173) nb2: alive
+I (26179) nb2: alive
+I (26939) nb2: face_demo: fps=20.9 logic_ms=0.22 draw_ms=7.32 flush_ms=40.31
+I (27163) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (27164) nb2: audio_bringup: mic_rms=92.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (27179) nb2: alive
+I (28179) nb2: alive
+I (29179) nb2: alive
+I (30179) nb2: alive
+I (31179) nb2: alive
+I (31979) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.39 flush_ms=40.37
+I (32171) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (32172) nb2: audio_bringup: mic_rms=108.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (32184) nb2: alive
+W (32751) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (33184) nb2: alive
+I (34184) nb2: alive
+I (35184) nb2: alive
+I (36184) nb2: alive
+I (37019) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.44 flush_ms=40.33
+I (37179) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (37180) nb2: audio_bringup: mic_rms=78.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (37186) nb2: alive
+I (38187) nb2: alive
+I (39190) nb2: alive
+I (40198) nb2: alive
+I (41206) nb2: alive
+I (42062) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.36 flush_ms=40.44
+I (42187) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (42188) nb2: audio_bringup: mic_rms=116.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (42206) nb2: alive
+I (43206) nb2: alive
+I (44206) nb2: alive
+I (45206) nb2: alive
+I (45470) circadian_core: SLEEP aplicado -- entrando em NIGHT
+I (46206) nb2: alive
+I (47088) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.21 flush_ms=40.43
+I (47195) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (47196) nb2: audio_bringup: mic_rms=88.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (47206) nb2: alive
+I (48206) nb2: alive
+I (49211) nb2: alive
+I (50219) nb2: alive
+I (51227) nb2: alive
+I (52131) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.34 flush_ms=40.48
+I (52203) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (52204) nb2: audio_bringup: mic_rms=76.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (52227) nb2: alive
+I (53227) nb2: alive
+I (54227) nb2: alive
+I (55227) nb2: alive
+I (56227) nb2: alive
+I (57171) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.41 flush_ms=40.38
+I (57211) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (57212) nb2: audio_bringup: mic_rms=85.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (57230) nb2: alive
+I (58237) nb2: alive
+I (59245) nb2: alive
+I (60253) nb2: alive
+I (61261) nb2: alive
+I (62213) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.46 flush_ms=40.35
+I (62219) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (62220) nb2: audio_bringup: mic_rms=107.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (62261) nb2: alive
+I (62261) nb2: stats: heap_livre=172931 heap_min=170295 psram_livre=16461580 psram_min=16461580
+W (62765) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (63261) nb2: alive
+I (64261) nb2: alive
+I (65261) nb2: alive
+I (66261) nb2: alive
+I (67227) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (67228) nb2: audio_bringup: mic_rms=67.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (67258) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.47 flush_ms=40.38
+I (67267) nb2: alive
+I (68275) nb2: alive
+I (69283) nb2: alive
+I (70291) nb2: alive
+I (71298) nb2: alive
+I (72235) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (72236) nb2: audio_bringup: mic_rms=55.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (72298) nb2: alive
+I (72299) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.44 flush_ms=40.34
+I (73298) nb2: alive
+I (74298) nb2: alive
+I (75298) nb2: alive
+I (76298) nb2: alive
+I (77243) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (77244) nb2: audio_bringup: mic_rms=104.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (77298) nb2: alive
+I (77328) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.31 flush_ms=40.37
+I (78298) nb2: alive
+I (79298) nb2: alive
+I (80298) nb2: alive
+I (81304) nb2: alive
+I (82251) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (82252) nb2: audio_bringup: mic_rms=72.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (82304) nb2: alive
+I (82352) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.26 flush_ms=40.38
+I (83304) nb2: alive
+I (84304) nb2: alive
+I (85304) nb2: alive
+I (86304) nb2: alive
+I (87259) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (87260) nb2: audio_bringup: mic_rms=83.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (87304) nb2: alive
+I (87392) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.29 flush_ms=40.50
+I (88312) nb2: alive
+I (89312) nb2: alive
+I (90316) nb2: alive
+I (91316) nb2: alive
+I (92267) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (92268) nb2: audio_bringup: mic_rms=86.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (92316) nb2: alive
+I (92415) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.21 flush_ms=40.42
+W (92773) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (93316) nb2: alive
+I (94316) nb2: alive
+I (95316) nb2: alive
+I (96317) nb2: alive
+I (97275) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (97276) nb2: audio_bringup: mic_rms=153.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (97320) nb2: alive
+I (97456) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.37 flush_ms=40.43
+I (98327) nb2: alive
+I (99327) nb2: alive
+I (100327) nb2: alive
+I (101327) nb2: alive
+I (102283) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (102284) nb2: audio_bringup: mic_rms=105.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (102327) nb2: alive
+I (102497) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.38 flush_ms=40.42
+I (103327) nb2: alive
+I (104331) nb2: alive
+I (105338) nb2: alive
+I (106338) nb2: alive
+I (107291) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (107292) nb2: audio_bringup: mic_rms=5666.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (107338) nb2: alive
+I (107543) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.37 flush_ms=40.48
+I (108338) nb2: alive
+I (109338) nb2: alive
+I (110338) nb2: alive
+I (111338) nb2: alive
+I (112299) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (112300) nb2: audio_bringup: mic_rms=2618.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (112343) nb2: alive
+I (112575) nb2: face_demo: fps=20.9 logic_ms=0.20 draw_ms=7.47 flush_ms=40.23
+I (113347) nb2: alive
+I (114353) nb2: alive
+I (115353) nb2: alive
+I (116353) nb2: alive
+I (117307) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (117308) nb2: audio_bringup: mic_rms=398.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (117353) nb2: alive
+I (117599) nb2: face_demo: fps=20.9 logic_ms=0.20 draw_ms=7.41 flush_ms=40.22
+I (118353) nb2: alive
+I (119353) nb2: alive
+I (120353) nb2: alive
+I (121353) nb2: alive
+I (122315) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (122316) nb2: audio_bringup: mic_rms=77.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (122353) nb2: alive
+I (122353) nb2: stats: heap_livre=172895 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (122646) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.44 flush_ms=40.42
+W (122780) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (123353) nb2: alive
+I (124353) nb2: alive
+I (125353) nb2: alive
+I (126354) nb2: alive
+I (127323) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (127324) nb2: audio_bringup: mic_rms=141.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (127354) nb2: alive
+I (127690) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.48 flush_ms=40.36
+I (128354) nb2: alive
+I (129354) nb2: alive
+I (130354) nb2: alive
+I (131354) nb2: alive
+I (132331) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (132332) nb2: audio_bringup: mic_rms=130.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (132356) nb2: alive
+I (132731) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.47 flush_ms=40.31
+I (133364) nb2: alive
+I (134371) nb2: alive
+I (135379) nb2: alive
+I (136388) nb2: alive
+I (137339) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (137340) nb2: audio_bringup: mic_rms=96.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (137388) nb2: alive
+I (137774) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.56 flush_ms=40.25
+I (138388) nb2: alive
+I (139388) nb2: alive
+I (140388) nb2: alive
+I (141388) nb2: alive
+I (142347) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (142348) nb2: audio_bringup: mic_rms=75.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (142388) nb2: alive
+I (142806) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.26 flush_ms=40.46
+I (143392) nb2: alive
+I (144392) nb2: alive
+I (145392) nb2: alive
+I (146392) nb2: alive
+I (147355) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (147356) nb2: audio_bringup: mic_rms=90.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (147392) nb2: alive
+I (147828) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.23 flush_ms=40.38
+I (148392) nb2: alive
+I (149392) nb2: alive
+I (150392) nb2: alive
+I (151392) nb2: alive
+I (152363) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (152364) nb2: audio_bringup: mic_rms=87.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (152392) nb2: alive
+W (152782) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (152859) nb2: face_demo: fps=20.9 logic_ms=0.20 draw_ms=7.43 flush_ms=40.28
+I (153396) nb2: alive
+I (154401) nb2: alive
+I (155409) nb2: alive
+I (156417) nb2: alive
+I (157372) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (157372) nb2: audio_bringup: mic_rms=95.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (157421) nb2: alive
+I (157893) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.41 flush_ms=40.31
+I (158421) nb2: alive
+I (159421) nb2: alive
+I (160421) nb2: alive
+I (161421) nb2: alive
+I (162379) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (162380) nb2: audio_bringup: mic_rms=89.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (162421) nb2: alive
+I (162925) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.37 flush_ms=40.34
+I (163421) nb2: alive
+I (164422) nb2: alive
+I (165422) nb2: alive
+I (166422) nb2: alive
+I (167387) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (167388) nb2: audio_bringup: mic_rms=101.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (167422) nb2: alive
+I (167968) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.37 flush_ms=40.45
+I (168422) nb2: alive
+I (169422) nb2: alive
+I (170422) nb2: alive
+I (171422) nb2: alive
+I (172395) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (172396) nb2: audio_bringup: mic_rms=89.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (172425) nb2: alive
+I (172993) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.26 flush_ms=40.39
+I (173433) nb2: alive
+I (174440) nb2: alive
+I (175446) nb2: alive
+I (176454) nb2: alive
+I (177403) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (177404) nb2: audio_bringup: mic_rms=516.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (177454) nb2: alive
+I (178016) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.26 flush_ms=40.37
+I (178455) nb2: alive
+I (179462) nb2: alive
+I (180470) nb2: alive
+I (181478) nb2: alive
+I (182411) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (182412) nb2: audio_bringup: mic_rms=263.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (182478) nb2: alive
+I (182478) nb2: stats: heap_livre=172951 heap_min=170295 psram_livre=16461580 psram_min=16461580
+W (182785) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (183047) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.27 flush_ms=40.44
+I (183486) nb2: alive
+I (184492) nb2: alive
+I (185499) nb2: alive
+I (186504) nb2: alive
+I (187419) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (187420) nb2: audio_bringup: mic_rms=74.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (187506) nb2: alive
+I (188075) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.30 flush_ms=40.38
+I (188515) nb2: alive
+I (189521) nb2: alive
+I (190521) nb2: alive
+I (191521) nb2: alive
+I (192427) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (192428) nb2: audio_bringup: mic_rms=90.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (192521) nb2: alive
+I (193104) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.34 flush_ms=40.34
+I (193521) nb2: alive
+I (194521) nb2: alive
+I (195521) nb2: alive
+I (196521) nb2: alive
+I (197435) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (197436) nb2: audio_bringup: mic_rms=86.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (197528) nb2: alive
+I (198132) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.26 flush_ms=40.42
+I (198528) nb2: alive
+I (199532) nb2: alive
+I (200540) nb2: alive
+I (201547) nb2: alive
+I (202443) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (202444) nb2: audio_bringup: mic_rms=84.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (202547) nb2: alive
+I (203163) nb2: face_demo: fps=20.9 logic_ms=0.18 draw_ms=7.29 flush_ms=40.42
+I (203555) nb2: alive
+I (204563) nb2: alive
+I (205570) nb2: alive
+I (206575) nb2: alive
+I (207451) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (207452) nb2: audio_bringup: mic_rms=93.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (207577) nb2: alive
+I (208191) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.43 flush_ms=40.25
+I (208584) nb2: alive
+I (209592) nb2: alive
+I (210592) nb2: alive
+I (211592) nb2: alive
+I (212459) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (212460) nb2: audio_bringup: mic_rms=236.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (212595) nb2: alive
+W (212791) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (213209) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.20 flush_ms=40.37
+I (213600) nb2: alive
+I (214608) nb2: alive
+I (215616) nb2: alive
+I (216624) nb2: alive
+I (217467) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (217468) nb2: audio_bringup: mic_rms=119.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (217624) nb2: alive
+I (218251) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.45 flush_ms=40.37
+I (218624) nb2: alive
+I (219624) nb2: alive
+I (219784) circadian_core: WAKE_HOUR aplicado -- entrando em DAWN
+I (220624) nb2: alive
+I (221624) nb2: alive
+I (222475) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (222476) nb2: audio_bringup: mic_rms=121.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (222629) nb2: alive
+I (223291) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.50 flush_ms=40.28
+I (223636) nb2: alive
+I (224642) nb2: alive
+I (225649) nb2: alive
+I (226649) nb2: alive
+I (227483) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (227484) nb2: audio_bringup: mic_rms=83.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (227657) nb2: alive
+I (228321) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.29 flush_ms=40.39
+I (228665) nb2: alive
+I (229671) nb2: alive
+I (230678) nb2: alive
+I (231685) nb2: alive
+I (232491) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (232492) nb2: audio_bringup: mic_rms=147.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (232685) nb2: alive
+I (233360) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.32 flush_ms=40.45
+I (233685) nb2: alive
+I (234685) nb2: alive
+I (235685) nb2: alive
+I (236685) nb2: alive
+I (237499) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (237500) nb2: audio_bringup: mic_rms=390.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (237693) nb2: alive
+I (238405) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.39 flush_ms=40.42
+I (238700) nb2: alive
+I (239708) nb2: alive
+I (240715) nb2: alive
+I (241716) nb2: alive
+I (242507) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (242508) nb2: audio_bringup: mic_rms=307.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (242723) nb2: alive
+I (242723) nb2: stats: heap_livre=172751 heap_min=170295 psram_livre=16461580 psram_min=16461580
+W (242794) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (243434) nb2: face_demo: fps=20.9 logic_ms=0.22 draw_ms=7.28 flush_ms=40.37
+I (243729) nb2: alive
+I (244738) nb2: alive
+I (245744) nb2: alive
+I (246752) nb2: alive
+I (247515) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (247516) nb2: audio_bringup: mic_rms=135.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (247758) nb2: alive
+I (248469) nb2: face_demo: fps=20.9 logic_ms=0.23 draw_ms=7.35 flush_ms=40.35
+I (248766) nb2: alive
+I (249773) nb2: alive
+I (250777) nb2: alive
+I (251783) nb2: alive
+I (252523) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (252524) nb2: audio_bringup: mic_rms=128.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (252783) nb2: alive
+I (253505) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.37 flush_ms=40.34
+I (253783) nb2: alive
+I (254783) nb2: alive
+I (255783) nb2: alive
+I (256783) nb2: alive
+I (257531) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (257532) nb2: audio_bringup: mic_rms=90.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (257783) nb2: alive
+I (258541) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.36 flush_ms=40.33
+I (258791) nb2: alive
+I (259798) nb2: alive
+I (260803) nb2: alive
+I (261803) nb2: alive
+I (262539) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (262540) nb2: audio_bringup: mic_rms=164.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (262807) nb2: alive
+I (263565) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.29 flush_ms=40.29
+I (263814) nb2: alive
+I (264821) nb2: alive
+I (265826) nb2: alive
+I (266832) nb2: alive
+I (267547) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (267548) nb2: audio_bringup: mic_rms=106.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (267832) nb2: alive
+I (268607) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.44 flush_ms=40.29
+I (268832) nb2: alive
+I (269832) nb2: alive
+I (270832) nb2: alive
+I (271833) nb2: alive
+I (272555) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (272556) nb2: audio_bringup: mic_rms=93.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (272796) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (272840) nb2: alive
+I (273647) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.38 flush_ms=40.35
+I (273847) nb2: alive
+I (274851) nb2: alive
+I (275857) nb2: alive
+I (276865) nb2: alive
+I (277563) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (277564) nb2: audio_bringup: mic_rms=318.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (277865) nb2: alive
+I (278680) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.42 flush_ms=40.24
+I (278865) nb2: alive
+I (279865) nb2: alive
+I (280865) nb2: alive
+I (281865) nb2: alive
+I (282571) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (282572) nb2: audio_bringup: mic_rms=82.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (282866) nb2: alive
+I (283722) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.44 flush_ms=40.31
+I (283866) nb2: alive
+I (284866) nb2: alive
+I (285866) nb2: alive
+I (286866) nb2: alive
+I (287579) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (287580) nb2: audio_bringup: mic_rms=102.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (287866) nb2: alive
+I (288762) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.43 flush_ms=40.29
+I (288866) nb2: alive
+I (289875) nb2: alive
+I (290883) nb2: alive
+I (291890) nb2: alive
+I (292587) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (292588) nb2: audio_bringup: mic_rms=91.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (292890) nb2: alive
+I (293803) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.42 flush_ms=40.30
+I (293890) nb2: alive
+I (294890) nb2: alive
+I (295890) nb2: alive
+I (296890) nb2: alive
+I (297595) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (297596) nb2: audio_bringup: mic_rms=137.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (297897) nb2: alive
+I (298849) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.43 flush_ms=40.36
+I (298905) nb2: alive
+I (299913) nb2: alive
+I (300913) nb2: alive
+I (301913) nb2: alive
+I (302603) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (302604) nb2: audio_bringup: mic_rms=102.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (302799) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (302913) nb2: alive
+I (302913) nb2: stats: heap_livre=172767 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (303877) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.19 flush_ms=40.41
+I (303914) nb2: alive
+I (304914) nb2: alive
+I (305914) nb2: alive
+I (306914) nb2: alive
+I (307611) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (307612) nb2: audio_bringup: mic_rms=93.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (307921) nb2: alive
+I (308921) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.38 flush_ms=40.39
+I (308930) nb2: alive
+I (309936) nb2: alive
+I (310944) nb2: alive
+I (311944) nb2: alive
+I (312619) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (312620) nb2: audio_bringup: mic_rms=90.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (312944) nb2: alive
+I (313944) nb2: alive
+I (313966) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.51 flush_ms=40.27
+I (314944) nb2: alive
+I (315944) nb2: alive
+I (316951) nb2: alive
+I (317627) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (317628) nb2: audio_bringup: mic_rms=88.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (317952) nb2: alive
+I (318952) nb2: alive
+I (318966) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.54 flush_ms=40.26
+I (319952) nb2: alive
+I (320952) nb2: alive
+I (321956) nb2: alive
+I (322635) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (322636) nb2: audio_bringup: mic_rms=78.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (322956) nb2: alive
+I (323956) nb2: alive
+I (323967) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.62 flush_ms=40.17
+I (324956) nb2: alive
+I (325956) nb2: alive
+I (326956) nb2: alive
+I (327643) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (327644) nb2: audio_bringup: mic_rms=93.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (327961) nb2: alive
+I (328961) nb2: alive
+I (329010) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.33 flush_ms=40.41
+I (329961) nb2: alive
+I (330961) nb2: alive
+I (331961) nb2: alive
+I (332651) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (332652) nb2: audio_bringup: mic_rms=105.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (332803) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (332961) nb2: alive
+I (333967) nb2: alive
+I (334055) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.37 flush_ms=40.41
+I (334975) nb2: alive
+I (335982) nb2: alive
+I (336989) nb2: alive
+I (337659) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (337660) nb2: audio_bringup: mic_rms=134.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (337990) nb2: alive
+I (338990) nb2: alive
+I (339097) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.44 flush_ms=40.30
+I (339990) nb2: alive
+I (340990) nb2: alive
+I (341990) nb2: alive
+I (342667) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (342668) nb2: audio_bringup: mic_rms=89.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (342990) nb2: alive
+I (343990) nb2: alive
+I (344119) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.18 flush_ms=40.38
+I (344990) nb2: alive
+I (345990) nb2: alive
+I (346995) nb2: alive
+I (347675) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (347676) nb2: audio_bringup: mic_rms=84.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (347997) nb2: alive
+I (348997) nb2: alive
+I (349142) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.26 flush_ms=40.30
+I (350001) nb2: alive
+I (351002) nb2: alive
+I (352005) nb2: alive
+I (352683) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (352684) nb2: audio_bringup: mic_rms=116.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (353006) nb2: alive
+I (354006) nb2: alive
+I (354142) nb2: face_demo: fps=21.0 logic_ms=0.26 draw_ms=6.96 flush_ms=40.38
+I (355014) nb2: alive
+I (356022) nb2: alive
+I (357030) nb2: alive
+I (357691) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (357692) nb2: audio_bringup: mic_rms=89.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (358030) nb2: alive
+I (359030) nb2: alive
+I (359185) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.31 flush_ms=40.45
+I (360030) nb2: alive
+I (361030) nb2: alive
+I (362030) nb2: alive
+I (362699) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (362700) nb2: audio_bringup: mic_rms=112.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (362809) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (363035) nb2: alive
+I (363035) nb2: stats: heap_livre=172767 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (364036) nb2: alive
+I (364229) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.33 flush_ms=40.42
+I (365036) nb2: alive
+I (366036) nb2: alive
+I (367036) nb2: alive
+I (367707) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (367708) nb2: audio_bringup: mic_rms=97.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (368036) nb2: alive
+I (369043) nb2: alive
+I (369275) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.45 flush_ms=40.33
+I (370050) nb2: alive
+I (371058) nb2: alive
+I (372058) nb2: alive
+I (372715) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (372716) nb2: audio_bringup: mic_rms=95.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (373058) nb2: alive
+I (374058) nb2: alive
+I (374314) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.41 flush_ms=40.31
+I (375058) nb2: alive
+I (376058) nb2: alive
+I (377058) nb2: alive
+I (377723) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (377724) nb2: audio_bringup: mic_rms=105.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (378058) nb2: alive
+I (379058) nb2: alive
+I (379358) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.47 flush_ms=40.31
+I (380058) nb2: alive
+I (381058) nb2: alive
+I (382058) nb2: alive
+I (382731) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (382732) nb2: audio_bringup: mic_rms=86.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (383064) nb2: alive
+I (384071) nb2: alive
+I (384399) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.37 flush_ms=40.37
+I (385071) nb2: alive
+I (386071) nb2: alive
+I (387071) nb2: alive
+I (387739) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (387740) nb2: audio_bringup: mic_rms=83.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (388071) nb2: alive
+I (389071) nb2: alive
+I (389426) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.21 flush_ms=40.38
+I (390071) nb2: alive
+I (391071) nb2: alive
+I (392071) nb2: alive
+I (392747) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (392748) nb2: audio_bringup: mic_rms=80.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (392859) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (393071) nb2: alive
+I (394071) nb2: alive
+I (394446) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.16 flush_ms=40.37
+I (395071) nb2: alive
+I (396079) nb2: alive
+I (397086) nb2: alive
+I (397755) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (397756) nb2: audio_bringup: mic_rms=109.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (398087) nb2: alive
+I (399087) nb2: alive
+I (399472) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.22 flush_ms=40.37
+I (400087) nb2: alive
+I (401087) nb2: alive
+I (402087) nb2: alive
+I (402763) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (402764) nb2: audio_bringup: mic_rms=83.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (403088) nb2: alive
+I (404096) nb2: alive
+I (404519) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.42 flush_ms=40.38
+I (405096) nb2: alive
+I (406103) nb2: alive
+I (407103) nb2: alive
+I (407771) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (407772) nb2: audio_bringup: mic_rms=141.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (408103) nb2: alive
+I (409103) nb2: alive
+I (409551) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.28 flush_ms=40.37
+I (410103) nb2: alive
+I (411103) nb2: alive
+I (412103) nb2: alive
+I (412779) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (412780) nb2: audio_bringup: mic_rms=107.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (413103) nb2: alive
+I (414103) nb2: alive
+I (414591) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.34 flush_ms=40.38
+I (415103) nb2: alive
+I (416103) nb2: alive
+I (417103) nb2: alive
+I (417787) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (417788) nb2: audio_bringup: mic_rms=130.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (418103) nb2: alive
+I (419103) nb2: alive
+I (419611) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.21 flush_ms=40.33
+I (420103) nb2: alive
+I (421107) nb2: alive
+I (422115) nb2: alive
+I (422795) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (422796) nb2: audio_bringup: mic_rms=68.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (422862) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (423115) nb2: alive
+I (423115) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (424115) nb2: alive
+I (424658) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.48 flush_ms=40.30
+I (425115) nb2: alive
+I (426115) nb2: alive
+I (427121) nb2: alive
+I (427803) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (427804) nb2: audio_bringup: mic_rms=84.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (428122) nb2: alive
+I (429122) nb2: alive
+I (429668) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.72 flush_ms=40.18
+I (430122) nb2: alive
+I (431122) nb2: alive
+I (432124) nb2: alive
+I (432811) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (432812) nb2: audio_bringup: mic_rms=89.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (433125) nb2: alive
+I (434125) nb2: alive
+I (434712) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.40 flush_ms=40.36
+I (435125) nb2: alive
+I (436125) nb2: alive
+I (437125) nb2: alive
+I (437819) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (437820) nb2: audio_bringup: mic_rms=72.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (438131) nb2: alive
+I (439131) nb2: alive
+I (439734) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.20 flush_ms=40.36
+I (440131) nb2: alive
+I (441134) nb2: alive
+I (442141) nb2: alive
+I (442827) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (442828) nb2: audio_bringup: mic_rms=110.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (443141) nb2: alive
+I (444141) nb2: alive
+I (444779) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.46 flush_ms=40.31
+I (445141) nb2: alive
+I (446141) nb2: alive
+I (447141) nb2: alive
+I (447835) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (447836) nb2: audio_bringup: mic_rms=88.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (448141) nb2: alive
+I (449141) nb2: alive
+I (449824) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.36 flush_ms=40.40
+I (450141) nb2: alive
+I (451141) nb2: alive
+I (452141) nb2: alive
+I (452843) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (452844) nb2: audio_bringup: mic_rms=98.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+W (452866) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (453141) nb2: alive
+I (454141) nb2: alive
+I (454849) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.19 flush_ms=40.40
+I (455145) nb2: alive
+I (456152) nb2: alive
+I (457157) nb2: alive
+I (457851) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (457852) nb2: audio_bringup: mic_rms=267.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (458160) nb2: alive
+I (459167) nb2: alive
+I (459881) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.27 flush_ms=40.37
+I (460167) nb2: alive
+I (461171) nb2: alive
+I (462171) nb2: alive
+I (462859) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (462860) nb2: audio_bringup: mic_rms=99.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (463171) nb2: alive
+I (464171) nb2: alive
+I (464903) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.24 flush_ms=40.32
+I (465171) nb2: alive
+I (466171) nb2: alive
+I (467171) nb2: alive
+I (467867) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (467868) nb2: audio_bringup: mic_rms=130.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (468171) nb2: alive
+I (469179) nb2: alive
+I (469939) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.34 flush_ms=40.35
+I (470179) nb2: alive
+I (471179) nb2: alive
+I (472179) nb2: alive
+I (472875) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (472876) nb2: audio_bringup: mic_rms=85.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (473179) nb2: alive
+I (474179) nb2: alive
+I (474984) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.47 flush_ms=40.31
+I (475185) nb2: alive
+I (476186) nb2: alive
+I (477186) nb2: alive
+I (477883) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (477884) nb2: audio_bringup: mic_rms=99.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (478186) nb2: alive
+I (479186) nb2: alive
+I (480023) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.59 flush_ms=40.11
+I (480186) nb2: alive
+I (481186) nb2: alive
+I (482192) nb2: alive
+W (482869) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (482891) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (482892) nb2: audio_bringup: mic_rms=88.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (483193) nb2: alive
+I (483193) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (484199) nb2: alive
+I (485055) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.29 flush_ms=40.36
+I (485203) nb2: alive
+I (486206) nb2: alive
+I (487215) nb2: alive
+I (487899) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (487900) nb2: audio_bringup: mic_rms=108.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (488216) nb2: alive
+I (489216) nb2: alive
+I (490090) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.30 flush_ms=40.37
+I (490216) nb2: alive
+I (491216) nb2: alive
+I (492216) nb2: alive
+I (492907) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (492908) nb2: audio_bringup: mic_rms=87.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (493223) nb2: alive
+I (494223) nb2: alive
+I (495137) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.48 flush_ms=40.30
+I (495223) nb2: alive
+I (496223) nb2: alive
+I (497223) nb2: alive
+I (497915) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (497916) nb2: audio_bringup: mic_rms=70.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (498223) nb2: alive
+I (499230) nb2: alive
+I (500180) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.40 flush_ms=40.35
+I (500236) nb2: alive
+I (501242) nb2: alive
+I (502249) nb2: alive
+I (502923) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (502924) nb2: audio_bringup: mic_rms=90.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (503249) nb2: alive
+I (504249) nb2: alive
+I (505218) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.33 flush_ms=40.38
+I (505249) nb2: alive
+I (506249) nb2: alive
+I (507249) nb2: alive
+I (507931) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (507932) nb2: audio_bringup: mic_rms=70.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (508249) nb2: alive
+I (509249) nb2: alive
+I (510249) nb2: alive
+I (510264) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.35 flush_ms=40.43
+I (511249) nb2: alive
+I (512249) nb2: alive
+W (512872) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (512939) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (512940) nb2: audio_bringup: mic_rms=103.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (513249) nb2: alive
+I (514249) nb2: alive
+I (515253) nb2: alive
+I (515293) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.34 flush_ms=40.29
+I (516258) nb2: alive
+I (517266) nb2: alive
+I (517947) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (517948) nb2: audio_bringup: mic_rms=137.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (518274) nb2: alive
+I (519282) nb2: alive
+I (520288) nb2: alive
+I (520328) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.39 flush_ms=40.28
+I (521289) nb2: alive
+I (522289) nb2: alive
+I (522956) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (522956) nb2: audio_bringup: mic_rms=112.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (523289) nb2: alive
+I (524289) nb2: alive
+I (525289) nb2: alive
+I (525369) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.46 flush_ms=40.27
+I (526289) nb2: alive
+I (527289) nb2: alive
+I (527963) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (527964) nb2: audio_bringup: mic_rms=142.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (528291) nb2: alive
+I (529297) nb2: alive
+I (530305) nb2: alive
+I (530393) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.27 flush_ms=40.29
+I (531313) nb2: alive
+I (532319) nb2: alive
+I (532971) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (532972) nb2: audio_bringup: mic_rms=89.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (533319) nb2: alive
+I (534319) nb2: alive
+I (535319) nb2: alive
+I (535424) nb2: face_demo: fps=20.9 logic_ms=0.24 draw_ms=7.31 flush_ms=40.35
+I (536319) nb2: alive
+I (537319) nb2: alive
+I (537979) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (537980) nb2: audio_bringup: mic_rms=87.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (538319) nb2: alive
+I (539319) nb2: alive
+I (540319) nb2: alive
+I (540448) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.34 flush_ms=40.24
+I (541319) nb2: alive
+I (542324) nb2: alive
+W (542874) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (542987) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (542988) nb2: audio_bringup: mic_rms=62.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (543327) nb2: alive
+I (543328) nb2: stats: heap_livre=172751 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (544335) nb2: alive
+I (545335) nb2: alive
+I (545467) nb2: face_demo: fps=20.9 logic_ms=0.23 draw_ms=7.24 flush_ms=40.31
+I (546337) nb2: alive
+I (547337) nb2: alive
+I (547995) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (547996) nb2: audio_bringup: mic_rms=81.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (548337) nb2: alive
+I (549337) nb2: alive
+I (550337) nb2: alive
+I (550507) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.45 flush_ms=40.31
+I (551337) nb2: alive
+I (552337) nb2: alive
+I (553003) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (553004) nb2: audio_bringup: mic_rms=1463.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (553337) nb2: alive
+I (554337) nb2: alive
+I (555337) nb2: alive
+I (555546) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.41 flush_ms=40.34
+I (556337) nb2: alive
+I (557337) nb2: alive
+I (558011) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (558012) nb2: audio_bringup: mic_rms=332.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (558337) nb2: alive
+I (559337) nb2: alive
+I (560337) nb2: alive
+I (560552) nb2: face_demo: fps=21.0 logic_ms=0.21 draw_ms=7.13 flush_ms=40.32
+I (561337) nb2: alive
+I (562337) nb2: alive
+I (563019) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (563020) nb2: audio_bringup: mic_rms=110.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (563337) nb2: alive
+I (564337) nb2: alive
+I (565337) nb2: alive
+I (565594) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.47 flush_ms=40.32
+I (566337) nb2: alive
+I (567337) nb2: alive
+I (568027) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (568028) nb2: audio_bringup: mic_rms=126.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (568345) nb2: alive
+I (568625) circadian_core: SLEEP aplicado -- entrando em NIGHT
+I (569346) nb2: alive
+I (570346) nb2: alive
+I (570601) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.75 flush_ms=40.15
+I (571346) nb2: alive
+I (572346) nb2: alive
+W (572877) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (573035) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (573036) nb2: audio_bringup: mic_rms=157.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (573347) nb2: alive
+I (574355) nb2: alive
+I (575363) nb2: alive
+I (575643) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.44 flush_ms=40.37
+I (576368) nb2: alive
+I (577368) nb2: alive
+I (578043) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (578044) nb2: audio_bringup: mic_rms=138.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (578371) nb2: alive
+I (579379) nb2: alive
+I (580387) nb2: alive
+I (580667) nb2: face_demo: fps=20.9 logic_ms=0.20 draw_ms=7.28 flush_ms=40.35
+I (581395) nb2: alive
+I (582395) nb2: alive
+I (583051) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (583052) nb2: audio_bringup: mic_rms=1598.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (583402) nb2: alive
+I (584402) nb2: alive
+I (585402) nb2: alive
+I (585698) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.35 flush_ms=40.35
+I (586402) nb2: alive
+I (587402) nb2: alive
+I (588059) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (588060) nb2: audio_bringup: mic_rms=104.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (588402) nb2: alive
+I (589406) nb2: alive
+I (590413) nb2: alive
+I (590742) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.45 flush_ms=40.38
+I (591413) nb2: alive
+I (592413) nb2: alive
+I (593067) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (593068) nb2: audio_bringup: mic_rms=122.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (593413) nb2: alive
+I (594413) nb2: alive
+I (595414) nb2: alive
+I (595790) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.70 flush_ms=40.16
+I (596422) nb2: alive
+I (597430) nb2: alive
+I (598075) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (598076) nb2: audio_bringup: mic_rms=101.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (598431) nb2: alive
+I (599431) nb2: alive
+I (600431) nb2: alive
+I (600831) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.51 flush_ms=40.29
+I (601431) nb2: alive
+I (602431) nb2: alive
+W (602880) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (603083) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (603084) nb2: audio_bringup: mic_rms=5905.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (603431) nb2: alive
+I (603431) nb2: stats: heap_livre=172751 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (604431) nb2: alive
+I (605431) nb2: alive
+I (605849) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.21 flush_ms=40.37
+I (606431) nb2: alive
+I (607432) nb2: alive
+I (608091) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (608092) nb2: audio_bringup: mic_rms=318.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (608439) nb2: alive
+I (609447) nb2: alive
+I (610454) nb2: alive
+I (610878) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.33 flush_ms=40.36
+I (611461) nb2: alive
+I (612469) nb2: alive
+I (613099) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (613100) nb2: audio_bringup: mic_rms=114.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (613469) nb2: alive
+I (614469) nb2: alive
+I (615469) nb2: alive
+I (615917) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.42
+I (616469) nb2: alive
+I (617469) nb2: alive
+I (618107) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (618108) nb2: audio_bringup: mic_rms=90.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (618473) nb2: alive
+I (619481) nb2: alive
+I (620489) nb2: alive
+I (620961) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.37 flush_ms=40.46
+I (621489) nb2: alive
+I (622497) nb2: alive
+I (623115) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (623116) nb2: audio_bringup: mic_rms=141.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (623497) nb2: alive
+I (624497) nb2: alive
+I (625497) nb2: alive
+I (625995) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.36 flush_ms=40.38
+I (626497) nb2: alive
+I (627497) nb2: alive
+I (628123) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (628124) nb2: audio_bringup: mic_rms=119.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (628504) nb2: alive
+I (629511) nb2: alive
+I (630518) nb2: alive
+I (631037) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.45
+I (631526) nb2: alive
+I (632534) nb2: alive
+W (632885) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (633131) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (633132) nb2: audio_bringup: mic_rms=78.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (633534) nb2: alive
+I (634534) nb2: alive
+I (635534) nb2: alive
+I (636080) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.33 flush_ms=40.49
+I (636534) nb2: alive
+I (637534) nb2: alive
+I (638139) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (638140) nb2: audio_bringup: mic_rms=76.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (638537) nb2: alive
+I (639544) nb2: alive
+I (640552) nb2: alive
+I (641120) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.33 flush_ms=40.46
+I (641552) nb2: alive
+I (642552) nb2: alive
+I (643147) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (643148) nb2: audio_bringup: mic_rms=78.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (643552) nb2: alive
+I (644552) nb2: alive
+I (645552) nb2: alive
+I (646164) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.46
+I (646557) nb2: alive
+I (647564) nb2: alive
+I (648155) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (648156) nb2: audio_bringup: mic_rms=89.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (648564) nb2: alive
+I (649570) nb2: alive
+I (650578) nb2: alive
+I (651194) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.27 flush_ms=40.43
+I (651586) nb2: alive
+I (652594) nb2: alive
+I (653163) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (653164) nb2: audio_bringup: mic_rms=70.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (653595) nb2: alive
+I (654595) nb2: alive
+I (655595) nb2: alive
+I (656237) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.41 flush_ms=40.41
+I (656595) nb2: alive
+I (657595) nb2: alive
+I (658171) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (658172) nb2: audio_bringup: mic_rms=80.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (658600) nb2: alive
+I (659608) nb2: alive
+I (660615) nb2: alive
+I (661279) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.45
+I (661615) nb2: alive
+I (662615) nb2: alive
+W (662889) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (663179) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (663180) nb2: audio_bringup: mic_rms=81.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (663615) nb2: alive
+I (663615) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (664615) nb2: alive
+I (665615) nb2: alive
+I (666299) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.20 flush_ms=40.40
+I (666615) nb2: alive
+I (667615) nb2: alive
+I (668187) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (668188) nb2: audio_bringup: mic_rms=79.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (668615) nb2: alive
+I (669615) nb2: alive
+I (670615) nb2: alive
+I (671327) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.28 flush_ms=40.40
+I (671615) nb2: alive
+I (672615) nb2: alive
+I (673195) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (673196) nb2: audio_bringup: mic_rms=90.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (673615) nb2: alive
+I (674615) nb2: alive
+I (675615) nb2: alive
+I (676367) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.35 flush_ms=40.45
+I (676615) nb2: alive
+I (677623) nb2: alive
+I (678203) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (678204) nb2: audio_bringup: mic_rms=277.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (678631) nb2: alive
+I (679639) nb2: alive
+I (680647) nb2: alive
+I (681407) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.38 flush_ms=40.41
+I (681655) nb2: alive
+I (682662) nb2: alive
+I (683211) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (683212) nb2: audio_bringup: mic_rms=91.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (683662) nb2: alive
+I (684662) nb2: alive
+I (685662) nb2: alive
+I (686449) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.45
+I (686662) nb2: alive
+I (687662) nb2: alive
+I (688219) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (688220) nb2: audio_bringup: mic_rms=100.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (688671) nb2: alive
+I (689677) nb2: alive
+I (690677) nb2: alive
+I (691479) nb2: face_demo: fps=20.9 logic_ms=0.18 draw_ms=7.28 flush_ms=40.42
+I (691679) nb2: alive
+I (692687) nb2: alive
+W (692893) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (693227) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (693228) nb2: audio_bringup: mic_rms=136.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (693687) nb2: alive
+I (694687) nb2: alive
+I (695687) nb2: alive
+I (696513) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.30 flush_ms=40.44
+I (696687) nb2: alive
+I (697687) nb2: alive
+I (698235) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (698236) nb2: audio_bringup: mic_rms=65.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (698687) nb2: alive
+I (699694) nb2: alive
+I (700701) nb2: alive
+I (701556) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.38 flush_ms=40.44
+I (701708) nb2: alive
+I (702715) nb2: alive
+I (703243) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (703244) nb2: audio_bringup: mic_rms=141.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (703715) nb2: alive
+I (704715) nb2: alive
+I (705715) nb2: alive
+I (706596) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.35 flush_ms=40.44
+I (706715) nb2: alive
+I (707715) nb2: alive
+I (708251) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (708252) nb2: audio_bringup: mic_rms=108.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (708718) nb2: alive
+I (709726) nb2: alive
+I (710734) nb2: alive
+I (711637) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.42 flush_ms=40.38
+I (711740) nb2: alive
+I (712748) nb2: alive
+I (713259) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (713260) nb2: audio_bringup: mic_rms=110.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (713748) nb2: alive
+I (714748) nb2: alive
+I (715748) nb2: alive
+I (716674) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.34 flush_ms=40.42
+I (716748) nb2: alive
+I (717748) nb2: alive
+I (718267) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (718268) nb2: audio_bringup: mic_rms=102.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (718749) nb2: alive
+I (719758) nb2: alive
+I (720758) nb2: alive
+I (721719) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.43 flush_ms=40.41
+I (721758) nb2: alive
+I (722758) nb2: alive
+W (722896) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (723275) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (723276) nb2: audio_bringup: mic_rms=104.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (723758) nb2: alive
+I (723758) nb2: stats: heap_livre=172751 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (724758) nb2: alive
+I (725758) nb2: alive
+I (726744) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.24 flush_ms=40.41
+I (726758) nb2: alive
+I (727762) nb2: alive
+I (728283) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (728284) nb2: audio_bringup: mic_rms=112.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (728766) nb2: alive
+I (729773) nb2: alive
+I (730773) nb2: alive
+I (731773) nb2: alive
+I (731783) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.41 flush_ms=40.38
+I (732773) nb2: alive
+I (733291) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (733292) nb2: audio_bringup: mic_rms=107.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (733773) nb2: alive
+I (734773) nb2: alive
+I (735776) nb2: alive
+I (736784) nb2: alive
+I (736824) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.43 flush_ms=40.38
+I (737784) nb2: alive
+I (738299) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (738300) nb2: audio_bringup: mic_rms=118.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (738784) nb2: alive
+I (739784) nb2: alive
+I (740784) nb2: alive
+I (741784) nb2: alive
+I (741866) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.43 flush_ms=40.39
+I (742785) nb2: alive
+I (743064) circadian_core: WAKE_HOUR aplicado -- entrando em DAWN
+I (743307) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (743308) nb2: audio_bringup: mic_rms=93.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (743785) nb2: alive
+I (744785) nb2: alive
+I (745785) nb2: alive
+I (746785) nb2: alive
+I (746909) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.43 flush_ms=40.37
+I (747785) nb2: alive
+I (748315) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (748316) nb2: audio_bringup: mic_rms=202.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (748792) nb2: alive
+I (749799) nb2: alive
+I (750806) nb2: alive
+I (751814) nb2: alive
+I (751950) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.39 flush_ms=40.39
+I (752815) nb2: alive
+W (752899) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (753323) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (753324) nb2: audio_bringup: mic_rms=130.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (753822) nb2: alive
+I (754830) nb2: alive
+I (755830) nb2: alive
+I (756834) nb2: alive
+I (756970) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.26 flush_ms=40.32
+I (757842) nb2: alive
+I (758331) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (758332) nb2: audio_bringup: mic_rms=115.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (758842) nb2: alive
+I (759842) nb2: alive
+I (760842) nb2: alive
+I (761842) nb2: alive
+I (762010) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.38 flush_ms=40.38
+I (762842) nb2: alive
+I (763339) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (763340) nb2: audio_bringup: mic_rms=97.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (763848) nb2: alive
+I (764855) nb2: alive
+I (765855) nb2: alive
+I (766860) nb2: alive
+I (767044) nb2: face_demo: fps=20.9 logic_ms=0.22 draw_ms=7.25 flush_ms=40.46
+I (767860) nb2: alive
+I (768347) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (768348) nb2: audio_bringup: mic_rms=92.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (768860) nb2: alive
+I (769860) nb2: alive
+I (770860) nb2: alive
+I (771860) nb2: alive
+I (772090) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.52 flush_ms=40.28
+I (772867) nb2: alive
+I (773355) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (773356) nb2: audio_bringup: mic_rms=77.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (773867) nb2: alive
+I (774867) nb2: alive
+I (775867) nb2: alive
+I (776867) nb2: alive
+I (777135) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.54 flush_ms=40.27
+I (777867) nb2: alive
+I (778363) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (778364) nb2: audio_bringup: mic_rms=39.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (778867) nb2: alive
+I (779867) nb2: alive
+I (780867) nb2: alive
+I (781867) nb2: alive
+I (782165) nb2: face_demo: fps=20.9 logic_ms=0.28 draw_ms=7.41 flush_ms=40.19
+I (782867) nb2: alive
+W (782902) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (783371) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (783372) nb2: audio_bringup: mic_rms=279.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (783867) nb2: alive
+I (783867) nb2: stats: heap_livre=172751 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (784867) nb2: alive
+I (785867) nb2: alive
+I (786867) nb2: alive
+I (787184) nb2: face_demo: fps=20.9 logic_ms=0.24 draw_ms=7.13 flush_ms=40.40
+I (787867) nb2: alive
+I (788379) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (788380) nb2: audio_bringup: mic_rms=136.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (788874) nb2: alive
+I (789874) nb2: alive
+I (790874) nb2: alive
+I (791874) nb2: alive
+I (792203) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.18 flush_ms=40.34
+I (792882) nb2: alive
+I (793387) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (793388) nb2: audio_bringup: mic_rms=86.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (793882) nb2: alive
+I (794882) nb2: alive
+I (795882) nb2: alive
+I (796882) nb2: alive
+I (797241) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.41 flush_ms=40.29
+I (797882) nb2: alive
+I (798395) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (798396) nb2: audio_bringup: mic_rms=426.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (798887) nb2: alive
+I (799895) nb2: alive
+I (800903) nb2: alive
+I (801910) nb2: alive
+I (802286) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.45 flush_ms=40.33
+I (802910) nb2: alive
+I (803403) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (803404) nb2: audio_bringup: mic_rms=178.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (803910) nb2: alive
+I (804910) nb2: alive
+I (805910) nb2: alive
+I (806910) nb2: alive
+I (807295) nb2: face_demo: fps=21.0 logic_ms=0.25 draw_ms=7.06 flush_ms=40.37
+I (807910) nb2: alive
+I (808411) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (808412) nb2: audio_bringup: mic_rms=190.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (808910) nb2: alive
+I (809910) nb2: alive
+I (810916) nb2: alive
+I (811924) nb2: alive
+I (812299) nb2: face_demo: fps=20.8 logic_ms=0.28 draw_ms=7.71 flush_ms=40.11
+W (812905) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (812925) nb2: alive
+I (813419) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (813420) nb2: audio_bringup: mic_rms=173.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (813925) nb2: alive
+I (814925) nb2: alive
+I (815925) nb2: alive
+I (816925) nb2: alive
+I (817338) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.49 flush_ms=40.20
+I (817925) nb2: alive
+I (818427) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (818428) nb2: audio_bringup: mic_rms=132.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (818925) nb2: alive
+I (819929) nb2: alive
+I (820935) nb2: alive
+I (821936) nb2: alive
+I (822356) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.18 flush_ms=40.35
+I (822941) nb2: alive
+I (823435) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (823436) nb2: audio_bringup: mic_rms=108.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (823949) nb2: alive
+I (824956) nb2: alive
+I (825956) nb2: alive
+I (826956) nb2: alive
+I (827374) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.20 flush_ms=40.31
+I (827959) nb2: alive
+I (828443) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (828444) nb2: audio_bringup: mic_rms=76.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (828959) nb2: alive
+I (829965) nb2: alive
+I (830966) nb2: alive
+I (831969) nb2: alive
+I (832393) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.25 flush_ms=40.28
+I (832969) nb2: alive
+I (833451) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (833452) nb2: audio_bringup: mic_rms=85.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (833969) nb2: alive
+I (834969) nb2: alive
+I (835973) nb2: alive
+I (836980) nb2: alive
+I (837405) nb2: face_demo: fps=20.8 logic_ms=0.33 draw_ms=7.74 flush_ms=40.11
+I (837980) nb2: alive
+I (838459) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (838460) nb2: audio_bringup: mic_rms=80.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (838980) nb2: alive
+I (839980) nb2: alive
+I (840980) nb2: alive
+I (841980) nb2: alive
+I (842449) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.46 flush_ms=40.30
+W (842908) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (842985) nb2: alive
+I (843467) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (843468) nb2: audio_bringup: mic_rms=100.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (843985) nb2: alive
+I (843985) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (844985) nb2: alive
+I (845985) nb2: alive
+I (846985) nb2: alive
+I (847488) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.38 flush_ms=40.34
+I (847985) nb2: alive
+I (848475) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (848476) nb2: audio_bringup: mic_rms=86.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (848991) nb2: alive
+I (849998) nb2: alive
+I (850998) nb2: alive
+I (851998) nb2: alive
+I (852536) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.44 flush_ms=40.35
+I (852998) nb2: alive
+I (853483) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (853484) nb2: audio_bringup: mic_rms=2028.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (853998) nb2: alive
+I (854998) nb2: alive
+I (855998) nb2: alive
+I (857000) nb2: alive
+I (857569) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.30 flush_ms=40.36
+I (858000) nb2: alive
+I (858491) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (858492) nb2: audio_bringup: mic_rms=568.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (859000) nb2: alive
+I (860000) nb2: alive
+I (861000) nb2: alive
+I (862000) nb2: alive
+I (862611) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.36 flush_ms=40.38
+I (863004) nb2: alive
+I (863499) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (863500) nb2: audio_bringup: mic_rms=74.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (864004) nb2: alive
+I (865004) nb2: alive
+I (866004) nb2: alive
+I (867004) nb2: alive
+I (867656) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.44 flush_ms=40.35
+I (868004) nb2: alive
+I (868507) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (868508) nb2: audio_bringup: mic_rms=137.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (869011) nb2: alive
+I (870018) nb2: alive
+I (871026) nb2: alive
+I (872026) nb2: alive
+I (872686) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.28 flush_ms=40.35
+W (872911) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (873026) nb2: alive
+I (873515) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (873516) nb2: audio_bringup: mic_rms=112.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (874026) nb2: alive
+I (875032) nb2: alive
+I (876040) nb2: alive
+I (877040) nb2: alive
+I (877712) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.22 flush_ms=40.37
+I (878040) nb2: alive
+I (878523) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (878524) nb2: audio_bringup: mic_rms=397.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (879040) nb2: alive
+I (880040) nb2: alive
+I (881040) nb2: alive
+I (882040) nb2: alive
+I (882752) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.34 flush_ms=40.39
+I (883040) nb2: alive
+I (883531) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (883532) nb2: audio_bringup: mic_rms=184.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (884040) nb2: alive
+I (885040) nb2: alive
+I (886040) nb2: alive
+I (887040) nb2: alive
+I (887798) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.45 flush_ms=40.33
+I (888047) nb2: alive
+I (888539) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (888540) nb2: audio_bringup: mic_rms=192.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (889050) nb2: alive
+I (890058) nb2: alive
+I (891064) nb2: alive
+I (892065) nb2: alive
+I (892821) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.17 flush_ms=40.40
+I (893070) nb2: alive
+I (893547) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (893548) nb2: audio_bringup: mic_rms=84.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (894070) nb2: alive
+I (895070) nb2: alive
+I (896070) nb2: alive
+I (897070) nb2: alive
+I (897864) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.51 flush_ms=40.24
+I (898070) nb2: alive
+I (898555) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (898556) nb2: audio_bringup: mic_rms=173.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (899070) nb2: alive
+I (900075) nb2: alive
+I (901083) nb2: alive
+I (902083) nb2: alive
+I (902901) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.29 flush_ms=40.42
+W (902913) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (903083) nb2: alive
+I (903563) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (903564) nb2: audio_bringup: mic_rms=97.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (904083) nb2: alive
+I (904083) nb2: stats: heap_livre=172751 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (905083) nb2: alive
+I (906083) nb2: alive
+I (907090) nb2: alive
+I (907935) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.27 flush_ms=40.40
+I (908090) nb2: alive
+I (908571) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (908572) nb2: audio_bringup: mic_rms=94.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (909090) nb2: alive
+I (910098) nb2: alive
+I (911105) nb2: alive
+I (912105) nb2: alive
+I (912973) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.39 flush_ms=40.30
+I (913105) nb2: alive
+I (913579) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (913580) nb2: audio_bringup: mic_rms=86.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (914105) nb2: alive
+I (915105) nb2: alive
+I (916105) nb2: alive
+I (917105) nb2: alive
+I (918006) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.28 flush_ms=40.38
+I (918105) nb2: alive
+I (918587) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (918588) nb2: audio_bringup: mic_rms=82.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (919105) nb2: alive
+I (920111) nb2: alive
+I (921119) nb2: alive
+I (922119) nb2: alive
+I (923021) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.11 flush_ms=40.37
+I (923126) nb2: alive
+I (923595) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (923596) nb2: audio_bringup: mic_rms=76.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (924126) nb2: alive
+I (925126) nb2: alive
+I (926126) nb2: alive
+I (927126) nb2: alive
+I (928061) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.32 flush_ms=40.41
+I (928126) nb2: alive
+I (928603) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (928604) nb2: audio_bringup: mic_rms=105.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (929127) nb2: alive
+I (930127) nb2: alive
+I (931127) nb2: alive
+I (932127) nb2: alive
+W (932919) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (933104) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.38 flush_ms=40.38
+I (933127) nb2: alive
+I (933611) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (933612) nb2: audio_bringup: mic_rms=88.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (934127) nb2: alive
+I (935127) nb2: alive
+I (936127) nb2: alive
+I (937127) nb2: alive
+I (938116) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.05 flush_ms=40.41
+I (938127) nb2: alive
+I (938619) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (938620) nb2: audio_bringup: mic_rms=79.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (939129) nb2: alive
+I (940129) nb2: alive
+I (941129) nb2: alive
+I (942129) nb2: alive
+I (943129) nb2: alive
+I (943149) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.30 flush_ms=40.36
+I (943627) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (943628) nb2: audio_bringup: mic_rms=92.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (944129) nb2: alive
+I (945129) nb2: alive
+I (946135) nb2: alive
+I (947143) nb2: alive
+I (948152) nb2: alive
+I (948192) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.38 flush_ms=40.36
+I (948635) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (948636) nb2: audio_bringup: mic_rms=79.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (949152) nb2: alive
+I (950152) nb2: alive
+I (951152) nb2: alive
+I (952152) nb2: alive
+I (953152) nb2: alive
+I (953214) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.39 flush_ms=40.16
+I (953643) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (953644) nb2: audio_bringup: mic_rms=62.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (954152) nb2: alive
+I (955152) nb2: alive
+I (956152) nb2: alive
+I (957152) nb2: alive
+I (958152) nb2: alive
+I (958251) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.35 flush_ms=40.33
+I (958651) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (958652) nb2: audio_bringup: mic_rms=56.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (959152) nb2: alive
+I (960152) nb2: alive
+I (961152) nb2: alive
+I (962155) nb2: alive
+W (962921) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (963156) nb2: alive
+I (963255) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.48 flush_ms=40.36
+I (963659) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (963660) nb2: audio_bringup: mic_rms=79.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (964156) nb2: alive
+I (964156) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (965156) nb2: alive
+I (966156) nb2: alive
+I (967156) nb2: alive
+I (968156) nb2: alive
+I (968271) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.10 flush_ms=40.39
+I (968667) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (968668) nb2: audio_bringup: mic_rms=69.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (969156) nb2: alive
+I (970156) nb2: alive
+I (971156) nb2: alive
+I (972158) nb2: alive
+I (973166) nb2: alive
+I (973303) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.37 flush_ms=40.27
+I (973675) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (973676) nb2: audio_bringup: mic_rms=105.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (974166) nb2: alive
+I (975166) nb2: alive
+I (976166) nb2: alive
+I (977166) nb2: alive
+I (978166) nb2: alive
+I (978328) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.27 flush_ms=40.30
+I (978683) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (978684) nb2: audio_bringup: mic_rms=111.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (979166) nb2: alive
+I (980166) nb2: alive
+I (981166) nb2: alive
+I (982174) nb2: alive
+I (983174) nb2: alive
+I (983368) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.35 flush_ms=40.36
+I (983691) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (983692) nb2: audio_bringup: mic_rms=77.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (984174) nb2: alive
+I (985174) nb2: alive
+I (986174) nb2: alive
+I (987174) nb2: alive
+I (988178) nb2: alive
+I (988411) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.53 flush_ms=40.22
+I (988699) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (988700) nb2: audio_bringup: mic_rms=85.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (989178) nb2: alive
+I (990178) nb2: alive
+I (991178) nb2: alive
+I (992178) nb2: alive
+W (992924) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (993178) nb2: alive
+I (993439) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.37 flush_ms=40.23
+I (993707) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (993708) nb2: audio_bringup: mic_rms=99.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (994178) nb2: alive
+I (995178) nb2: alive
+I (996178) nb2: alive
+I (997178) nb2: alive
+I (998178) nb2: alive
+I (998449) nb2: face_demo: fps=21.0 logic_ms=0.26 draw_ms=7.16 flush_ms=40.27
+I (998715) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (998716) nb2: audio_bringup: mic_rms=116.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (999184) nb2: alive
+I (1000184) nb2: alive
+I (1001184) nb2: alive
+I (1002184) nb2: alive
+I (1003184) nb2: alive
+I (1003450) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.48 flush_ms=40.33
+I (1003723) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1003724) nb2: audio_bringup: mic_rms=178.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1004184) nb2: alive
+I (1005186) nb2: alive
+I (1006194) nb2: alive
+I (1007194) nb2: alive
+I (1008194) nb2: alive
+I (1008490) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.50 flush_ms=40.21
+I (1008731) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1008732) nb2: audio_bringup: mic_rms=143.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1009194) nb2: alive
+I (1010194) nb2: alive
+I (1011194) nb2: alive
+I (1012195) nb2: alive
+I (1013203) nb2: alive
+I (1013531) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.46 flush_ms=40.27
+I (1013739) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1013740) nb2: audio_bringup: mic_rms=130.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1014203) nb2: alive
+I (1015203) nb2: alive
+I (1016203) nb2: alive
+I (1017203) nb2: alive
+I (1018207) nb2: alive
+I (1018536) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.63 flush_ms=40.20
+I (1018747) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1018748) nb2: audio_bringup: mic_rms=85.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1019208) nb2: alive
+I (1020208) nb2: alive
+I (1021208) nb2: alive
+I (1022208) nb2: alive
+W (1022928) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1023208) nb2: alive
+I (1023579) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.53 flush_ms=40.22
+I (1023755) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1023756) nb2: audio_bringup: mic_rms=126.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1024211) nb2: alive
+I (1024212) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1025219) nb2: alive
+I (1026219) nb2: alive
+I (1027219) nb2: alive
+I (1028219) nb2: alive
+I (1028621) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.44 flush_ms=40.31
+I (1028763) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1028764) nb2: audio_bringup: mic_rms=86.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1029219) nb2: alive
+I (1030219) nb2: alive
+I (1031226) nb2: alive
+I (1032233) nb2: alive
+I (1033240) nb2: alive
+I (1033664) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.35 flush_ms=40.41
+I (1033771) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1033772) nb2: audio_bringup: mic_rms=73.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1034240) nb2: alive
+I (1035240) nb2: alive
+I (1036240) nb2: alive
+I (1037240) nb2: alive
+I (1038240) nb2: alive
+I (1038709) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.44 flush_ms=40.33
+I (1038779) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1038780) nb2: audio_bringup: mic_rms=155.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1039240) nb2: alive
+I (1040240) nb2: alive
+I (1041240) nb2: alive
+I (1042240) nb2: alive
+I (1043240) nb2: alive
+I (1043754) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.43 flush_ms=40.33
+I (1043787) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1043788) nb2: audio_bringup: mic_rms=72.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1044240) nb2: alive
+I (1045240) nb2: alive
+I (1046240) nb2: alive
+I (1047240) nb2: alive
+I (1048240) nb2: alive
+I (1048795) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1048796) nb2: audio_bringup: mic_rms=99.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1048802) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.33 flush_ms=40.48
+I (1049248) nb2: alive
+I (1050256) nb2: alive
+I (1051256) nb2: alive
+I (1052257) nb2: alive
+W (1052931) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1053265) nb2: alive
+I (1053803) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1053804) nb2: audio_bringup: mic_rms=84.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1053825) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.17 flush_ms=40.32
+I (1054265) nb2: alive
+I (1055271) nb2: alive
+I (1056277) nb2: alive
+I (1057277) nb2: alive
+I (1058283) nb2: alive
+I (1058811) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1058812) nb2: audio_bringup: mic_rms=102.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1058853) nb2: face_demo: fps=20.9 logic_ms=0.23 draw_ms=7.22 flush_ms=40.41
+I (1059283) nb2: alive
+I (1060283) nb2: alive
+I (1061283) nb2: alive
+I (1062283) nb2: alive
+I (1063283) nb2: alive
+I (1063819) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1063820) nb2: audio_bringup: mic_rms=67.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1063894) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.36 flush_ms=40.39
+I (1064285) nb2: alive
+I (1065291) nb2: alive
+I (1066291) nb2: alive
+I (1067291) nb2: alive
+I (1068291) nb2: alive
+I (1068827) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1068828) nb2: audio_bringup: mic_rms=98.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1068935) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.40 flush_ms=40.38
+I (1069291) nb2: alive
+I (1070291) nb2: alive
+I (1071294) nb2: alive
+I (1072294) nb2: alive
+I (1073294) nb2: alive
+I (1073835) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1073836) nb2: audio_bringup: mic_rms=100.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1073938) nb2: face_demo: fps=20.8 logic_ms=0.28 draw_ms=7.61 flush_ms=40.19
+I (1074294) nb2: alive
+I (1075294) nb2: alive
+I (1076294) nb2: alive
+I (1077294) nb2: alive
+I (1078294) nb2: alive
+I (1078843) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1078844) nb2: audio_bringup: mic_rms=97.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1078981) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.60 flush_ms=40.18
+I (1079294) nb2: alive
+I (1080294) nb2: alive
+I (1081294) nb2: alive
+I (1082294) nb2: alive
+W (1082934) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1083297) nb2: alive
+I (1083851) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1083852) nb2: audio_bringup: mic_rms=117.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1084000) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.23 flush_ms=40.34
+I (1084297) nb2: alive
+I (1084297) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1085305) nb2: alive
+I (1086310) nb2: alive
+I (1087317) nb2: alive
+I (1088321) nb2: alive
+I (1088859) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1088860) nb2: audio_bringup: mic_rms=71.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1089035) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.34 flush_ms=40.38
+I (1089321) nb2: alive
+I (1090321) nb2: alive
+I (1091321) nb2: alive
+I (1091865) circadian_core: SLEEP aplicado -- entrando em NIGHT
+I (1092321) nb2: alive
+I (1093321) nb2: alive
+I (1093867) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1093868) nb2: audio_bringup: mic_rms=99.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1094075) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.45 flush_ms=40.32
+I (1094323) nb2: alive
+I (1095330) nb2: alive
+I (1096336) nb2: alive
+I (1097343) nb2: alive
+I (1098350) nb2: alive
+I (1098875) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1098876) nb2: audio_bringup: mic_rms=102.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1099114) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.41 flush_ms=40.37
+I (1099353) nb2: alive
+I (1100360) nb2: alive
+I (1101367) nb2: alive
+I (1102374) nb2: alive
+I (1103382) nb2: alive
+I (1103883) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1103884) nb2: audio_bringup: mic_rms=130.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1104145) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.25 flush_ms=40.45
+I (1104382) nb2: alive
+I (1105382) nb2: alive
+I (1106382) nb2: alive
+I (1107382) nb2: alive
+I (1108382) nb2: alive
+I (1108891) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1108892) nb2: audio_bringup: mic_rms=83.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1109168) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.23 flush_ms=40.40
+I (1109382) nb2: alive
+I (1110382) nb2: alive
+I (1111382) nb2: alive
+I (1112390) nb2: alive
+W (1112940) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1113390) nb2: alive
+I (1113899) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1113900) nb2: audio_bringup: mic_rms=79.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1114199) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.22 flush_ms=40.48
+I (1114390) nb2: alive
+I (1115390) nb2: alive
+I (1116390) nb2: alive
+I (1117390) nb2: alive
+I (1118390) nb2: alive
+I (1118907) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1118908) nb2: audio_bringup: mic_rms=71.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1119245) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.53 flush_ms=40.33
+I (1119397) nb2: alive
+I (1120402) nb2: alive
+I (1121409) nb2: alive
+I (1122417) nb2: alive
+I (1123423) nb2: alive
+I (1123915) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1123916) nb2: audio_bringup: mic_rms=71.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1124273) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.32 flush_ms=40.35
+I (1124425) nb2: alive
+I (1125433) nb2: alive
+I (1126441) nb2: alive
+I (1127449) nb2: alive
+I (1128456) nb2: alive
+I (1128923) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1128924) nb2: audio_bringup: mic_rms=74.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1129313) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.32 flush_ms=40.47
+I (1129456) nb2: alive
+I (1130456) nb2: alive
+I (1131456) nb2: alive
+I (1132456) nb2: alive
+I (1133456) nb2: alive
+I (1133931) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1133932) nb2: audio_bringup: mic_rms=107.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1134352) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.31 flush_ms=40.48
+I (1134456) nb2: alive
+I (1135462) nb2: alive
+I (1136470) nb2: alive
+I (1137470) nb2: alive
+I (1138476) nb2: alive
+I (1138939) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1138940) nb2: audio_bringup: mic_rms=95.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1139383) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.27 flush_ms=40.44
+I (1139476) nb2: alive
+I (1140476) nb2: alive
+I (1141476) nb2: alive
+I (1142476) nb2: alive
+W (1142942) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1143476) nb2: alive
+I (1143947) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1143948) nb2: audio_bringup: mic_rms=65.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1144430) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.53 flush_ms=40.33
+I (1144476) nb2: alive
+I (1144476) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1145476) nb2: alive
+I (1146476) nb2: alive
+I (1147476) nb2: alive
+I (1148476) nb2: alive
+I (1148955) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1148956) nb2: audio_bringup: mic_rms=123.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1149472) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.45
+I (1149480) nb2: alive
+I (1150485) nb2: alive
+I (1151491) nb2: alive
+I (1152499) nb2: alive
+I (1153506) nb2: alive
+I (1153963) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1153964) nb2: audio_bringup: mic_rms=97.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1154506) nb2: alive
+I (1154507) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.41 flush_ms=40.33
+I (1155506) nb2: alive
+I (1156506) nb2: alive
+I (1157506) nb2: alive
+I (1158506) nb2: alive
+I (1158971) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1158972) nb2: audio_bringup: mic_rms=106.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1159513) nb2: alive
+I (1159553) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.50 flush_ms=40.35
+I (1160520) nb2: alive
+I (1161528) nb2: alive
+I (1162536) nb2: alive
+I (1163544) nb2: alive
+I (1163979) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1163980) nb2: audio_bringup: mic_rms=294.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1164544) nb2: alive
+I (1164596) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.35 flush_ms=40.48
+I (1165544) nb2: alive
+I (1166544) nb2: alive
+I (1167544) nb2: alive
+I (1168544) nb2: alive
+I (1168987) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1168988) nb2: audio_bringup: mic_rms=90.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1169550) nb2: alive
+I (1169638) nb2: face_demo: fps=20.8 logic_ms=0.18 draw_ms=7.39 flush_ms=40.42
+I (1170550) nb2: alive
+I (1171550) nb2: alive
+I (1172550) nb2: alive
+W (1172950) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1173550) nb2: alive
+I (1173995) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1173996) nb2: audio_bringup: mic_rms=103.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1174550) nb2: alive
+I (1174683) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.46 flush_ms=40.37
+I (1175555) nb2: alive
+I (1176563) nb2: alive
+I (1177563) nb2: alive
+I (1178567) nb2: alive
+I (1179003) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1179004) nb2: audio_bringup: mic_rms=125.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1179567) nb2: alive
+I (1179717) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.25 flush_ms=40.48
+I (1180567) nb2: alive
+I (1181567) nb2: alive
+I (1182567) nb2: alive
+I (1183567) nb2: alive
+I (1184011) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1184012) nb2: audio_bringup: mic_rms=63.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1184567) nb2: alive
+I (1184747) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.34 flush_ms=40.36
+I (1185571) nb2: alive
+I (1186578) nb2: alive
+I (1187578) nb2: alive
+I (1188582) nb2: alive
+I (1189019) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1189020) nb2: audio_bringup: mic_rms=69.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1189582) nb2: alive
+I (1189776) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.29 flush_ms=40.40
+I (1190582) nb2: alive
+I (1191582) nb2: alive
+I (1192582) nb2: alive
+I (1193582) nb2: alive
+I (1194027) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1194028) nb2: audio_bringup: mic_rms=99.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1194582) nb2: alive
+I (1194805) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.24 flush_ms=40.44
+I (1195582) nb2: alive
+I (1196589) nb2: alive
+I (1197597) nb2: alive
+I (1198597) nb2: alive
+I (1199035) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1199036) nb2: audio_bringup: mic_rms=80.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1199597) nb2: alive
+I (1199824) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.21 flush_ms=40.38
+I (1200599) nb2: alive
+I (1201607) nb2: alive
+I (1202615) nb2: alive
+W (1202953) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1203615) nb2: alive
+I (1204043) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1204044) nb2: audio_bringup: mic_rms=115.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1204615) nb2: alive
+I (1204615) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1204843) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.10 flush_ms=40.48
+I (1205620) nb2: alive
+I (1206628) nb2: alive
+I (1207636) nb2: alive
+I (1208644) nb2: alive
+I (1209051) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1209052) nb2: audio_bringup: mic_rms=101.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1209645) nb2: alive
+I (1209877) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.55 flush_ms=40.16
+I (1210653) nb2: alive
+I (1211653) nb2: alive
+I (1212659) nb2: alive
+I (1213667) nb2: alive
+I (1214059) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1214060) nb2: audio_bringup: mic_rms=74.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1214667) nb2: alive
+I (1214912) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.31 flush_ms=40.43
+I (1215667) nb2: alive
+I (1216667) nb2: alive
+I (1217667) nb2: alive
+I (1218667) nb2: alive
+I (1219067) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1219068) nb2: audio_bringup: mic_rms=222.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1219667) nb2: alive
+I (1219958) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.33 flush_ms=40.52
+I (1220667) nb2: alive
+I (1221667) nb2: alive
+I (1222667) nb2: alive
+I (1223667) nb2: alive
+I (1224075) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1224076) nb2: audio_bringup: mic_rms=73.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1224671) nb2: alive
+I (1224999) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.42 flush_ms=40.38
+I (1225679) nb2: alive
+I (1226685) nb2: alive
+I (1227693) nb2: alive
+I (1228701) nb2: alive
+I (1229083) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1229084) nb2: audio_bringup: mic_rms=58.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1229702) nb2: alive
+I (1230042) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.50 flush_ms=40.33
+I (1230702) nb2: alive
+I (1231702) nb2: alive
+I (1232702) nb2: alive
+W (1232958) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1233702) nb2: alive
+I (1234091) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1234092) nb2: audio_bringup: mic_rms=84.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1234707) nb2: alive
+I (1235082) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.45 flush_ms=40.33
+I (1235714) nb2: alive
+I (1236714) nb2: alive
+I (1237714) nb2: alive
+I (1238714) nb2: alive
+I (1239099) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1239100) nb2: audio_bringup: mic_rms=119.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1239714) nb2: alive
+I (1240116) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.30 flush_ms=40.43
+I (1240714) nb2: alive
+I (1241714) nb2: alive
+I (1242714) nb2: alive
+I (1243714) nb2: alive
+I (1244107) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1244108) nb2: audio_bringup: mic_rms=82.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1244722) nb2: alive
+I (1245145) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.34 flush_ms=40.35
+I (1245728) nb2: alive
+I (1246735) nb2: alive
+I (1247742) nb2: alive
+I (1248751) nb2: alive
+I (1249115) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1249116) nb2: audio_bringup: mic_rms=107.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1249751) nb2: alive
+I (1250187) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.43 flush_ms=40.38
+I (1250757) nb2: alive
+I (1251757) nb2: alive
+I (1252765) nb2: alive
+I (1253772) nb2: alive
+I (1254123) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1254124) nb2: audio_bringup: mic_rms=67.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1254772) nb2: alive
+I (1255206) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.16 flush_ms=40.43
+I (1255778) nb2: alive
+I (1256786) nb2: alive
+I (1257794) nb2: alive
+I (1258801) nb2: alive
+I (1259131) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1259132) nb2: audio_bringup: mic_rms=67.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1259802) nb2: alive
+I (1260238) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.32 flush_ms=40.40
+I (1260802) nb2: alive
+I (1261802) nb2: alive
+I (1262802) nb2: alive
+W (1262961) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1263802) nb2: alive
+I (1264139) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1264140) nb2: audio_bringup: mic_rms=76.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1264808) nb2: alive
+I (1264808) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1265280) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.38 flush_ms=40.43
+I (1265815) nb2: alive
+I (1266238) circadian_core: WAKE_HOUR aplicado -- entrando em DAWN
+I (1266823) nb2: alive
+I (1267830) nb2: alive
+I (1268838) nb2: alive
+I (1269147) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1269148) nb2: audio_bringup: mic_rms=60.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1269838) nb2: alive
+I (1270321) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.33 flush_ms=40.46
+I (1270838) nb2: alive
+I (1271838) nb2: alive
+I (1272838) nb2: alive
+I (1273838) nb2: alive
+I (1274155) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1274156) nb2: audio_bringup: mic_rms=73.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1274842) nb2: alive
+I (1275361) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.35 flush_ms=40.42
+I (1275842) nb2: alive
+I (1276845) nb2: alive
+I (1277853) nb2: alive
+I (1278858) nb2: alive
+I (1279163) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1279164) nb2: audio_bringup: mic_rms=84.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1279858) nb2: alive
+I (1280390) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.30 flush_ms=40.37
+I (1280858) nb2: alive
+I (1281858) nb2: alive
+I (1282858) nb2: alive
+I (1283858) nb2: alive
+I (1284171) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1284172) nb2: audio_bringup: mic_rms=93.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1284864) nb2: alive
+I (1285432) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.42 flush_ms=40.37
+I (1285867) nb2: alive
+I (1286867) nb2: alive
+I (1287875) nb2: alive
+I (1288875) nb2: alive
+I (1289179) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1289180) nb2: audio_bringup: mic_rms=119.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1289875) nb2: alive
+I (1290441) nb2: face_demo: fps=21.0 logic_ms=0.22 draw_ms=7.13 flush_ms=40.33
+I (1290882) nb2: alive
+I (1291888) nb2: alive
+I (1292897) nb2: alive
+W (1292963) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1293904) nb2: alive
+I (1294187) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1294188) nb2: audio_bringup: mic_rms=89.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1294905) nb2: alive
+I (1295486) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.47 flush_ms=40.32
+I (1295905) nb2: alive
+I (1296905) nb2: alive
+I (1297905) nb2: alive
+I (1298905) nb2: alive
+I (1299195) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1299196) nb2: audio_bringup: mic_rms=81.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1299912) nb2: alive
+I (1300526) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.29 flush_ms=40.46
+I (1300919) nb2: alive
+I (1301925) nb2: alive
+I (1302925) nb2: alive
+I (1303926) nb2: alive
+I (1304203) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1304204) nb2: audio_bringup: mic_rms=140.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1304926) nb2: alive
+I (1305554) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.22 flush_ms=40.38
+I (1305926) nb2: alive
+I (1306926) nb2: alive
+I (1307926) nb2: alive
+I (1308926) nb2: alive
+I (1309211) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1309212) nb2: audio_bringup: mic_rms=179.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1309929) nb2: alive
+I (1310593) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.33 flush_ms=40.39
+I (1310936) nb2: alive
+I (1311944) nb2: alive
+I (1312949) nb2: alive
+I (1313955) nb2: alive
+I (1314219) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1314220) nb2: audio_bringup: mic_rms=81.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1314955) nb2: alive
+I (1315634) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.35 flush_ms=40.38
+I (1315955) nb2: alive
+I (1316955) nb2: alive
+I (1317955) nb2: alive
+I (1318958) nb2: alive
+I (1319227) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1319228) nb2: audio_bringup: mic_rms=55.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1319962) nb2: alive
+I (1320674) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.32 flush_ms=40.42
+I (1320969) nb2: alive
+I (1321970) nb2: alive
+W (1322965) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1322970) nb2: alive
+I (1323976) nb2: alive
+I (1324235) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1324236) nb2: audio_bringup: mic_rms=89.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1324976) nb2: alive
+I (1324976) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1325702) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.21 flush_ms=40.40
+I (1325976) nb2: alive
+I (1326976) nb2: alive
+I (1327976) nb2: alive
+I (1328976) nb2: alive
+I (1329243) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1329244) nb2: audio_bringup: mic_rms=70.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1329976) nb2: alive
+I (1330736) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.38 flush_ms=40.29
+I (1330983) nb2: alive
+I (1331991) nb2: alive
+I (1332998) nb2: alive
+I (1334001) nb2: alive
+I (1334251) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1334252) nb2: audio_bringup: mic_rms=86.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1335001) nb2: alive
+I (1335767) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.40 flush_ms=40.24
+I (1336001) nb2: alive
+I (1337001) nb2: alive
+I (1338001) nb2: alive
+I (1339001) nb2: alive
+I (1339259) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1339260) nb2: audio_bringup: mic_rms=89.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1340001) nb2: alive
+I (1340798) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.29 flush_ms=40.33
+I (1341001) nb2: alive
+I (1342007) nb2: alive
+I (1343015) nb2: alive
+I (1344015) nb2: alive
+I (1344267) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1344268) nb2: audio_bringup: mic_rms=112.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1345023) nb2: alive
+I (1345831) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.23 flush_ms=40.43
+I (1346032) nb2: alive
+I (1347039) nb2: alive
+I (1348047) nb2: alive
+I (1349053) nb2: alive
+I (1349275) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1349276) nb2: audio_bringup: mic_rms=66.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1350053) nb2: alive
+I (1350871) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.41 flush_ms=40.31
+I (1351053) nb2: alive
+I (1352053) nb2: alive
+W (1352967) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1353053) nb2: alive
+I (1354053) nb2: alive
+I (1354283) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1354284) nb2: audio_bringup: mic_rms=87.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1355053) nb2: alive
+I (1355891) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.18 flush_ms=40.36
+I (1356053) nb2: alive
+I (1357053) nb2: alive
+I (1358053) nb2: alive
+I (1359053) nb2: alive
+I (1359291) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1359292) nb2: audio_bringup: mic_rms=129.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1360053) nb2: alive
+I (1360939) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.44 flush_ms=40.37
+I (1361053) nb2: alive
+I (1362053) nb2: alive
+I (1363059) nb2: alive
+I (1364066) nb2: alive
+I (1364299) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1364300) nb2: audio_bringup: mic_rms=81.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1365066) nb2: alive
+I (1365982) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.49 flush_ms=40.25
+I (1366066) nb2: alive
+I (1367066) nb2: alive
+I (1368066) nb2: alive
+I (1369066) nb2: alive
+I (1369307) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1369308) nb2: audio_bringup: mic_rms=88.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1370066) nb2: alive
+I (1371003) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.21 flush_ms=40.34
+I (1371066) nb2: alive
+I (1372066) nb2: alive
+I (1373072) nb2: alive
+I (1374072) nb2: alive
+I (1374315) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1374316) nb2: audio_bringup: mic_rms=91.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1375072) nb2: alive
+I (1376050) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.51 flush_ms=40.26
+I (1376072) nb2: alive
+I (1377072) nb2: alive
+I (1378072) nb2: alive
+I (1379077) nb2: alive
+I (1379323) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1379324) nb2: audio_bringup: mic_rms=93.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1380077) nb2: alive
+I (1381077) nb2: alive
+I (1381087) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.49 flush_ms=40.20
+I (1382077) nb2: alive
+W (1382972) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1383077) nb2: alive
+I (1384077) nb2: alive
+I (1384331) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1384332) nb2: audio_bringup: mic_rms=72.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1385077) nb2: alive
+I (1385077) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1386082) nb2: alive
+I (1386122) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.48 flush_ms=40.20
+I (1387082) nb2: alive
+I (1388082) nb2: alive
+I (1389082) nb2: alive
+I (1389339) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1389340) nb2: audio_bringup: mic_rms=84.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1390082) nb2: alive
+I (1391084) nb2: alive
+I (1391123) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.51 flush_ms=40.29
+I (1392084) nb2: alive
+I (1393084) nb2: alive
+I (1394084) nb2: alive
+I (1394347) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1394348) nb2: audio_bringup: mic_rms=138.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1395084) nb2: alive
+I (1396089) nb2: alive
+I (1396129) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.52 flush_ms=40.33
+I (1397090) nb2: alive
+I (1398090) nb2: alive
+I (1399090) nb2: alive
+I (1399355) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1399356) nb2: audio_bringup: mic_rms=69.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1400096) nb2: alive
+I (1401097) nb2: alive
+I (1401148) nb2: face_demo: fps=20.7 logic_ms=0.28 draw_ms=7.77 flush_ms=40.19
+I (1402097) nb2: alive
+I (1403097) nb2: alive
+I (1404097) nb2: alive
+I (1404363) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1404364) nb2: audio_bringup: mic_rms=68.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1405097) nb2: alive
+I (1406097) nb2: alive
+I (1406171) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.30 flush_ms=40.27
+I (1407097) nb2: alive
+I (1408098) nb2: alive
+I (1409098) nb2: alive
+I (1409371) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1409372) nb2: audio_bringup: mic_rms=130.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1410098) nb2: alive
+I (1411098) nb2: alive
+I (1411215) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.44 flush_ms=40.31
+I (1412098) nb2: alive
+W (1412974) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1413098) nb2: alive
+I (1414100) nb2: alive
+I (1414379) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1414380) nb2: audio_bringup: mic_rms=131.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1415100) nb2: alive
+I (1416107) nb2: alive
+I (1416243) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.33 flush_ms=40.29
+I (1417116) nb2: alive
+I (1418116) nb2: alive
+I (1419116) nb2: alive
+I (1419387) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1419388) nb2: audio_bringup: mic_rms=105.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1420116) nb2: alive
+I (1421116) nb2: alive
+I (1421290) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.48 flush_ms=40.31
+I (1422116) nb2: alive
+I (1423122) nb2: alive
+I (1424122) nb2: alive
+I (1424395) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1424396) nb2: audio_bringup: mic_rms=260.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1425130) nb2: alive
+I (1426138) nb2: alive
+I (1426322) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.32 flush_ms=40.33
+I (1427139) nb2: alive
+I (1428142) nb2: alive
+I (1429142) nb2: alive
+I (1429403) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1429404) nb2: audio_bringup: mic_rms=114.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1430142) nb2: alive
+I (1431142) nb2: alive
+I (1431344) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.20 flush_ms=40.35
+I (1432142) nb2: alive
+I (1433142) nb2: alive
+I (1434142) nb2: alive
+I (1434411) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1434412) nb2: audio_bringup: mic_rms=64.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1435142) nb2: alive
+I (1436142) nb2: alive
+I (1436383) nb2: face_demo: fps=20.8 logic_ms=0.28 draw_ms=7.39 flush_ms=40.31
+I (1437142) nb2: alive
+I (1438142) nb2: alive
+I (1439142) nb2: alive
+I (1439419) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1439420) nb2: audio_bringup: mic_rms=69.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1440142) nb2: alive
+I (1441144) nb2: alive
+I (1441425) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.38 flush_ms=40.38
+I (1442144) nb2: alive
+W (1442978) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1443144) nb2: alive
+I (1444144) nb2: alive
+I (1444427) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1444428) nb2: audio_bringup: mic_rms=110.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1445148) nb2: alive
+I (1445149) nb2: stats: heap_livre=172787 heap_min=170295 psram_livre=16461580 psram_min=16461580
+I (1446149) nb2: alive
+I (1446441) nb2: face_demo: fps=20.7 logic_ms=0.26 draw_ms=7.78 flush_ms=40.17
+I (1447149) nb2: alive
+I (1448149) nb2: alive
+I (1449149) nb2: alive
+I (1449435) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1449436) nb2: audio_bringup: mic_rms=103.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1450149) nb2: alive
+I (1451155) nb2: alive
+I (1451482) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.48 flush_ms=40.26
+I (1452160) nb2: alive
+I (1453160) nb2: alive
+I (1454160) nb2: alive
+I (1454443) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1454444) nb2: audio_bringup: mic_rms=103.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1455160) nb2: alive
+I (1456160) nb2: alive
+I (1456521) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.45 flush_ms=40.27
+I (1457160) nb2: alive
+I (1458160) nb2: alive
+I (1459160) nb2: alive
+I (1459451) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1459452) nb2: audio_bringup: mic_rms=108.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1460168) nb2: alive
+I (1461176) nb2: alive
+I (1461552) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.26 flush_ms=40.38
+I (1462176) nb2: alive
+I (1463180) nb2: alive
+I (1464188) nb2: alive
+I (1464459) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1464460) nb2: audio_bringup: mic_rms=124.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1465188) nb2: alive
+I (1466188) nb2: alive
+I (1466581) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.26 flush_ms=40.36
+I (1467188) nb2: alive
+I (1468188) nb2: alive
+I (1469188) nb2: alive
+I (1469467) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1469468) nb2: audio_bringup: mic_rms=76.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1470188) nb2: alive
+I (1471188) nb2: alive
+I (1471607) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.18 flush_ms=40.39
+I (1472191) nb2: alive
+W (1472981) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1473191) nb2: alive
+I (1474191) nb2: alive
+I (1474475) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1474476) nb2: audio_bringup: mic_rms=100.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1475191) nb2: alive
+I (1476191) nb2: alive
+I (1476644) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.29 flush_ms=40.42
+I (1477191) nb2: alive
+I (1478191) nb2: alive
+I (1479191) nb2: alive
+I (1479483) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1479484) nb2: audio_bringup: mic_rms=75.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1480199) nb2: alive
+I (1481205) nb2: alive
+I (1481677) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.27 flush_ms=40.39
+I (1482205) nb2: alive
+I (1483210) nb2: alive
+I (1484217) nb2: alive
+I (1484491) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1484492) nb2: audio_bringup: mic_rms=56.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1485217) nb2: alive
+I (1486217) nb2: alive
+I (1486714) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.31 flush_ms=40.40
+I (1487217) nb2: alive
+I (1488217) nb2: alive
+I (1489219) nb2: alive
+I (1489499) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1489500) nb2: audio_bringup: mic_rms=114.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1490219) nb2: alive
+I (1491219) nb2: alive
+I (1491761) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.47 flush_ms=40.33
+I (1492219) nb2: alive
+I (1493219) nb2: alive
+I (1494219) nb2: alive
+I (1494507) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1494508) nb2: audio_bringup: mic_rms=107.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1495219) nb2: alive
+I (1496226) nb2: alive
+I (1496794) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.27 flush_ms=40.38
+I (1497226) nb2: alive
+I (1498226) nb2: alive
+I (1499226) nb2: alive
+I (1499515) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1499516) nb2: audio_bringup: mic_rms=64.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1500226) nb2: alive
+I (1501226) nb2: alive
+I (1501835) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.37 flush_ms=40.36
+I (1502227) nb2: alive
+W (1502984) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1503236) nb2: alive
+I (1504243) nb2: alive
+I (1504523) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1504524) nb2: audio_bringup: mic_rms=69.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1505243) nb2: alive
+I (1505243) nb2: stats: heap_livre=172787 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1506243) nb2: alive
+I (1506880) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.46 flush_ms=40.29
+I (1507243) nb2: alive
+I (1508243) nb2: alive
+I (1509243) nb2: alive
+I (1509531) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1509532) nb2: audio_bringup: mic_rms=101.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1510243) nb2: alive
+I (1511243) nb2: alive
+I (1511887) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.51 flush_ms=40.36
+I (1512243) nb2: alive
+I (1513243) nb2: alive
+I (1514244) nb2: alive
+I (1514539) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1514540) nb2: audio_bringup: mic_rms=106.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1515244) nb2: alive
+I (1516244) nb2: alive
+I (1516932) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.55 flush_ms=40.22
+I (1517244) nb2: alive
+I (1518244) nb2: alive
+I (1519244) nb2: alive
+I (1519547) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1519548) nb2: audio_bringup: mic_rms=79.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1520244) nb2: alive
+I (1521244) nb2: alive
+I (1521940) nb2: face_demo: fps=21.0 logic_ms=0.25 draw_ms=7.04 flush_ms=40.38
+I (1522244) nb2: alive
+I (1523245) nb2: alive
+I (1524253) nb2: alive
+I (1524555) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1524556) nb2: audio_bringup: mic_rms=86.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1525255) nb2: alive
+I (1526263) nb2: alive
+I (1526975) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.25 flush_ms=40.44
+I (1527263) nb2: alive
+I (1528263) nb2: alive
+I (1529263) nb2: alive
+I (1529563) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1529564) nb2: audio_bringup: mic_rms=89.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1530263) nb2: alive
+I (1531264) nb2: alive
+I (1531976) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.39 flush_ms=40.41
+I (1532271) nb2: alive
+W (1532987) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1533271) nb2: alive
+I (1534274) nb2: alive
+I (1534571) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1534572) nb2: audio_bringup: mic_rms=124.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1535274) nb2: alive
+I (1536274) nb2: alive
+I (1537003) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.48 flush_ms=40.11
+I (1537274) nb2: alive
+I (1538274) nb2: alive
+I (1539274) nb2: alive
+I (1539579) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1539580) nb2: audio_bringup: mic_rms=63.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1540274) nb2: alive
+I (1541280) nb2: alive
+I (1542040) nb2: face_demo: fps=20.8 logic_ms=0.28 draw_ms=7.51 flush_ms=40.15
+I (1542280) nb2: alive
+I (1543280) nb2: alive
+I (1544280) nb2: alive
+I (1544587) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1544588) nb2: audio_bringup: mic_rms=87.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1545280) nb2: alive
+I (1546281) nb2: alive
+I (1547041) nb2: face_demo: fps=20.8 logic_ms=0.24 draw_ms=7.48 flush_ms=40.34
+I (1547289) nb2: alive
+I (1548297) nb2: alive
+I (1549305) nb2: alive
+I (1549595) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1549596) nb2: audio_bringup: mic_rms=100.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1550305) nb2: alive
+I (1551305) nb2: alive
+I (1552087) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.42 flush_ms=40.37
+I (1552305) nb2: alive
+I (1553305) nb2: alive
+I (1554305) nb2: alive
+I (1554603) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1554604) nb2: audio_bringup: mic_rms=65.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1555305) nb2: alive
+I (1556305) nb2: alive
+I (1557131) nb2: face_demo: fps=20.8 logic_ms=0.25 draw_ms=7.46 flush_ms=40.30
+I (1557305) nb2: alive
+I (1558305) nb2: alive
+I (1559305) nb2: alive
+I (1559611) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1559612) nb2: audio_bringup: mic_rms=62.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1560313) nb2: alive
+I (1561313) nb2: alive
+I (1562165) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.30 flush_ms=40.37
+I (1562318) nb2: alive
+W (1562989) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1563319) nb2: alive
+I (1564319) nb2: alive
+I (1564619) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1564620) nb2: audio_bringup: mic_rms=51.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1565319) nb2: alive
+I (1565319) nb2: stats: heap_livre=172787 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1566320) nb2: alive
+I (1567193) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.25 flush_ms=40.35
+I (1567320) nb2: alive
+I (1568320) nb2: alive
+I (1569320) nb2: alive
+I (1569627) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1569628) nb2: audio_bringup: mic_rms=67.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1570320) nb2: alive
+I (1571321) nb2: alive
+I (1572238) nb2: face_demo: fps=21.0 logic_ms=0.24 draw_ms=6.97 flush_ms=40.36
+I (1572321) nb2: alive
+I (1572670) wifi:<ba-add>idx:1 (ifx:0, 24:e4:ce:89:b3:81), tid:1, ssn:1, winSize:64
+I (1573321) nb2: alive
+I (1574321) nb2: alive
+I (1574635) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1574636) nb2: audio_bringup: mic_rms=42.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1575321) nb2: alive
+I (1576321) nb2: alive
+I (1577266) nb2: face_demo: fps=20.9 logic_ms=0.27 draw_ms=7.24 flush_ms=40.36
+I (1577323) nb2: alive
+I (1578330) nb2: alive
+I (1579330) nb2: alive
+I (1579643) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1579644) nb2: audio_bringup: mic_rms=54.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1580335) nb2: alive
+I (1581335) nb2: alive
+I (1582283) nb2: face_demo: fps=20.9 logic_ms=0.24 draw_ms=7.15 flush_ms=40.37
+I (1582340) nb2: alive
+I (1583347) nb2: alive
+I (1584355) nb2: alive
+I (1584651) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1584652) nb2: audio_bringup: mic_rms=96.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1585355) nb2: alive
+I (1586355) nb2: alive
+I (1587327) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.40 flush_ms=40.39
+I (1587355) nb2: alive
+I (1588355) nb2: alive
+I (1589355) nb2: alive
+I (1589659) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1589660) nb2: audio_bringup: mic_rms=74.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1590355) nb2: alive
+I (1591355) nb2: alive
+I (1592336) nb2: face_demo: fps=21.0 logic_ms=0.21 draw_ms=7.12 flush_ms=40.35
+I (1592355) nb2: alive
+W (1592992) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1593355) nb2: alive
+I (1594356) nb2: alive
+I (1594667) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1594668) nb2: audio_bringup: mic_rms=175.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1595356) nb2: alive
+I (1596356) nb2: alive
+I (1597356) nb2: alive
+I (1597374) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.31 flush_ms=40.43
+I (1598356) nb2: alive
+I (1599356) nb2: alive
+I (1599675) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1599676) nb2: audio_bringup: mic_rms=91.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1600359) nb2: alive
+I (1601366) nb2: alive
+I (1602373) nb2: alive
+I (1602413) nb2: face_demo: fps=20.8 logic_ms=0.21 draw_ms=7.37 flush_ms=40.38
+I (1603375) nb2: alive
+I (1604381) nb2: alive
+I (1604683) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1604684) nb2: audio_bringup: mic_rms=68.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1605381) nb2: alive
+I (1606389) nb2: alive
+I (1607397) nb2: alive
+I (1607437) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.20 flush_ms=40.42
+I (1608397) nb2: alive
+I (1609397) nb2: alive
+I (1609691) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1609692) nb2: audio_bringup: mic_rms=126.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1610402) nb2: alive
+I (1611402) nb2: alive
+I (1612402) nb2: alive
+I (1612442) nb2: face_demo: fps=21.0 logic_ms=0.21 draw_ms=7.11 flush_ms=40.33
+I (1613409) nb2: alive
+I (1614417) nb2: alive
+I (1614699) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1614700) nb2: audio_bringup: mic_rms=80.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1615039) circadian_core: SLEEP aplicado -- entrando em NIGHT
+I (1615417) nb2: alive
+I (1616417) nb2: alive
+I (1617417) nb2: alive
+I (1617486) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.45 flush_ms=40.36
+I (1618417) nb2: alive
+I (1619417) nb2: alive
+I (1619707) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1619708) nb2: audio_bringup: mic_rms=134.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1620422) nb2: alive
+I (1621428) nb2: alive
+I (1622436) nb2: alive
+I (1622523) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.61 flush_ms=40.15
+W (1622995) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1623444) nb2: alive
+I (1624452) nb2: alive
+I (1624715) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1624716) nb2: audio_bringup: mic_rms=68.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1625452) nb2: alive
+I (1625452) nb2: stats: heap_livre=172707 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1626458) nb2: alive
+I (1627466) nb2: alive
+I (1627554) nb2: face_demo: fps=20.9 logic_ms=0.20 draw_ms=7.39 flush_ms=40.29
+I (1628466) nb2: alive
+I (1629466) nb2: alive
+I (1629723) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1629724) nb2: audio_bringup: mic_rms=123.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1630466) nb2: alive
+I (1631466) nb2: alive
+I (1632468) nb2: alive
+I (1632555) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.40 flush_ms=40.48
+I (1633474) nb2: alive
+I (1634481) nb2: alive
+I (1634731) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1634732) nb2: audio_bringup: mic_rms=79.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1635481) nb2: alive
+I (1636481) nb2: alive
+I (1637481) nb2: alive
+I (1637593) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.40 flush_ms=40.37
+I (1638481) nb2: alive
+I (1639481) nb2: alive
+I (1639739) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1639740) nb2: audio_bringup: mic_rms=76.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1640481) nb2: alive
+I (1641481) nb2: alive
+I (1642481) nb2: alive
+I (1642609) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.18 flush_ms=40.38
+I (1643481) nb2: alive
+I (1644487) nb2: alive
+I (1644747) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1644748) nb2: audio_bringup: mic_rms=102.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1645495) nb2: alive
+I (1646501) nb2: alive
+I (1647501) nb2: alive
+I (1647629) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.20 flush_ms=40.41
+I (1648501) nb2: alive
+I (1649506) nb2: alive
+I (1649755) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1649756) nb2: audio_bringup: mic_rms=57.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1650514) nb2: alive
+I (1651521) nb2: alive
+I (1652529) nb2: alive
+I (1652665) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.42 flush_ms=40.33
+W (1652999) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1653529) nb2: alive
+I (1654529) nb2: alive
+I (1654763) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1654764) nb2: audio_bringup: mic_rms=129.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1655529) nb2: alive
+I (1656529) nb2: alive
+I (1657529) nb2: alive
+I (1657705) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.40 flush_ms=40.39
+I (1658530) nb2: alive
+I (1659538) nb2: alive
+I (1659771) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1659772) nb2: audio_bringup: mic_rms=78.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1660538) nb2: alive
+I (1661538) nb2: alive
+I (1662538) nb2: alive
+I (1662749) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.41 flush_ms=40.42
+I (1663538) nb2: alive
+I (1664538) nb2: alive
+I (1664779) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1664780) nb2: audio_bringup: mic_rms=138.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1665538) nb2: alive
+I (1666538) nb2: alive
+I (1667538) nb2: alive
+I (1667768) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.17 flush_ms=40.43
+I (1668543) nb2: alive
+I (1669550) nb2: alive
+I (1669787) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1669788) nb2: audio_bringup: mic_rms=56.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1670550) nb2: alive
+I (1671550) nb2: alive
+I (1672550) nb2: alive
+I (1672811) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.48 flush_ms=40.34
+I (1673550) nb2: alive
+I (1674550) nb2: alive
+I (1674795) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1674796) nb2: audio_bringup: mic_rms=125.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1675550) nb2: alive
+I (1676550) nb2: alive
+I (1677550) nb2: alive
+I (1677850) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.36 flush_ms=40.42
+I (1678550) nb2: alive
+I (1679550) nb2: alive
+I (1679803) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1679804) nb2: audio_bringup: mic_rms=58.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1680553) nb2: alive
+I (1681559) nb2: alive
+I (1682567) nb2: alive
+I (1682895) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.37 flush_ms=40.47
+W (1683001) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1683567) nb2: alive
+I (1684567) nb2: alive
+I (1684811) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1684812) nb2: audio_bringup: mic_rms=61.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1685567) nb2: alive
+I (1685567) nb2: stats: heap_livre=172707 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1686567) nb2: alive
+I (1687567) nb2: alive
+I (1687933) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.32 flush_ms=40.46
+I (1688567) nb2: alive
+I (1689571) nb2: alive
+I (1689819) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1689820) nb2: audio_bringup: mic_rms=86.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1690571) nb2: alive
+I (1691571) nb2: alive
+I (1692571) nb2: alive
+I (1692973) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.39 flush_ms=40.40
+I (1693571) nb2: alive
+I (1694571) nb2: alive
+I (1694827) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1694828) nb2: audio_bringup: mic_rms=75.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1695577) nb2: alive
+I (1696585) nb2: alive
+I (1697592) nb2: alive
+I (1698016) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.35 flush_ms=40.47
+I (1698599) nb2: alive
+I (1699606) nb2: alive
+I (1699835) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1699836) nb2: audio_bringup: mic_rms=75.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1700606) nb2: alive
+I (1701606) nb2: alive
+I (1702606) nb2: alive
+I (1703048) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.23 flush_ms=40.48
+I (1703606) nb2: alive
+I (1704606) nb2: alive
+I (1704843) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1704844) nb2: audio_bringup: mic_rms=122.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1705606) nb2: alive
+I (1706608) nb2: alive
+I (1707608) nb2: alive
+I (1708078) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.34 flush_ms=40.35
+I (1708613) nb2: alive
+I (1709619) nb2: alive
+I (1709851) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1709852) nb2: audio_bringup: mic_rms=321.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1710619) nb2: alive
+I (1711619) nb2: alive
+I (1712619) nb2: alive
+W (1713014) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1713119) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.43 flush_ms=40.37
+I (1713619) nb2: alive
+I (1714619) nb2: alive
+I (1714859) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1714860) nb2: audio_bringup: mic_rms=178.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1715619) nb2: alive
+I (1716619) nb2: alive
+I (1717619) nb2: alive
+I (1718164) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.40 flush_ms=40.44
+I (1718619) nb2: alive
+I (1719619) nb2: alive
+I (1719867) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1719868) nb2: audio_bringup: mic_rms=111.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1720627) nb2: alive
+I (1721633) nb2: alive
+I (1722639) nb2: alive
+I (1723207) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.41 flush_ms=40.41
+I (1723647) nb2: alive
+I (1724655) nb2: alive
+I (1724875) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1724876) nb2: audio_bringup: mic_rms=118.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1725655) nb2: alive
+I (1726655) nb2: alive
+I (1727655) nb2: alive
+I (1728248) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.43 flush_ms=40.37
+I (1728655) nb2: alive
+I (1729655) nb2: alive
+I (1729883) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1729884) nb2: audio_bringup: mic_rms=186.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1730661) nb2: alive
+I (1731669) nb2: alive
+I (1732677) nb2: alive
+I (1733293) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.46 flush_ms=40.38
+I (1733685) nb2: alive
+I (1734693) nb2: alive
+I (1734891) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1734892) nb2: audio_bringup: mic_rms=120.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1735694) nb2: alive
+I (1736702) nb2: alive
+I (1737704) nb2: alive
+I (1738317) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.23 flush_ms=40.41
+I (1738709) nb2: alive
+I (1739717) nb2: alive
+I (1739899) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1739900) nb2: audio_bringup: mic_rms=90.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1740717) nb2: alive
+I (1741717) nb2: alive
+I (1742717) nb2: alive
+W (1743018) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1743343) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.16 flush_ms=40.50
+I (1743717) nb2: alive
+I (1744717) nb2: alive
+I (1744907) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1744908) nb2: audio_bringup: mic_rms=89.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1745717) nb2: alive
+I (1745717) nb2: stats: heap_livre=172671 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1746717) nb2: alive
+I (1747717) nb2: alive
+I (1748371) nb2: face_demo: fps=20.9 logic_ms=0.19 draw_ms=7.22 flush_ms=40.45
+I (1748717) nb2: alive
+I (1749723) nb2: alive
+I (1749915) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1749916) nb2: audio_bringup: mic_rms=61.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1750724) nb2: alive
+I (1751724) nb2: alive
+I (1752724) nb2: alive
+I (1753418) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.51 flush_ms=40.34
+I (1753724) nb2: alive
+I (1754724) nb2: alive
+I (1754923) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1754924) nb2: audio_bringup: mic_rms=67.5 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1755724) nb2: alive
+I (1756724) nb2: alive
+I (1757724) nb2: alive
+I (1758464) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.42 flush_ms=40.43
+I (1758724) nb2: alive
+I (1759724) nb2: alive
+I (1759931) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1759932) nb2: audio_bringup: mic_rms=103.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1760724) nb2: alive
+I (1761724) nb2: alive
+I (1762724) nb2: alive
+I (1763510) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.37 flush_ms=40.48
+I (1763724) nb2: alive
+I (1764724) nb2: alive
+I (1764939) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1764940) nb2: audio_bringup: mic_rms=139.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1765727) nb2: alive
+I (1766735) nb2: alive
+I (1767742) nb2: alive
+I (1768550) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.44 flush_ms=40.36
+I (1768751) nb2: alive
+I (1769759) nb2: alive
+I (1769947) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1769948) nb2: audio_bringup: mic_rms=74.7 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1770759) nb2: alive
+I (1771759) nb2: alive
+I (1772759) nb2: alive
+W (1773023) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1773595) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.48 flush_ms=40.36
+I (1773759) nb2: alive
+I (1774759) nb2: alive
+I (1774955) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1774956) nb2: audio_bringup: mic_rms=75.4 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1775759) nb2: alive
+I (1776759) nb2: alive
+I (1777759) nb2: alive
+I (1778639) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.33 flush_ms=40.49
+I (1778759) nb2: alive
+I (1779759) nb2: alive
+I (1779963) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1779964) nb2: audio_bringup: mic_rms=66.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1780759) nb2: alive
+I (1781765) nb2: alive
+I (1782774) nb2: alive
+I (1783679) nb2: face_demo: fps=20.8 logic_ms=0.19 draw_ms=7.35 flush_ms=40.45
+I (1783774) nb2: alive
+I (1784774) nb2: alive
+I (1784971) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1784972) nb2: audio_bringup: mic_rms=81.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1785774) nb2: alive
+I (1786774) nb2: alive
+I (1787774) nb2: alive
+I (1788715) nb2: face_demo: fps=20.8 logic_ms=0.20 draw_ms=7.41 flush_ms=40.35
+I (1788774) nb2: alive
+I (1789485) circadian_core: WAKE_HOUR aplicado -- entrando em DAWN
+I (1789779) nb2: alive
+I (1789979) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1789980) nb2: audio_bringup: mic_rms=64.1 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1790780) nb2: alive
+I (1791780) nb2: alive
+I (1792780) nb2: alive
+I (1793760) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.50 flush_ms=40.30
+I (1793780) nb2: alive
+I (1794780) nb2: alive
+I (1794987) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1794988) nb2: audio_bringup: mic_rms=81.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1795780) nb2: alive
+I (1796780) nb2: alive
+I (1797780) nb2: alive
+I (1798780) nb2: alive
+I (1798794) nb2: face_demo: fps=20.9 logic_ms=0.21 draw_ms=7.36 flush_ms=40.36
+I (1799780) nb2: alive
+I (1799996) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1799996) nb2: audio_bringup: mic_rms=72.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1800780) nb2: alive
+I (1801785) nb2: alive
+I (1802792) nb2: alive
+W (1803026) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1803793) nb2: alive
+I (1803833) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.41 flush_ms=40.34
+I (1804798) nb2: alive
+I (1805003) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1805004) nb2: audio_bringup: mic_rms=82.2 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1805798) nb2: alive
+I (1805798) nb2: stats: heap_livre=172707 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1806799) nb2: alive
+I (1807799) nb2: alive
+I (1808799) nb2: alive
+I (1808872) nb2: face_demo: fps=20.8 logic_ms=0.22 draw_ms=7.50 flush_ms=40.26
+I (1809799) nb2: alive
+I (1810011) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1810012) nb2: audio_bringup: mic_rms=89.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1810799) nb2: alive
+I (1811804) nb2: alive
+I (1812811) nb2: alive
+I (1813819) nb2: alive
+I (1813907) nb2: face_demo: fps=20.9 logic_ms=0.22 draw_ms=7.33 flush_ms=40.38
+I (1814826) nb2: alive
+I (1815019) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1815020) nb2: audio_bringup: mic_rms=89.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1815826) nb2: alive
+I (1816826) nb2: alive
+I (1817826) nb2: alive
+I (1818826) nb2: alive
+I (1818953) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.44 flush_ms=40.36
+I (1819826) nb2: alive
+I (1820027) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1820028) nb2: audio_bringup: mic_rms=73.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1820826) nb2: alive
+I (1821826) nb2: alive
+I (1822826) nb2: alive
+I (1823826) nb2: alive
+I (1823995) nb2: face_demo: fps=20.8 logic_ms=0.23 draw_ms=7.49 flush_ms=40.28
+I (1824826) nb2: alive
+I (1825035) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1825036) nb2: audio_bringup: mic_rms=123.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1825831) nb2: alive
+I (1826831) nb2: alive
+I (1827838) nb2: alive
+I (1828838) nb2: alive
+I (1829019) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.22 flush_ms=40.33
+I (1829843) nb2: alive
+I (1830043) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1830044) nb2: audio_bringup: mic_rms=67.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1830843) nb2: alive
+I (1831843) nb2: alive
+I (1832843) nb2: alive
+W (1833031) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1833843) nb2: alive
+I (1834059) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.46 flush_ms=40.26
+I (1834843) nb2: alive
+I (1835051) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1835052) nb2: audio_bringup: mic_rms=103.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1835850) nb2: alive
+I (1836857) nb2: alive
+I (1837858) nb2: alive
+I (1838865) nb2: alive
+I (1839097) nb2: face_demo: fps=20.8 logic_ms=0.27 draw_ms=7.36 flush_ms=40.33
+I (1839865) nb2: alive
+I (1840059) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1840060) nb2: audio_bringup: mic_rms=102.9 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1840866) nb2: alive
+I (1841874) nb2: alive
+I (1842880) nb2: alive
+I (1843882) nb2: alive
+I (1844114) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.17 flush_ms=40.34
+I (1844888) nb2: alive
+I (1845067) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1845068) nb2: audio_bringup: mic_rms=83.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1845888) nb2: alive
+I (1846897) nb2: alive
+I (1847904) nb2: alive
+I (1848904) nb2: alive
+I (1849145) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.35 flush_ms=40.29
+I (1849904) nb2: alive
+I (1850075) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1850076) nb2: audio_bringup: mic_rms=72.6 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1850904) nb2: alive
+I (1851904) nb2: alive
+I (1852904) nb2: alive
+I (1853910) nb2: alive
+I (1854190) nb2: face_demo: fps=20.8 logic_ms=0.26 draw_ms=7.35 flush_ms=40.42
+I (1854910) nb2: alive
+I (1855083) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1855084) nb2: audio_bringup: mic_rms=52.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1855917) nb2: alive
+I (1856925) nb2: alive
+I (1857933) nb2: alive
+I (1858933) nb2: alive
+I (1859223) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.33 flush_ms=40.33
+I (1859933) nb2: alive
+I (1860091) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1860092) nb2: audio_bringup: mic_rms=61.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1860933) nb2: alive
+I (1861933) nb2: alive
+I (1862933) nb2: alive
+W (1863035) mind_link: connect a 192.168.1.3:8765 falhou: errno 104
+I (1863933) nb2: alive
+I (1864235) nb2: face_demo: fps=20.9 logic_ms=0.26 draw_ms=7.07 flush_ms=40.38
+I (1864933) nb2: alive
+I (1865099) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1865100) nb2: audio_bringup: mic_rms=73.3 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1865933) nb2: alive
+I (1865933) nb2: stats: heap_livre=172707 heap_min=169179 psram_livre=16461580 psram_min=16461580
+I (1866934) nb2: alive
+I (1867935) nb2: alive
+I (1868943) nb2: alive
+I (1869270) nb2: face_demo: fps=20.9 logic_ms=0.25 draw_ms=7.37 flush_ms=40.32
+I (1869949) nb2: alive
+I (1870107) nb2: audio_bringup: loops=313 write_err=ESP_OK(0) written=256 read_err=ESP_OK(0) read=256
+I (1870108) nb2: audio_bringup: mic_rms=115.0 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0
+I (1870949) nb2: alive
+I (1871949) nb2: alive
+I (1872949) nb2: alive
+I (1873949) nb2: alive
+# S4.1 audio soak end=2026-07-06T04:36:49.0165973-03:00

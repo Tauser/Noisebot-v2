@@ -1225,6 +1225,13 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `FEITO` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `FEITO` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `FEITO` |
+| S3.7 | **Vida v2 — o básico** (`docs/RFC-VIDA-V2.md` §3.1/§7): campo emocional contínuo nos 4 hubs (NEUTRAL/HAPPY/SAD/ANGRY) com boca + 2 variantes episódicas por hub; `idle_engine` reescrito como 3 motores (atenção/postura/energia) + respiração + blink unificado + acoplamentos + gestos; temperamento e circadiano no vetor | **passo 0 obrigatório — spike go/no-go** (1–2 dias, atrás de flag: respiração + motor de atenção; Turing de mesa vs idle atual em vídeo de 30 s; no-go arquiva a subfase sem débito); depois: host-tests 1–6 do RFC verdes; bancada 60 s (§9); soak 48 h modo pet; side-by-side v1 registrando novo baseline de persona (S2.2 deixa de ser paridade) | `PENDENTE` |
+| S3.8 | **Vida v2 — expansão medida** (RFC §3.2/§4/§5/§10): âncora `CONTENT` + arco `RECONCILE` + decay assimétrico; campo/boca/variantes nas âncoras restantes; glifos e adornos de pico; `GRUMPY_FORGIVE`; `SEARCH`; raridades — cada item só entra com evidência da S3.7 | host-tests 7 do RFC; loop completo em bancada (magoar → consolar → `♥`); contadores de raridade no dashboard; soak com ≥1 ocorrência de cada raridade | `PENDENTE` |
+
+_Nota (2026-07-05):_ S3.7/S3.8 registradas após o gate S3.6 — fase reaberta
+com escopo fechado por decisão de produto (persona v2). Motivo, dependências
+e gates completos em `docs/RFC-VIDA-V2.md`. S3.7 não depende de S4; IMU e
+`TOUCH_HIT` ficam fora (exigem RFC de hardware próprio — pinout congelado).
 
 **Plano S3.1 (antes de implementar):**
 
@@ -1676,6 +1683,77 @@ só correção de typo no ROADMAP.
 - Gate de saída fechado (critério amendado duas vezes: 48h→3h no plano,
   3h→~1,3h em tempo real). S3.6 encerrado: `FEITO`.
 
+**Plano S3.7 — passo 0: spike go/no-go (antes de qualquer implementação
+definitiva):**
+
+Referência completa: `docs/RFC-VIDA-V2.md`. O spike decide se o restante da
+S3.7 acontece; **nenhum item do RFC além dos dois mecanismos abaixo entra
+antes do go.**
+
+1. **Escopo estrito:** respiração + motor de atenção atrás de flag de
+   compilação (`NB_IDLE_V2_SPIKE` em `nb_idle_engine.h`), zero mudança fora
+   do `idle_engine`. Não tocar: `tiny_fsm`, `emotion_core`, `reflex_engine`,
+   `led_service`, renderer, âncoras.
+2. **Núcleo puro** (P3, sem FreeRTOS/ESP-IDF, clock+RNG injetados):
+   - `nb_breath` — `nb_breath_scale(now_ms, period_ms, amp)` → fator de
+     modulação da altura dos olhos. Período 6000 ms, amplitude 2%
+     (faixa 1.5–2.5%), `#define` do núcleo.
+   - `nb_attention` — FSM `FIXATE⇄SACCADE`: fixação 500–3000 ms com
+     micro-tremor ≤ 0.02; sacada 80 ms (ease-out) para alvo ∈
+     [−0.35, +0.35]², ~40% dos alvos retornando ao centro ±0.05 (viés
+     "olhar pro usuário"); callback `on_saccade()` exposto para a casca
+     disparar blink (acoplamento blink×sacada).
+3. **Host-tests primeiro:** determinismo com seed fixa; gaze nunca fora do
+   envelope; durações de fixação na faixa; tremor limitado; invariante
+   X→IDLE verde **nas duas configs de flag** (table-driven existente roda
+   com e sem `NB_IDLE_V2_SPIKE`).
+4. **Casca:** flag ligada → sorteio de motifs desliga (blink existente
+   permanece), atenção alimenta o gaze (EMA existente) e respiração modula
+   a altura dos olhos, por tick. Motores ocupam P5 na arbitragem, como os
+   motifs hoje.
+5. **Critérios go/no-go (bancada, evidência registrada aqui):**
+   - Vídeo A/B de 30 s (idle atual × spike), mesma luz/ângulo; Turing de
+     mesa com ≥2 pessoas sem contexto: *"ele está olhando pra algo?"* e
+     *"qual parece mais vivo?"* → **go** se o spike vence com clareza.
+   - fps ≥ 30 mantido; heap/PSRAM idênticos ao baseline S2.6 (núcleos
+     estáticos, sem malloc).
+   - Reflexo de toque < 80 ms preservado com flag ligada.
+   - **No-go:** arquivar S3.7 com a evidência, manter idle atual, sem
+     débito.
+6. **Execução:** declarar `S3.7` no início; commits pequenos, um ID;
+   estrutura núcleo/casca obrigatória (`<comp>.c/.h` puro + `shell/` +
+   `host_test/`); C17, `-Wall -Wextra -Werror`, prefixo `nb_`, guard
+   `NB_<MODULO>_H`; constantes de tuning no núcleo, nunca na casca; nenhum
+   pino ou hardware novo. Estimativa: ~0.5 dia núcleo+testes, ~0.5 dia
+   casca+flag, ~0.5 dia bancada+vídeo.
+7. **Após o go:** o restante da S3.7 (postura, motor de energia, campo
+   contínuo, boca, variantes) será detalhado num "Plano S3.7 completo"
+   separado — não ancorar a implementação em escopo que o spike pode matar.
+
+**Execução (evidência registrada, 2026-07-06):**
+
+- Núcleos `nb_breath`/`nb_attention` + host-tests, flag `NB_IDLE_V2_SPIKE`
+  ligada por padrão, zero mudança fora do `idle_engine` (`main.c` intocado
+  -- a troca de comportamento é interna a `idle_engine.c` via `#if`).
+  Suíte completa de host-tests verde nas duas configs de flag (padrão e
+  `NB_HOST_TEST_CFLAGS=-DNB_IDLE_V2_SPIKE=0`), incluindo o invariante
+  X→IDLE do `tiny_fsm`. Build limpo (`idf.py build`) nas duas configs.
+  Tremor de `nb_attention` retunado ao vivo em bancada (suavização +
+  amplitude 0.02→0.06 + frequência de reajuste 150-350ms→600-1400ms —
+  mesma classe de retune já documentada em `NB_IDLE_DRIFT_AMPLITUDE`).
+- **fps/heap/PSRAM (log serial, N32R16V via COM5, flag ligada):** fps
+  estável em 30.3 durante toda a janela observada; `heap_livre≈173 KB` e
+  `psram_livre≈16,46 MB` sem variação entre amostras de heartbeat —
+  gate de fps ≥ 30 fechado; heap/PSRAM sem sinal de vazamento na janela
+  observada (comparação byte-a-byte contra o baseline do S2.6 não feita,
+  só estabilidade dentro da própria janela).
+- **Reflexo de toque (flag ligada):** 20 reações reais capturadas no log
+  (`TAP`/`LONG_PRESS`/`SUSTAINED`), todas com `fsm_event=7` (TOUCH) e
+  `latency_ms` entre 0 e 28 ms — folga grande sobre o critério de
+  < 80 ms. Gate fechado.
+- **Pendente (gate manual, decisão do usuário):** vídeo A/B de 30 s ×
+  Turing de mesa com ≥2 pessoas; decisão go/no-go final.
+
 ### S4 — Voz (o robô conversa)
 
 _Objetivo:_ pipeline de voz fim-a-fim com a mente.
@@ -1685,13 +1763,14 @@ server v1 (refactor).
 | ID   | Entrega                                                                                                                       | Gate de saída                                                                                                              | Status     |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | S4.1 | `audio_hal` I2S full-duplex 16 kHz (mic+spk no mesmo barramento)                                                              | loopback limpo; zero underrun em 30 min com render ativo (re-valida S0.3 na árvore real)                                   | `PENDENTE` |
-| S4.1a | `display_hal`: eliminar bounce buffer do flush SPI, DMA direto da PSRAM                                                      | medição registrada (fps/latência de flush/SRAM) antes×depois; soak sem regressão visual; se inviável na versão do IDF, documentar limitação e manter fatiamento em bandas como solução permanente | `PENDENTE` |
+| S4.1a | `display_hal`: otimizar flush SPI com staging SRAM suportado (dirty rects/filas medidas)                                    | medição registrada (fps/latência de flush/SRAM) antes×depois; soak sem regressão visual; fps ≥ 28 com áudio ativo; fatiamento documentado como solução permanente se mantido | `FEITO` |
 | S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests**                         | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-\* verdes                             | `PENDENTE` |
 | S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `PENDENTE` |
 | S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `PENDENTE` |
 | S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper                                                   | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
 | S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM                                                        | intents respondem com LLM desligada; latência < 1 s                                                                        | `PENDENTE` |
 | S4.7 | Gate de voz                                                                                                                   | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
+| S4.8 | **Máscara de latência** (`docs/RFC-VIDA-V2.md` §6): `THINKING`/`EUREKA`/`CONFUSED` sobre o gap `LISTEN_STOP`→`SAY_START`, inferido localmente pela temporização das mensagens de S4.3 (zero mudança de protocolo). Dependências: S4.3–S4.5 + S3.7 | p95 do gap fala→primeiro áudio sem face estática (medido); timeout/queda de mente → `CONFUSED` → IDLE limpo; golden test da inferência local de turno | `PENDENTE` |
 
 **Plano S4.1 (antes de implementar):**
 
@@ -1737,31 +1816,69 @@ server v1 (refactor).
 
 **Plano S4.1a (antes de implementar):**
 
-Item de `display_hal`, não de áudio -- não bloqueia S4.2+. Nasceu da
-contenção real de SRAM interna DMA-capable entre o bounce buffer de
-150 KB do `esp_lcd_panel_io_spi` e os descritores DMA do `audio_hal`
-(S4.1), resolvida ali com fatiamento do flush em bandas
-(`nb_display_hal_shell.c`). O fatiamento é a correção que fecha o gate de
-S4.1; esta subfase busca a solução tecnicamente superior -- sem cópia
-intermediária nenhuma.
+Item de `display_hal`, não de áudio -- nasceu da contenção real de SRAM
+interna DMA-capable entre o staging PSRAM→SRAM do SPI e os descritores DMA do
+`audio_hal` (S4.1). A documentação oficial do ESP-IoT-Solution confirma que
+o SPI driver não faz DMA direto a partir da PSRAM nesses targets: quando o
+buffer vem da PSRAM, ele copia para SRAM antes de transferir. Portanto o
+fatiamento em bandas (`nb_display_hal_shell.c`) é o caminho suportado e deve
+ser tratado como solução permanente, não como gambiarra provisória nem como
+algo a remover por "DMA direto de PSRAM".
 
-1. Investigar por que `esp_lcd_panel_io_spi` (ESP-IDF v5.5.4) nunca seta
-   `SPI_TRANS_DMA_USE_PSRAM` nas transações que monta (`gpspi/spi_master.c`
-   linha ~1216, já referenciado no comentário de topo de
-   `nb_display_hal_shell.c`) -- limitação da versão do IDF, exigência de
-   alinhamento do buffer, ou falta de flag exposta pela API do `esp_lcd`
-   pra esse caso.
-2. Se viável: substituir o fluxo atual (fatiamento em bandas +
-   `esp_cache_msync` manual por banda) por DMA direto do framebuffer em
-   PSRAM -- sem bounce, sem cópia, sem serialização banda-a-banda.
-3. Medição registrada (P5, `docs/QUALITY.md`) comparando antes×depois:
-   fps do render, latência de flush ponta-a-ponta, uso de SRAM interna
-   livre. Soak sem regressão visual (mesmo critério de S2.6).
-4. Se não for viável nesta versão do IDF: documentar a limitação (link
-   pro issue/changelog do IDF se existir) e manter o fatiamento em bandas
-   como solução permanente -- não como gambiarra provisória.
-5. Gate: medição registrada + soak sem regressão + (se aplicável) fps ≥
-   baseline de S2.6.
+1. Medir e registrar o baseline atual com áudio ativo: `S4.1` soak
+   2026-07-06 em `docs/bringup/s4_1_audio_soak_20260706_040548.log` mostrou
+   áudio limpo (`rx_ovf/tx_ovf/rx_timeout/tx_timeout=0`), mas render em
+   ~20,8 fps por `flush_ms` ~40 ms.
+2. A correção S4.1a remove o `esp_cache_msync()` do caminho normal: o
+   renderer escreve no framebuffer PSRAM, o `display_hal` copia a região suja
+   para SRAM interna DMA-capable, e o DMA lê esse staging interno.
+3. Implementado em 2026-07-06: reduzir bytes por frame com dirty rectangles
+   do renderer. O primeiro frame é full-screen; depois o renderer retorna a
+   união conservadora entre olhos antigos e atuais. `face_demo` passou a
+   registrar `flush_kb` junto de `fps/draw_ms/flush_ms`.
+4. Implementado junto: staging fixo controlado pelo `display_hal`, em SRAM
+   interna DMA-capable (~19 KB), preenchido por `memcpy` linha a linha a
+   partir do framebuffer PSRAM. Isso evita depender de bounce transitório
+   grande do driver e preserva uma única transferência em voo.
+5. 60 MHz não é solução de produção nesta bancada: em 2026-07-06, 80 MHz
+   apresentou artefatos; 60 MHz ficou visualmente normal, mas fps continuou
+   ~20,8/20,9. O clock default voltou para 40 MHz estável.
+6. Otimização terciária futura: experimentar enfileirar bandas mantendo o swap no
+   próximo flush para recuperar sobreposição assíncrona, medindo heap interno
+   mínimo para não recriar vários stagings SRAM concorrentes e voltar ao
+   `ESP_ERR_NO_MEM`.
+7. Não usar 80 MHz nesta bancada: apresentou artefatos, apesar de o limite
+   teórico/documentado do SPI permitir essa frequência.
+8. Gate: medição antes×depois de fps, `flush_ms`, `flush_kb`, heap interno mínimo e
+   contadores de áudio; soak sem regressão visual; fps ≥ 28 com áudio ativo.
+
+**Evidência S4.1a (2026-07-06):**
+
+- Baseline com áudio ativo antes da correção, registrado em
+  `docs/bringup/s4_1_audio_soak_20260706_040548.log`: render em ~20,8 fps,
+  `flush_ms` ~40 ms, áudio limpo (`rx_ovf/tx_ovf/rx_timeout/tx_timeout=0`).
+- Após dirty rectangles + staging DMA fixo (~19 KB), a bancada reportou:
+  `face_demo: fps=30.3 logic_ms=0.26 draw_ms=7.44 flush_ms=15.06 flush_kb=54.9`
+  com áudio simultâneo limpo:
+  `audio_bringup: write_err=ESP_OK read_err=ESP_OK mic_rms=440.8 rx_ovf=0 tx_ovf=0 rx_timeout=0 tx_timeout=0`.
+- Leitura técnica: a correção reduziu o volume médio transferido para ~54,9 KB
+  por frame (contra 150 KB full-frame), derrubando o `flush_ms` para ~15 ms e
+  recuperando ~30 fps sem regressão imediata no I2S.
+- **Soak final executado (2026-07-06, N32R16V via COM5, 30 min):**
+  `docs/bringup/s4_1a_display_audio_soak_20260706.log` registrou
+  `elapsed_s=1810`, `lines=3139`, `face_samples=360`, `fps_avg=30.3003`,
+  `fps_min=30.3`, `flush_ms_avg=15.1033`, `flush_kb_avg=55.0469`,
+  `heap_min=170535`, `psram_min=16461580`, `audio_samples=360`,
+  `rx_ovf_max=0`, `tx_ovf_max=0`, `rx_timeout_max=0`, `tx_timeout_max=0`,
+  `panics=0`.
+- O resumo automático contou `resets=1`, mas a única ocorrência de `rst:`
+  no log é a linha inicial `rst:0x1 (POWERON)` logo após `=== soak started ===`,
+  ou seja: boot capturado na abertura da serial, não reset no meio da janela.
+  Não houve segunda sequência de boot nem `Guru Meditation`/panic durante os
+  30 min.
+- Gate de saída fechado: fps sustentado > 28 com áudio ativo, sem overflow/
+  timeout, `heap_min`/`psram_min` registrados e sem regressão visual reportada
+  na bancada. `S4.1a` encerrado: `FEITO`.
 
 ### S5 — Visão (presença e identidade) — **FASE ADIADA**
 
