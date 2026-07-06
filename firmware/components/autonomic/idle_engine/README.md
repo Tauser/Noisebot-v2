@@ -77,6 +77,25 @@ conviverem com `idle_engine.c` no mesmo componente e pra rodar a suíte
 inteira (incluindo o invariante X→IDLE do `tiny_fsm`) nas duas configs de
 flag sem duplicar scripts.
 
-**Pendente (gate manual, fora de host-test):** vídeo A/B de 30s + Turing
-de mesa, fps/heap/toque em bancada — ver `docs/ROADMAP.md` "Plano S3.7 —
-passo 0", item 5. Build limpo prova compilação, não comportamento.
+**Turing de mesa confirmado pelo usuário (2026-07-06) — `GO`.** Passo 0
+fechado; ver `docs/ROADMAP.md` "Plano S3.7 completo (pós-go)" pra a
+sequência do restante da S3.7.
+
+## S3.7 completo — item 1: motor de postura
+
+**`nb_posture.c/.h`** — FSM `HOLD⇄TRANSITION`: baseline que deriva a cada
+30-90s (transição ~400ms ease-out) pra uma nova micro-pose (roll ≤0.03,
+gaze offset ≤0.05, assimetria ≤0.03 — amplitudes práticas, não os
+literais do RFC, mesmo espírito de `NB_IDLE_DRIFT_AMPLITUDE`) que vira o
+novo repouso — nunca retorna à pose exata. Mesmo padrão de núcleo puro do
+`nb_attention.c` (xorshift32, alvo re-sorteado + suavização exponencial).
+
+Soma-se em `compute_output()` sob `NB_IDLE_V2_SPIKE`: `roll` → `tilt`,
+`gaze_x/y` → `gaze_x/y`, `asymmetry` → `width_l`/`width_r` (diferencial,
+campo ocioso sob o spike já que `CURIOUS_TILT` fica atrás de
+`!NB_IDLE_V2_SPIKE`). Tickada incondicionalmente junto da atenção.
+
+`nb_idle_engine_reset_transient()` (novo, público) zera a postura de
+volta ao centro (invariante H7) — gancho exposto, **ainda não chamado por
+nenhuma casca**: liga isso a um evento real de `tiny_fsm`/`main.c` fica
+pro item 3 ("acoplamentos") do "Plano S3.7 completo".

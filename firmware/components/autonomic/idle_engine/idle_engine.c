@@ -2,6 +2,7 @@
 
 #include "nb_attention.h"
 #include "nb_breath.h"
+#include "nb_posture.h"
 
 #include <math.h>
 #include <string.h>
@@ -316,6 +317,15 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
                                          NB_BREATH_AMPLITUDE_DEFAULT);
     out->open_l *= breath;
     out->open_r *= breath;
+
+    /* Postura (RFC-VIDA-V2.md §7, "Plano S3.7 completo" item 1): soma-se
+     * ao gaze/tilt/width já resolvidos -- não substitui a atenção nem os
+     * motifs, é a deriva lenta do baseline por baixo de tudo. */
+    out->gaze_x += e->posture_v2.gaze_x;
+    out->gaze_y += e->posture_v2.gaze_y;
+    out->tilt += e->posture_v2.roll;
+    out->width_l += e->posture_v2.asymmetry;
+    out->width_r -= e->posture_v2.asymmetry;
 #endif
 }
 
@@ -336,6 +346,16 @@ void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed)
      * pode receber o mesmo estado inicial de engine->rng_state sem
      * acoplar as duas sequências de sorteio. */
     nb_attention_init(&engine->attention_v2, engine->rng_state ^ 0x1234567u);
+    /* Semente derivada, distinta da de attention_v2 (mesma lógica acima). */
+    nb_posture_init(&engine->posture_v2, engine->rng_state ^ 0x87654321u);
+}
+
+void nb_idle_engine_reset_transient(nb_idle_engine_t *engine)
+{
+    if (engine == NULL) {
+        return;
+    }
+    nb_posture_reset_to_center(&engine->posture_v2);
 }
 
 void nb_idle_engine_set_mode(nb_idle_engine_t *engine, bool quiet_mode,
@@ -361,6 +381,9 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
      * aleatório contínuo. Escreve direto em drift_x/y -- compute_output()
      * não precisa saber qual dos dois gerou a saída. */
     nb_attention_tick(&engine->attention_v2, dt_ms, &engine->drift_x, &engine->drift_y);
+    /* Postura (RFC-VIDA-V2.md §7, motor 2): tickada incondicionalmente
+     * junto da atenção -- a contribuição é somada em compute_output(). */
+    nb_posture_tick(&engine->posture_v2, dt_ms);
 #else
     /* SOFT_DRIFT: em vez de ruído tick-a-tick (que em bancada lia como
      * parado -- passo pequeno demais pra ser visível), o gaze desliza

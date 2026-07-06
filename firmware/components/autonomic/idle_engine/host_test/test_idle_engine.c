@@ -300,6 +300,61 @@ static void test_spike_attention_gaze_moves_over_time(void)
     }
     CHECK(changed_count > 0);
 }
+
+/* Postura (RFC §7, motor 2, "Plano S3.7 completo" item 1) contribui pro
+ * gaze/tilt/width -- confere que a saída se move ao longo do tempo (a
+ * cobertura fina de envelope/não-repetição já mora em test_nb_posture.c;
+ * aqui só a integração com o idle_engine). */
+static void test_spike_posture_contributes_to_output(void)
+{
+    nb_idle_engine_t e;
+    nb_idle_output_t first;
+    int tilt_changed = 0;
+    int width_asymmetric_at_some_point = 0;
+
+    nb_idle_engine_init(&e, 999);
+    nb_idle_engine_tick(&e, TICK_MS, &first);
+
+    for (uint32_t ms = 0; ms < 300000u; ms += TICK_MS) { /* 5 min simulados */
+        nb_idle_output_t out;
+
+        nb_idle_engine_tick(&e, TICK_MS, &out);
+        if (out.tilt != first.tilt) {
+            tilt_changed = 1;
+        }
+        if (out.width_l != out.width_r) {
+            width_asymmetric_at_some_point = 1;
+        }
+    }
+    CHECK(tilt_changed);
+    CHECK(width_asymmetric_at_some_point);
+}
+
+/* Invariante H7: nb_idle_engine_reset_transient() zera a contribuição da
+ * postura de volta ao centro (RFC §7: "entrada em IDLE reseta ao
+ * centro"). */
+static void test_spike_reset_transient_zeroes_posture(void)
+{
+    nb_idle_engine_t e;
+
+    nb_idle_engine_init(&e, 321);
+    for (uint32_t ms = 0; ms < 200000u; ms += TICK_MS) {
+        nb_idle_engine_tick(&e, TICK_MS, NULL);
+    }
+    /* Confere que a postura realmente saiu do centro antes do reset. */
+    CHECK(e.posture_v2.roll != 0.0f || e.posture_v2.gaze_x != 0.0f ||
+         e.posture_v2.gaze_y != 0.0f || e.posture_v2.asymmetry != 0.0f);
+
+    nb_idle_engine_reset_transient(&e);
+    CHECK(e.posture_v2.roll == 0.0f);
+    CHECK(e.posture_v2.gaze_x == 0.0f && e.posture_v2.gaze_y == 0.0f);
+    CHECK(e.posture_v2.asymmetry == 0.0f);
+
+    nb_idle_output_t out;
+    nb_idle_engine_tick(&e, TICK_MS, &out);
+    CHECK(out.tilt == 0.0f);
+    CHECK(out.width_l == out.width_r);
+}
 #endif /* NB_IDLE_V2_SPIKE */
 
 int main(void)
@@ -321,6 +376,8 @@ int main(void)
     test_spike_disables_long_motif_scheduling();
     test_spike_breath_modulates_eye_openness();
     test_spike_attention_gaze_moves_over_time();
+    test_spike_posture_contributes_to_output();
+    test_spike_reset_transient_zeroes_posture();
 #endif
 
     if (failures == 0) {

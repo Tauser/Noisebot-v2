@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "nb_attention.h"
+#include "nb_posture.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -110,6 +111,11 @@ typedef struct {
      * as duas configs de build. */
     nb_attention_t attention_v2;
 
+    /* S3.7 completo, item 1 (nb_posture.h): motor de postura, soma-se ao
+     * tilt/gaze/width quando NB_IDLE_V2_SPIKE está ligado. Mesma regra do
+     * campo acima -- sempre presente, só usado sob a flag. */
+    nb_posture_t posture_v2;
+
     nb_idle_metrics_t metrics;
 } nb_idle_engine_t;
 
@@ -127,6 +133,13 @@ void nb_idle_engine_set_mode(nb_idle_engine_t *engine, bool quiet_mode,
 void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_output_t *out);
 
 const nb_idle_metrics_t *nb_idle_engine_get_metrics(const nb_idle_engine_t *engine);
+
+/* Invariante H7 (ARCHITECTURE.md §4): zera o estado transitório dos
+ * motores contínuos (hoje: postura, via nb_posture_reset_to_center()) ao
+ * entrar em IDLE -- a deriva recomeça do centro dali. Gancho exposto,
+ * ainda não chamado por nenhuma casca ("Plano S3.7 completo", item 3
+ * "acoplamentos" liga isso a um evento real de tiny_fsm/main.c). */
+void nb_idle_engine_reset_transient(nb_idle_engine_t *engine);
 
 #ifdef __cplusplus
 }
