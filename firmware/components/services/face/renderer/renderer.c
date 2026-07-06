@@ -190,3 +190,44 @@ void nb_face_core_mouth_column(float mouth_open, float mouth_curve, int16_t half
     out->has_bottom_aa = alpha_bottom > .04f;
     out->alpha_bottom = out->has_bottom_aa ? alpha_bottom : 0.0f;
 }
+
+void nb_face_core_blend(const nb_face_state_t *const *states, const float *weights,
+                        uint32_t count, nb_face_state_t *out)
+{
+    if (out == NULL || states == NULL || weights == NULL || count == 0u) {
+        return;
+    }
+
+#define NB_FACE_BLEND_FIELD(field)                                                              \
+    do {                                                                                        \
+        float acc = 0.0f;                                                                       \
+        for (uint32_t i = 0; i < count; ++i) {                                                  \
+            acc += weights[i] * states[i]->field;                                               \
+        }                                                                                        \
+        out->field = acc;                                                                       \
+    } while (0)
+
+    NB_FACE_BLEND_FIELD(tl_l);
+    NB_FACE_BLEND_FIELD(tr_l);
+    NB_FACE_BLEND_FIELD(bl_l);
+    NB_FACE_BLEND_FIELD(br_l);
+    NB_FACE_BLEND_FIELD(tl_r);
+    NB_FACE_BLEND_FIELD(tr_r);
+    NB_FACE_BLEND_FIELD(bl_r);
+    NB_FACE_BLEND_FIELD(br_r);
+    NB_FACE_BLEND_FIELD(open_l);
+    NB_FACE_BLEND_FIELD(open_r);
+    NB_FACE_BLEND_FIELD(y_l);
+    NB_FACE_BLEND_FIELD(y_r);
+    NB_FACE_BLEND_FIELD(x_off);
+    NB_FACE_BLEND_FIELD(round_top);
+    NB_FACE_BLEND_FIELD(round_bottom);
+    NB_FACE_BLEND_FIELD(curve_top);
+    NB_FACE_BLEND_FIELD(curve_bottom);
+    NB_FACE_BLEND_FIELD(squint_l);
+    NB_FACE_BLEND_FIELD(squint_r);
+    NB_FACE_BLEND_FIELD(mouth_open);
+    NB_FACE_BLEND_FIELD(mouth_curve);
+
+#undef NB_FACE_BLEND_FIELD
+}

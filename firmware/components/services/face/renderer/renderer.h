@@ -117,6 +117,13 @@ typedef struct {
 void nb_face_core_mouth_column(float mouth_open, float mouth_curve, int16_t half_width, float cy,
                                int16_t x_rel, nb_face_mouth_column_t *out);
 
+/* Blend N-way ponderado dos 21 campos de nb_face_state_t (S3.7 completo,
+ * item 6): out = soma(weights[i] * states[i]) campo-a-campo. weights não
+ * precisam somar exatamente 1 (o chamador normaliza), mas o caso comum é
+ * pesos normalizados. count==0 ou ponteiros NULL são no-op seguro. */
+void nb_face_core_blend(const nb_face_state_t *const *states, const float *weights,
+                        uint32_t count, nb_face_state_t *out);
+
 #ifdef __cplusplus
 }
 #endif

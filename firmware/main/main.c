@@ -53,6 +53,12 @@
  * mesmo clock, sem estado duplicado. Única mudança fora do idle_engine
  * prevista pro item 3 (os demais acoplamentos -- blink×sacada, roll
  * segue gaze -- ficam inteiros dentro do núcleo).
+ * S3.7 completo, item 6 (campo contínuo, RFC-VIDA-V2.md §3): o
+ * nearest-neighbor + transição de 220 ms de S2.2/S2.5 dá lugar a
+ * nb_emotion_core_resolve_face() -- blend contínuo entre os 4 hubs
+ * (NEUTRAL/HAPPY/SAD/ANGRY; as outras 6 âncoras saem de uso, decisão de
+ * produto 2026-07-06). S2.2 deixa de ser critério de paridade a partir
+ * daqui (já previsto no ROADMAP).
  */
 
 #include <stdbool.h>
@@ -94,7 +100,6 @@
 #define NB_APP_MAIN_FACE_DEMO_PRIO 8
 #define NB_APP_MAIN_FACE_DEMO_TICK_MS 33u
 #define NB_APP_MAIN_FPS_LOG_WINDOW_US 5000000ll /* janela de 5s pro fps medido */
-#define NB_APP_MAIN_FACE_DEMO_TRANSITION_MS 220u
 #define NB_APP_MAIN_LED_BRIGHTNESS_CAP 0.15f
 #define NB_APP_MAIN_TOUCH_STACK 3072u
 #define NB_APP_MAIN_TOUCH_PRIO 8
@@ -130,10 +135,6 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_idle_engine_t idle;
     nb_emotion_state_t emotion;
     nb_tiny_fsm_t fsm;
-    nb_face_expr_t from_expr = NB_FACE_EXPR_NEUTRAL;
-    nb_face_expr_t to_expr = NB_FACE_EXPR_NEUTRAL;
-    uint32_t transition_elapsed_ms = 0;
-    bool transitioning = false;
     uint32_t fps_frame_count = 0;
     int64_t fps_window_start_us = esp_timer_get_time();
     int64_t logic_us_sum = 0;
@@ -189,31 +190,13 @@ static void nb_app_main_face_demo_task(void *arg)
             nb_mind_link_shell_notify_timer_fired(fired_timer_ids[i]);
         }
 
-        const nb_face_expr_t nearest = nb_emotion_core_nearest_expression(&emotion);
-        if (nearest != to_expr) {
-            /* to_expr é sempre onde a face está agora (parada) ou pra onde
-             * está indo (em transição) -- vale como ponto de partida da
-             * nova transição nos dois casos. */
-            from_expr = to_expr;
-            to_expr = nearest;
-            transitioning = true;
-            transition_elapsed_ms = 0;
-        }
-
+        /* S3.7 completo, item 6 (RFC-VIDA-V2.md §3): campo contínuo entre
+         * os 4 hubs substitui o nearest-neighbor + transição de 220ms --
+         * o próprio vetor (v,a) já se move suavemente (decay/estímulo), o
+         * blend por posição já entrega a face contínua sem precisar de um
+         * timer de easing artificial. */
         nb_face_state_t current;
-        if (transitioning) {
-            const float t =
-                (float)transition_elapsed_ms / (float)NB_APP_MAIN_FACE_DEMO_TRANSITION_MS;
-            nb_face_core_lerp(nb_face_core_get_expression(from_expr),
-                              nb_face_core_get_expression(to_expr), (t > 1.0f) ? 1.0f : t,
-                              &current);
-            transition_elapsed_ms += NB_APP_MAIN_FACE_DEMO_TICK_MS;
-            if (transition_elapsed_ms >= NB_APP_MAIN_FACE_DEMO_TRANSITION_MS) {
-                transitioning = false;
-            }
-        } else {
-            current = *nb_face_core_get_expression(to_expr);
-        }
+        nb_emotion_core_resolve_face(&emotion, &current);
         /* P0-P3 (safety/touch/fala/hint) suprimem os motifs de idle sem
          * destruí-los -- ao expirar a claim, o overlay volta sozinho
          * (BEHAVIOR.md §3). */

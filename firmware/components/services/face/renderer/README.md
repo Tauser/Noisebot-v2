@@ -58,3 +58,14 @@ Host-tests: só os 4 hubs têm boca não-neutra (as outras 6 seguem
 `0,0`); coluna nunca fica vazia mesmo fechada; sorriso curva as pontas
 pra cima em relação ao centro; lerp interpola os 2 campos novos. Sem
 host-test de "parece bom" — isso é bancada (boca estática nos 4 hubs).
+
+## S3.7 completo — item 6: blend N-way
+
+**`nb_face_core_blend(states, weights, count, out)`** (novo) — blend
+ponderado dos 21 campos de `nb_face_state_t` entre N estados (não só 2
+como `nb_face_core_lerp()`), consumido por `emotion_core` (L4) pra
+resolver o campo contínuo entre os 4 hubs (RFC-VIDA-V2.md §3). Primeira
+vez que outro componente chama uma função de `renderer.c` de verdade em
+vez de só usar o header — `tools/run_host_tests.py` precisou aprender a
+resolver `REQUIRES`/`PRIV_REQUIRES` do CMake real pra linkar isso nos
+host-tests (a suposição antiga era "só header, nunca símbolo").

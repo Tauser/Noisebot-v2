@@ -1873,14 +1873,40 @@ doc — o RFC assume coisas que não são verdade hoje):
    fechada; sorriso curva as pontas pra cima; lerp interpola os campos
    novos. Build limpo. **Falta:** confirmação visual em bancada (boca
    estática nos 4 hubs, sem campo contínuo ainda).
-6. **Campo contínuo + temperamento + circadiano no vetor** (`emotion_core`):
-   substitui `nb_emotion_core_nearest_expression()` por blend contínuo só
-   entre os 4 hubs (fallback nearest-neighbor pras outras 6, sem
-   regressão); temperamento (decay alvo em `(+0.10, +0.05)`); offset
-   circadiano (campo novo do item 4). Host-tests do RFC §9: campo passa
-   exatamente pelas âncoras calibradas e é contínuo entre elas; decay
-   assimétrico fica pra S3.8. Gate: host-test verde, build limpo, bancada
-   (as 6 âncoras fora do escopo não podem quebrar).
+6. **Campo contínuo + temperamento + circadiano no vetor** (`emotion_core`)
+   — **`FEITO` (2026-07-06), pendente bancada. Escopo revisto pelo
+   usuário: as 6 âncoras fora dos hubs
+   (`CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/SURPRISED/ALARMED`) saem de uso**
+   — não é mais preciso preservar fallback nearest-neighbor pra elas
+   (diverge do texto original do RFC, que previa mantê-las intocadas;
+   decisão de produto do usuário substitui isso).
+   `nb_emotion_core_resolve_face()` (novo) resolve o vetor (v,a) direto
+   num `nb_face_state_t`, blend contínuo só entre os 4 hubs (pesos por
+   distância inversa ao quadrado — Shepard —, retorna a âncora bit-a-bit
+   se a distância² < 1e-8, sem dividir por zero). Usa
+   `nb_face_core_blend()` (novo, `renderer.c`: blend N-way ponderado,
+   generaliza `nb_face_core_lerp()` de 2 pra N estados). Temperamento:
+   decay alvo em `(+0.10, +0.05)` em vez de `(0,0)` (mesma tau, só o
+   ponto de repouso mudou). Offset circadiano:
+   `nb_emotion_core_set_circadian_offset()` (novo setter) — gancho
+   exposto, ainda não chamado por nenhuma casca; a exceção de mexer em
+   `circadian_core` prevista no plano **não foi necessária** (mesma
+   lição do item 2). `main.c`: nearest-neighbor + transição de 220ms
+   (S2.2/S2.5) substituído por chamada direta de `resolve_face()` por
+   tick — o vetor já se move suave, o blend por posição já entrega
+   continuidade sem timer de easing artificial. **S2.2 deixa de ser
+   critério de paridade** (já previsto no ROADMAP).
+   `tools/run_host_tests.py` precisou de ajuste real: `emotion_core.c`
+   agora chama função de `renderer.c` de verdade (`nb_face_core_blend()`)
+   — o script passou a parsear `REQUIRES`/`PRIV_REQUIRES` do
+   `CMakeLists.txt` real (que já declarava essa dependência pro build de
+   verdade) e linkar as fontes transitivas, em vez de assumir "só header,
+   nunca símbolo pra linkar".
+   Host-tests do RFC §9: campo passa exatamente pelas âncoras calibradas
+   (bit-a-bit) e é contínuo entre elas (sem salto passo a passo); decay
+   converge pro temperamento (não mais zero) dos dois lados; decay
+   assimétrico fica pra S3.8. Suíte inteira verde nas duas configs de
+   flag; build limpo. **Falta:** confirmação visual em bancada.
 7. **Variantes episódicas** (2 por hub): sorteadas ao entrar na região,
    duram o episódio. Host-test RFC §9(5): nunca sai do envelope da região.
    Gate: host-test verde, build limpo, bancada (perceptível sem confundir
@@ -2029,6 +2055,43 @@ algo a remover por "DMA direto de PSRAM".
 - Gate de saída fechado: fps sustentado > 28 com áudio ativo, sem overflow/
   timeout, `heap_min`/`psram_min` registrados e sem regressão visual reportada
   na bancada. `S4.1a` encerrado: `FEITO`.
+
+**Evidência S4.2 (2026-07-06, parcial):**
+
+- Implementado `firmware/components/services/wake_service` como núcleo C17
+  puro (L3) com invariantes V-1..V-6 de `VOICE.md` já traduzidos para
+  host-test: toque nunca abre voz; wake sem VAD falha honestamente; wake
+  sem rota útil falha honestamente; áudio fora de sessão não publica nada;
+  `LISTEN_START` só nasce depois de wake; `LISTEN_END` só sai após áudio
+  real; perda de rota no meio da sessão não pendura.
+- Casca mínima adicionada em `shell/nb_wake_service_shell.c/.h`: instância
+  única, publicação de `NB_EVENT_TYPE_VOICE` no `event_bus`, e integração
+  inicial do `reflex_engine_shell` com `NB_VOICE_EVENT_WAKE` → 
+  `NB_REFLEX_STIMULUS_VOICE_START`. `main.c` inicializa a casca e atualiza
+  dinamicamente a rota da mente conforme o `mind_link`.
+- Harness explícito de bancada adicionado em `main/Kconfig.projbuild`
+  (`CONFIG_NB_WAKE_BENCH_HARNESS`, default `n`): quando ligado, a task
+  temporária `audio_bringup` usa RMS do microfone para emular wake/VAD e
+  exercitar a sessão do `wake_service` sem WakeNet/ESP-SR reais. Registro
+  importante: é opção de bancada declarada, não fallback silencioso de
+  produção, preservando V-5 de `VOICE.md`.
+- Gate local de compilação fechado: `idf.py build` verde após corrigir a
+  descoberta do componente em `firmware/CMakeLists.txt` e as dependências
+  `esp_timer`/`log` do `wake_service`.
+- Gate de host-test do componente fechado: `wake_service host_test: ok`.
+  **Observação importante do workspace:** a suíte completa
+  `tools/run_host_tests.py` ficou bloqueada por uma falha pré-existente em
+  `idle_engine` (`test_idle_engine.c:359`, `out.tilt == 0.0f`) em arquivos
+  fora do escopo desta fatia; isso não veio do `wake_service`.
+- Ensaio de bancada de flash/smoke na Waveshare N32R16V executado com a
+  imagem atual: `idf.py -p COM5 flash` verde; MAC lido `90:e5:b1:cc:3d:58`;
+  placa confirmada **funcional** pelo usuário após o flash. Evidência
+  registrada em `docs/bringup/s4_2_wake_service_flash_smoke_20260706.md`.
+- **Gates ainda pendentes para fechar S4.2:** produtor real de wake/VAD
+  (WakeNet/ESP-SR ou harness de bancada equivalente), medição de wake em
+  ambiente real (`>= 9/10`), falso wake `< 1/h`, overlay listening
+  `< 250 ms`, e captura de logs seriais estáveis quando a `COM5` estiver
+  livre sem reabertura automática por outro processo.
 
 ### S5 — Visão (presença e identidade) — **FASE ADIADA**
 

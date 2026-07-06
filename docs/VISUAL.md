@@ -28,8 +28,18 @@ nb_face_state_t (por olho L/R):
 ## 2. As 10 expressões-base
 
 Herdadas do v1 (validadas em produto). Cada uma é um `nb_face_state_t`
-completo + âncora no plano emocional (valência, ativação) usada pelo
-nearest-neighbor do `emotion_core`:
+completo + âncora no plano emocional (valência, ativação).
+
+**Desde a S3.7 completa (item 6, 2026-07-06):** só os 4 hubs
+(`NEUTRAL`/`HAPPY`/`SAD`/`ANGRY`) são alcançáveis pelo vetor emocional —
+`nb_emotion_core_resolve_face()` faz blend contínuo só entre eles. As
+outras 6 âncoras (`CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/SURPRISED/ALARMED`)
+saem de uso (decisão de produto do usuário, diverge do RFC original que
+previa mantê-las como fallback nearest-neighbor) — continuam definidas na
+tabela abaixo e em `renderer.c` (histórico/referência), mas nada no
+firmware as invoca mais. `nb_emotion_core_nearest_expression()` (o
+mapeamento antigo, nearest-neighbor sobre as 10) continua existindo por
+compatibilidade, sem uso ativo em `main.c`.
 
 | # | Expressão | Âncora (v, a) | Forma característica |
 | --- | --- | --- | --- |
@@ -52,9 +62,10 @@ mapeamentos da emoção que decaem para NEUTRAL.
 `HAPPY`/`SAD`/`ANGRY`) ganharam `mouth_open`/`mouth_curve` não-neutros —
 `NEUTRAL` fechada com micro-sorriso sutil, `HAPPY` aberta e sorrindo,
 `SAD` curva suave pra baixo, `ANGRY` curva invertida mais firme que
-`SAD`. As outras 6 âncoras continuam boca neutra (`0,0`), intocadas.
-Estático por enquanto: sem variação por variante episódica nem visemas
-de fala (item 6 e S4 voz, respectivamente).
+`SAD`. As outras 6 âncoras continuam boca neutra (`0,0`) — e, desde o
+item 6, nem são mais alcançáveis pelo vetor de qualquer forma. Estático
+por enquanto: sem variação por variante episódica nem visemas de fala
+(item 7 e S4 voz, respectivamente).
 
 ## 3. Vida em IDLE (idle_engine)
 
