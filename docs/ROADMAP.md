@@ -1225,7 +1225,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | S3.4 | Ciclo circadiano + sono (SLEEPING com entrada/saída suaves)                                        | transições dormir/acordar observadas nos horários; invariante IDLE segue verde                  | `FEITO` |
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `FEITO` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `FEITO` |
-| S3.7 | **Vida v2 — o básico** (`docs/RFC-VIDA-V2.md` §3.1/§7): campo emocional contínuo nos 4 hubs (NEUTRAL/HAPPY/SAD/ANGRY) com boca + 2 variantes episódicas por hub; `idle_engine` reescrito como 3 motores (atenção/postura/energia) + respiração + blink unificado + acoplamentos + gestos; temperamento e circadiano no vetor | **passo 0 obrigatório — spike go/no-go** (1–2 dias, atrás de flag: respiração + motor de atenção; Turing de mesa vs idle atual em vídeo de 30 s; no-go arquiva a subfase sem débito); depois: host-tests 1–6 do RFC verdes; bancada 60 s (§9); soak 48 h modo pet; side-by-side v1 registrando novo baseline de persona (S2.2 deixa de ser paridade) | `PENDENTE` |
+| S3.7 | **Vida v2 — o básico** (`docs/RFC-VIDA-V2.md` §3.1/§7): campo emocional contínuo nos 4 hubs (NEUTRAL/HAPPY/SAD/ANGRY) com boca + 2 variantes episódicas por hub; `idle_engine` reescrito como 3 motores (atenção/postura/energia) + respiração + blink unificado + acoplamentos + gestos; temperamento e circadiano no vetor | **passo 0 (spike go/no-go): `GO`** — respiração + motor de atenção atrás de flag, Turing de mesa confirmado pelo usuário (2026-07-06); depois: host-tests 1–6 do RFC verdes; bancada 60 s (§9); soak 48 h modo pet; side-by-side v1 registrando novo baseline de persona (S2.2 deixa de ser paridade) | `PENDENTE` |
 | S3.8 | **Vida v2 — expansão medida** (RFC §3.2/§4/§5/§10): âncora `CONTENT` + arco `RECONCILE` + decay assimétrico; campo/boca/variantes nas âncoras restantes; glifos e adornos de pico; `GRUMPY_FORGIVE`; `SEARCH`; raridades — cada item só entra com evidência da S3.7 | host-tests 7 do RFC; loop completo em bancada (magoar → consolar → `♥`); contadores de raridade no dashboard; soak com ≥1 ocorrência de cada raridade | `PENDENTE` |
 
 _Nota (2026-07-05):_ S3.7/S3.8 registradas após o gate S3.6 — fase reaberta
@@ -1751,8 +1751,13 @@ antes do go.**
   (`TAP`/`LONG_PRESS`/`SUSTAINED`), todas com `fsm_event=7` (TOUCH) e
   `latency_ms` entre 0 e 28 ms — folga grande sobre o critério de
   < 80 ms. Gate fechado.
-- **Pendente (gate manual, decisão do usuário):** vídeo A/B de 30 s ×
-  Turing de mesa com ≥2 pessoas; decisão go/no-go final.
+- **Turing de mesa (vídeo A/B de 30 s, spike × idle atual, ≥2 pessoas sem
+  contexto):** executado e confirmado pelo usuário — spike aprovado.
+- **Decisão: GO.** Passo 0 do S3.7 fechado — todos os critérios de
+  go/no-go do item 5 atendidos (Turing de mesa, fps/heap/PSRAM, reflexo de
+  toque). Libera o "Plano S3.7 completo" (item 7: postura, motor de
+  energia, campo contínuo, boca, variantes), a ser detalhado em documento
+  separado antes de implementar.
 
 ### S4 — Voz (o robô conversa)
 
