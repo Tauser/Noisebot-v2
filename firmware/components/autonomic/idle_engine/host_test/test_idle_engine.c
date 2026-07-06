@@ -355,6 +355,52 @@ static void test_spike_reset_transient_zeroes_posture(void)
     CHECK(out.tilt == 0.0f);
     CHECK(out.width_l == out.width_r);
 }
+
+/* Energia (RFC §7, motor 3, "Plano S3.7 completo" item 2): tédio
+ * crescente sem estímulo (via nb_idle_engine_set_energy_inputs)
+ * desacelera o blink e faz a pálpebra descansar mais fechada, comparado
+ * a um motor "alerta" (sem entradas de energia, defaults 0/0.0). */
+static void test_spike_energy_droops_eyelid_and_slows_blink(void)
+{
+    nb_idle_engine_t alert;
+    nb_idle_engine_t bored;
+    const uint32_t duration_ms = 900000u; /* 15 min simulados */
+
+    nb_idle_engine_init(&alert, 111);
+    nb_idle_engine_init(&bored, 111);
+
+    for (uint32_t ms = 0; ms < duration_ms; ms += TICK_MS) {
+        nb_idle_engine_set_energy_inputs(&bored, ms, 0.0f); /* tédio cresce com o tempo */
+        nb_idle_engine_tick(&alert, TICK_MS, NULL);
+        nb_idle_engine_tick(&bored, TICK_MS, NULL);
+    }
+
+    CHECK(bored.energy_v2.level > 0.5f); /* de fato ficou sonolento */
+    CHECK(alert.energy_v2.level == 0.0f); /* nunca alimentado -- nunca sonolento */
+
+    const nb_idle_metrics_t *m_alert = nb_idle_engine_get_metrics(&alert);
+    const nb_idle_metrics_t *m_bored = nb_idle_engine_get_metrics(&bored);
+    const uint32_t blinks_alert = m_alert->blink_bar_count + m_alert->double_blink_count;
+    const uint32_t blinks_bored = m_bored->blink_bar_count + m_bored->double_blink_count;
+
+    CHECK(blinks_bored < blinks_alert); /* blink mais espaçado com sono */
+
+    /* Pálpebra de descanso (motif == NONE) mais fechada no sonolento. */
+    nb_idle_output_t out_alert;
+    nb_idle_output_t out_bored;
+    int compared = 0;
+    for (uint32_t ms = 0; ms < 20000u && !compared; ms += TICK_MS) {
+        nb_idle_engine_set_energy_inputs(&bored, duration_ms, 0.0f);
+        nb_idle_engine_tick(&alert, TICK_MS, &out_alert);
+        nb_idle_engine_tick(&bored, TICK_MS, &out_bored);
+        if (out_alert.active_motif == NB_IDLE_MOTIF_NONE &&
+            out_bored.active_motif == NB_IDLE_MOTIF_NONE) {
+            CHECK(out_bored.open_l < out_alert.open_l);
+            compared = 1;
+        }
+    }
+    CHECK(compared);
+}
 #endif /* NB_IDLE_V2_SPIKE */
 
 int main(void)
@@ -378,6 +424,7 @@ int main(void)
     test_spike_attention_gaze_moves_over_time();
     test_spike_posture_contributes_to_output();
     test_spike_reset_transient_zeroes_posture();
+    test_spike_energy_droops_eyelid_and_slows_blink();
 #endif
 
     if (failures == 0) {

@@ -1788,26 +1788,37 @@ doc — o RFC assume coisas que não são verdade hoje):
 6. Não existe tracker de "tempo desde o último estímulo" em lugar nenhum
    — o motor de energia (tédio) parte do zero.
 
-1. **Motor de postura** (`nb_posture.c/.h`, novo núcleo em `idle_engine`):
-   a cada 30-90s, transição ~400ms pra nova micro-pose (roll ≤1°, gaze
-   offset ≤0.05, assimetria ≤3%) que vira o novo repouso, nunca volta à
-   pose exata (RFC §7, motor 2). Mesmo padrão de `nb_attention.c` (núcleo
-   puro, RNG embutido, alvo re-sorteado + suavização exponencial).
-   Invariante H7 crítico: entrada em IDLE reseta ao centro, deriva
-   recomeça dali — host-test dedicado. Host-tests: nunca 2 poses
-   consecutivas idênticas, envelope respeitado, reset limpo em IDLE. Gate:
-   host-test verde, build limpo, zero mudança fora do `idle_engine`.
-2. **Motor de energia** (`nb_energy.c/.h`, novo núcleo em `idle_engine`):
-   circadiano + tédio + vetor modulam blink/pálpebra/gaze/sacada/
-   respiração até `SLEEPING` (RFC §7, motor 3). Entrada de tédio: casca
-   (`main.c`) alimenta "ms desde a última prioridade acima de
-   BASELINE/IDLE_MOTIF" (já disponível via `nb_reflex_engine_shell_tick()`)
-   por um novo parâmetro/setter, mesmo padrão de
-   `nb_idle_engine_set_mode()`. Entrada circadiana: exige o campo novo do
-   item 4 das correções — única exceção documentada a "zero mudança fora
-   do idle_engine" nesta fase. `tiny_fsm` continua decidindo o corte pra
-   `SLEEPING`; o motor só entrega o sinal contínuo. Gate: host-test verde,
-   build limpo.
+1. **Motor de postura** (`nb_posture.c/.h`, novo núcleo em `idle_engine`) —
+   **`FEITO` (2026-07-06).** A cada 30-90s, transição ~400ms pra nova
+   micro-pose (roll/gaze offset/assimetria, amplitudes práticas retunadas
+   ≤0.03/0.05/0.03) que vira o novo repouso, nunca volta à pose exata (RFC
+   §7, motor 2). Mesmo padrão de `nb_attention.c` (núcleo puro, RNG
+   embutido, alvo re-sorteado + suavização exponencial). Soma-se a
+   `tilt`/`gaze`/`width_l`-`width_r` em `compute_output()`.
+   `nb_idle_engine_reset_transient()` (novo, público) zera ao centro
+   (invariante H7) — gancho exposto, ainda não chamado por nenhuma casca
+   (fica pro item 3). Host-tests: nunca 2 poses consecutivas idênticas,
+   envelope respeitado, reset zera tudo, integração com `idle_engine`.
+   Suíte inteira verde nas duas configs de flag; build limpo; zero mudança
+   fora do `idle_engine`; confirmado em bancada pelo usuário.
+2. **Motor de energia** (`nb_energy.c/.h`, novo núcleo em `idle_engine`) —
+   **`FEITO` (2026-07-06).** Circadiano + tédio + vetor modulam um nível
+   contínuo de sonolência `level` ∈ [0,1] (suavização tau 5s): tédio
+   (`boredom_ms`, teto após ~5 min sem estímulo), ativação (`arousal`,
+   só a componente positiva reduz sonolência), `quiet_mode` (viés fixo) —
+   **a exceção de circadian_core prevista nas correções acabou não sendo
+   necessária: `quiet_mode`, já existente, cobriu o sinal circadiano
+   suficiente pra esta fase.** Efeito: pálpebra de descanso multiplicada
+   por `1-level*0.25`; blink independente até 2× mais espaçado no teto.
+   `nb_idle_engine_set_energy_inputs(boredom_ms, arousal)` (novo, público)
+   — gancho exposto, ainda não chamado por nenhuma casca (defaults 0/0.0,
+   nunca fica sonolento sozinho); fiação real de tédio/ativação fica pro
+   item 3. `tiny_fsm` continua decidindo o corte pra `SLEEPING`; o motor
+   só entrega o sinal contínuo. Host-tests: nível sobe com tédio, desce
+   com ativação, `quiet_mode` eleva o piso, suavização sem degrau, blink
+   mais espaçado + pálpebra mais fechada no sonolento. Suíte inteira verde
+   nas duas configs de flag; build limpo; zero mudança fora do
+   `idle_engine`.
 3. **Acoplamentos + blink unificado:** liga `nb_attention_set_saccade_callback()`
    a um blink de fato (blink×sacada); respiração em fase com o LED idle
    (fiação nova em `main.c`); roll segue gaze com ~100ms de atraso. Funde

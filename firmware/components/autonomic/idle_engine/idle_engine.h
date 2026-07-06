@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "nb_attention.h"
+#include "nb_energy.h"
 #include "nb_posture.h"
 
 #ifdef __cplusplus
@@ -116,12 +117,29 @@ typedef struct {
      * campo acima -- sempre presente, só usado sob a flag. */
     nb_posture_t posture_v2;
 
+    /* S3.7 completo, item 2 (nb_energy.h): motor de energia (sonolência
+     * contínua). Entradas injetadas pela casca via
+     * nb_idle_engine_set_energy_inputs() -- sem chamada, ficam em 0
+     * (nunca fica sonolento por padrão). Mesma regra dos campos acima. */
+    nb_energy_t energy_v2;
+    uint32_t energy_boredom_ms;
+    float energy_arousal;
+
     nb_idle_metrics_t metrics;
 } nb_idle_engine_t;
 
 /* Semente 0 é substituída por um valor fixo não-zero (xorshift32 trava em
  * 0). */
 void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed);
+
+/* Entradas do motor de energia (nb_energy.h) -- tédio (ms desde o último
+ * estímulo acima de BASELINE/IDLE_MOTIF) e ativação ([-1,1], vetor do
+ * emotion_core). A casca chama isto a cada frame com os sinais reais;
+ * sem chamada, o motor nunca fica sonolento (defaults 0/0.0). Gancho
+ * exposto, ainda não ligado por nenhuma casca -- ver "Plano S3.7
+ * completo", item 3 "acoplamentos". */
+void nb_idle_engine_set_energy_inputs(nb_idle_engine_t *engine, uint32_t boredom_ms,
+                                      float arousal);
 
 /* Modo quiet (frequências ÷2, VISUAL.md §3) e atenção (IDLE: motifs longos
  * a cada 15-40s; ATTENTIVE: 5-13s). Não reagenda o motif em andamento. */

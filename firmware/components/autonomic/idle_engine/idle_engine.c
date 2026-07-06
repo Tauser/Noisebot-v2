@@ -2,6 +2,7 @@
 
 #include "nb_attention.h"
 #include "nb_breath.h"
+#include "nb_energy.h"
 #include "nb_posture.h"
 
 #include <math.h>
@@ -24,6 +25,13 @@
 #define NB_IDLE_SIDE_PEEK_AMPLITUDE 0.6f
 #define NB_IDLE_LOOK_DOWN_AMPLITUDE 0.7f
 #define NB_IDLE_SCAN_AMPLITUDE 0.7f
+
+/* Efeito prático do motor de energia (nb_energy.h) sobre a saída, S3.7
+ * completo item 2: no teto de sonolência (level=1), a pálpebra descansa
+ * 25% mais fechada (nunca fecha de vez -- SLEEPING de verdade é outro
+ * estado/visual) e o blink independente fica ~2x mais espaçado. */
+#define NB_ENERGY_MAX_EYELID_DROOP 0.25f
+#define NB_ENERGY_MAX_BLINK_SLOWDOWN 1.0f /* multiplicador extra no teto: 1x + 1x = 2x */
 
 static uint32_t xorshift32(uint32_t *state)
 {
@@ -80,9 +88,14 @@ static float ease_envelope(uint32_t elapsed, uint32_t duration, uint32_t attack_
 static uint32_t sample_next_blink_ms(nb_idle_engine_t *e)
 {
     /* Poisson via distribuição exponencial, piso de 1.8s (VISUAL.md §3).
-     * Modo quiet: frequência ÷2 -> intervalo médio dobra. */
-    const float mean_ms = e->quiet_mode ? 10000.0f : 5000.0f;
-    const float min_ms = e->quiet_mode ? 3600.0f : 1800.0f;
+     * Modo quiet: frequência ÷2 -> intervalo médio dobra. Motor de
+     * energia (nb_energy.h, S3.7 completo item 2): sonolência espaça o
+     * blink continuamente por cima disso -- em legado (!NB_IDLE_V2_SPIKE)
+     * energy_v2.level nunca sai de 0 (nunca tickado), então o fator abaixo
+     * é sempre 1.0 e não muda o comportamento existente. */
+    const float energy_slowdown = 1.0f + e->energy_v2.level * NB_ENERGY_MAX_BLINK_SLOWDOWN;
+    const float mean_ms = (e->quiet_mode ? 10000.0f : 5000.0f) * energy_slowdown;
+    const float min_ms = (e->quiet_mode ? 3600.0f : 1800.0f) * energy_slowdown;
     float r = rand01(&e->rng_state);
     if (r < 0.0001f) {
         r = 0.0001f;
@@ -318,6 +331,15 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
     out->open_l *= breath;
     out->open_r *= breath;
 
+    /* Energia (nb_energy.h, S3.7 completo item 2): pálpebra descansa mais
+     * fechada conforme a sonolência sobe -- multiplicativo, então o blink
+     * (0) continua fechando de vez independente do nível. Em legado
+     * energy_v2.level é sempre 0 -> fator 1.0, sem mudança de
+     * comportamento. */
+    const float eyelid_droop = 1.0f - e->energy_v2.level * NB_ENERGY_MAX_EYELID_DROOP;
+    out->open_l *= eyelid_droop;
+    out->open_r *= eyelid_droop;
+
     /* Postura (RFC-VIDA-V2.md §7, "Plano S3.7 completo" item 1): soma-se
      * ao gaze/tilt/width já resolvidos -- não substitui a atenção nem os
      * motifs, é a deriva lenta do baseline por baixo de tudo. */
@@ -348,6 +370,7 @@ void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed)
     nb_attention_init(&engine->attention_v2, engine->rng_state ^ 0x1234567u);
     /* Semente derivada, distinta da de attention_v2 (mesma lógica acima). */
     nb_posture_init(&engine->posture_v2, engine->rng_state ^ 0x87654321u);
+    nb_energy_init(&engine->energy_v2); /* sem RNG -- não precisa de semente */
 }
 
 void nb_idle_engine_reset_transient(nb_idle_engine_t *engine)
@@ -368,6 +391,16 @@ void nb_idle_engine_set_mode(nb_idle_engine_t *engine, bool quiet_mode,
     engine->attention = attention;
 }
 
+void nb_idle_engine_set_energy_inputs(nb_idle_engine_t *engine, uint32_t boredom_ms,
+                                      float arousal)
+{
+    if (engine == NULL) {
+        return;
+    }
+    engine->energy_boredom_ms = boredom_ms;
+    engine->energy_arousal = arousal;
+}
+
 void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_output_t *out)
 {
     if (engine == NULL) {
@@ -384,6 +417,11 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
     /* Postura (RFC-VIDA-V2.md §7, motor 2): tickada incondicionalmente
      * junto da atenção -- a contribuição é somada em compute_output(). */
     nb_posture_tick(&engine->posture_v2, dt_ms);
+    /* Energia (RFC-VIDA-V2.md §7, motor 3): entradas vêm de
+     * nb_idle_engine_set_energy_inputs() (default 0/0.0 sem casca real
+     * chamando ainda). quiet_mode é o mesmo campo já usado acima. */
+    nb_energy_tick(&engine->energy_v2, dt_ms, engine->energy_boredom_ms, engine->energy_arousal,
+                  engine->quiet_mode);
 #else
     /* SOFT_DRIFT: em vez de ruído tick-a-tick (que em bancada lia como
      * parado -- passo pequeno demais pra ser visível), o gaze desliza

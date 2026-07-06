@@ -99,3 +99,34 @@ campo ocioso sob o spike já que `CURIOUS_TILT` fica atrás de
 volta ao centro (invariante H7) — gancho exposto, **ainda não chamado por
 nenhuma casca**: liga isso a um evento real de `tiny_fsm`/`main.c` fica
 pro item 3 ("acoplamentos") do "Plano S3.7 completo".
+
+## S3.7 completo — item 2: motor de energia
+
+**`nb_energy.c/.h`** — sem RNG (ao contrário dos outros motores): integra
+três sinais de entrada num nível contínuo de sonolência `level` ∈ [0,1]
+via suavização exponencial (tau 5s, sem saltos em degrau):
+
+- **Tédio** (`boredom_ms`, ms desde o último estímulo acima de
+  `BASELINE`/`IDLE_MOTIF`) — sobe ao teto depois de ~5 min sem estímulo.
+- **Ativação** (`arousal` ∈ [-1,1], vetor do `emotion_core`) — só a
+  componente positiva reduz sonolência (tristeza/raiva não "acordam" o
+  robô).
+- **`quiet_mode`** (já existente, reaproveitado) — viés fixo de
+  sonolência à noite/circadiano.
+
+Efeito em `compute_output()`/`sample_next_blink_ms()`: pálpebra de
+descanso multiplicada por `1 - level*0.25` (nunca fecha de vez — isso é
+visual de `SLEEPING`, outro estado); intervalo médio/piso do blink
+independente multiplicado por `1 + level*1.0` (até 2× mais espaçado no
+teto). Em `!NB_IDLE_V2_SPIKE`, `level` nunca sai de 0 (nunca tickado) —
+zero mudança de comportamento na config legada.
+
+`nb_idle_engine_set_energy_inputs(engine, boredom_ms, arousal)` (novo,
+público) alimenta os dois sinais que o núcleo não pode calcular sozinho
+— **ainda não chamado por nenhuma casca**: sem essa chamada, o robô nunca
+fica sonolento visivelmente (defaults 0/0.0). A fiação real (tédio vindo
+de `reflex_engine`, ativação vindo de `emotion_core`) fica pro item 3
+("acoplamentos") do "Plano S3.7 completo" — mesma exceção documentada no
+`ROADMAP.md` (única saída do "zero mudança fora do idle_engine" prevista
+pra esta fase, e mesmo assim não foi necessária: os sinais entram por
+parâmetro, sem tocar `circadian_core`).

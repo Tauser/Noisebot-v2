@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "idle_engine.c" "nb_breath.c" "nb_attention.c" "nb_posture.c"
+    SRCS "idle_engine.c" "nb_breath.c" "nb_attention.c" "nb_posture.c" "nb_energy.c"
     INCLUDE_DIRS "."
 )
 
