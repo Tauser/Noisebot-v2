@@ -35,6 +35,13 @@ esp_err_t nb_face_renderer_shell_bind_buffer(uint16_t *buffer);
 void nb_face_renderer_shell_draw(const nb_face_state_t *face, float gaze_x, float gaze_y,
                                  float width_l, float width_r, float tilt, uint32_t color);
 
+/* Versão para S4.1a: desenha a face e retorna a união conservadora entre a
+ * região anterior e a atual. O primeiro desenho retorna tela cheia. */
+nb_display_hal_rect_t nb_face_renderer_shell_draw_dirty(const nb_face_state_t *face,
+                                                        float gaze_x, float gaze_y,
+                                                        float width_l, float width_r,
+                                                        float tilt, uint32_t color);
+
 #ifdef __cplusplus
 }
 #endif

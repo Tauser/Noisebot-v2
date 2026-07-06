@@ -133,6 +133,7 @@ static void nb_app_main_face_demo_task(void *arg)
     int64_t logic_us_sum = 0;
     int64_t draw_us_sum = 0;
     int64_t flush_us_sum = 0;
+    uint32_t flush_bytes_sum = 0;
     /* Loop de período fixo, não "trabalho + delay fixo" -- bug real medido
      * em bancada (S2.6): vTaskDelay(33ms) incondicional após ~11ms de
      * trabalho (desenho+flush) dava período real de ~44ms (~23 fps) em vez
@@ -214,13 +215,19 @@ static void nb_app_main_face_demo_task(void *arg)
         int64_t t1 = esp_timer_get_time();
         logic_us_sum += t1 - t0;
 
-        nb_face_renderer_shell_draw(&current, idle_out.gaze_x, idle_out.gaze_y, idle_out.width_l,
-                                    idle_out.width_r, idle_out.tilt, 0xffffffU);
+        const nb_display_hal_rect_t dirty =
+            nb_face_renderer_shell_draw_dirty(&current, idle_out.gaze_x, idle_out.gaze_y,
+                                              idle_out.width_l, idle_out.width_r,
+                                              idle_out.tilt, 0xffffffU);
 
         int64_t t2 = esp_timer_get_time();
         draw_us_sum += t2 - t1;
 
-        esp_err_t err = nb_display_hal_shell_flush_and_swap();
+        const nb_display_hal_rect_t flush_rect = nb_display_hal_rect_align_for_flush(dirty);
+        flush_bytes_sum +=
+            (uint32_t)flush_rect.w * (uint32_t)flush_rect.h * (uint32_t)sizeof(uint16_t);
+
+        esp_err_t err = nb_display_hal_shell_flush_rect_and_swap(dirty);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "display flush falhou (%s)", esp_err_to_name(err));
         }
@@ -239,15 +246,17 @@ static void nb_app_main_face_demo_task(void *arg)
         if (elapsed_us >= NB_APP_MAIN_FPS_LOG_WINDOW_US) {
             const float fps = (float)fps_frame_count / ((float)elapsed_us / 1000000.0f);
             ESP_LOGI(TAG,
-                    "face_demo: fps=%.1f logic_ms=%.2f draw_ms=%.2f flush_ms=%.2f",
+                    "face_demo: fps=%.1f logic_ms=%.2f draw_ms=%.2f flush_ms=%.2f flush_kb=%.1f",
                     (double)fps, (double)logic_us_sum / fps_frame_count / 1000.0,
                     (double)draw_us_sum / fps_frame_count / 1000.0,
-                    (double)flush_us_sum / fps_frame_count / 1000.0);
+                    (double)flush_us_sum / fps_frame_count / 1000.0,
+                    (double)flush_bytes_sum / fps_frame_count / 1024.0);
             fps_frame_count = 0;
             fps_window_start_us = now_us;
             logic_us_sum = 0;
             draw_us_sum = 0;
             flush_us_sum = 0;
+            flush_bytes_sum = 0;
         }
 
         vTaskDelayUntil(&last_wake_tick, pdMS_TO_TICKS(NB_APP_MAIN_FACE_DEMO_TICK_MS));
@@ -414,14 +423,13 @@ void app_main(void)
      * audio_service/wake_service existirem. Bug real de bancada
      * (N32R16V, 2026-07-06): display cortando com ESP_ERR_NO_MEM
      * constante depois que este task subia -- causa raiz é contenção real
-     * de SRAM interna DMA-capable entre o bounce buffer de 150 KB do
-     * esp_lcd_panel_io_spi (framebuffer em PSRAM, sem SPI_TRANS_DMA_USE_PSRAM,
-     * ver nb_display_hal_shell.c) e os descritores DMA do I2S deste
-     * componente -- exatamente a contenção render+I2S que o gate de S4.1
-     * exige fechar (re-valida S0.3). Corrigido fatiando o flush do
-     * display em bandas (nb_display_hal_shell.c); reduzir
-     * dma_desc_num/dma_frame_num aqui (audio_hal_shell) é mantido como
-     * margem de segurança de memória adicional. */
+     * de SRAM interna DMA-capable entre o staging PSRAM->SRAM de 150 KB do
+     * display full-frame e os descritores DMA do I2S deste componente --
+     * exatamente a contenção render+I2S que o gate de S4.1 exige fechar
+     * (re-valida S0.3). S4.1a reduz essa pressão com dirty rectangles e
+     * staging DMA fixo de ~19 KB no display_hal; reduzir
+     * dma_desc_num/dma_frame_num aqui (audio_hal_shell) fica como margem de
+     * segurança de memória adicional. */
     esp_err_t audio_err = nb_audio_hal_shell_init();
     if (audio_err != ESP_OK) {
         ESP_LOGE(TAG, "audio_hal falhou (%s) -- seguindo sem audio", esp_err_to_name(audio_err));

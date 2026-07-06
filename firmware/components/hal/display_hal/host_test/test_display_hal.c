@@ -48,11 +48,52 @@ static void test_null_hal_is_safe(void)
     nb_display_hal_init(NULL, NULL, NULL);
 }
 
+static void test_rect_clamp_and_union(void)
+{
+    const nb_display_hal_rect_t outside = {400, 10, 5, 5};
+    const nb_display_hal_rect_t clipped = nb_display_hal_rect_clamp((nb_display_hal_rect_t){
+        .x = 300,
+        .y = 230,
+        .w = 40,
+        .h = 20,
+    });
+    const nb_display_hal_rect_t united =
+        nb_display_hal_rect_union((nb_display_hal_rect_t){10, 20, 30, 40},
+                                  (nb_display_hal_rect_t){35, 10, 20, 20});
+
+    CHECK(nb_display_hal_rect_is_empty(nb_display_hal_rect_clamp(outside)));
+    CHECK(clipped.x == 300u);
+    CHECK(clipped.y == 230u);
+    CHECK(clipped.w == 20u);
+    CHECK(clipped.h == 10u);
+    CHECK(united.x == 10u);
+    CHECK(united.y == 10u);
+    CHECK(united.w == 45u);
+    CHECK(united.h == 50u);
+}
+
+static void test_rect_align_for_flush_uses_cache_line_pixels(void)
+{
+    const nb_display_hal_rect_t aligned =
+        nb_display_hal_rect_align_for_flush((nb_display_hal_rect_t){17, 5, 20, 7});
+    const nb_display_hal_rect_t edge =
+        nb_display_hal_rect_align_for_flush((nb_display_hal_rect_t){319, 0, 1, 1});
+
+    CHECK(aligned.x == 16u);
+    CHECK(aligned.y == 5u);
+    CHECK(aligned.w == 32u);
+    CHECK(aligned.h == 7u);
+    CHECK(edge.x == 304u);
+    CHECK(edge.w == 16u);
+}
+
 int main(void)
 {
     test_init_sets_back_and_front_deterministically();
     test_swap_alternates_front_and_back();
     test_null_hal_is_safe();
+    test_rect_clamp_and_union();
+    test_rect_align_for_flush_uses_cache_line_pixels();
 
     if (failures == 0) {
         printf("display_hal host_test: ok\n");

@@ -13,8 +13,11 @@ vendorizado como git submodule em `vendor/LovyanGFX/`, mesma convenção do
 v1 — não está no ESP Component Registry). O sprite é amarrado
 (`setBuffer`) ao back buffer do `display_hal` (S2.1) via
 `nb_face_renderer_shell_bind_buffer()`, sem alocar framebuffer próprio.
-`nb_face_renderer_shell_draw()` desenha os dois olhos e delega o
-push/swap ao `display_hal`. Além do estado paramétrico, aceita
+`nb_face_renderer_shell_draw_dirty()` desenha os dois olhos e retorna a união
+conservadora entre a região anterior e a atual para o `display_hal` mandar só
+o dirty rectangle (S4.1a). O primeiro desenho retorna tela cheia; depois o
+normal são bounds com margem ao redor dos olhos. `nb_face_renderer_shell_draw()`
+continua existindo como wrapper compatível. Além do estado paramétrico, aceita
 `gaze_x`/`gaze_y`, `width_l`/`width_r` (multiplicador de largura por
 olho, clamp `[0.5, 1.5]` — `CURIOUS_TILT` do `idle_engine`, S2.4) e
 `tilt` (assimetria vertical entre os olhos — `HEAD_TILT_HOLD`).

@@ -2,7 +2,6 @@
 
 #include "driver/spi_master.h"
 #include "esp_attr.h"
-#include "esp_cache.h"
 #include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
@@ -11,41 +10,36 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include <string.h>
 
 #define NB_DISPLAY_HAL_SPI_HOST SPI2_HOST
 #define NB_DISPLAY_HAL_PIN_SCLK 12
 #define NB_DISPLAY_HAL_PIN_MOSI 11
 #define NB_DISPLAY_HAL_PIN_CS 10
 #define NB_DISPLAY_HAL_PIN_DC 14
-/* Causa real do "artefato de cor" não era clock nem fiação: o
- * esp_lcd_panel_io_spi (ESP-IDF) nunca seta a flag SPI_TRANS_DMA_USE_PSRAM
- * nas transações que monta, então o driver spi_master não sincroniza cache
- * antes do DMA ler um buffer alocado em PSRAM (confirmado lendo
- * esp_driver_spi/src/gpspi/spi_master.c: use_psram fica false, então o
- * cache_msync condicional na linha ~1216 nunca roda pra esse caso). Testado
- * e confirmado: buffer único em SRAM interna (sem PSRAM) ficou perfeito
- * até com padrão estático e 10 MHz; buffer em PSRAM sem sync manual
- * corrompia mesmo estático. Corrigido chamando esp_cache_msync() na cara
- * antes de cada draw_bitmap (ver flush_and_swap). 40 MHz confirmado limpo
- * com o sync manual — o clock nunca foi o problema. */
+/* ESP-IDF/ESP-IoT-Solution documenta que o SPI não transfere PSRAM por DMA
+ * direto nesses targets: o driver faz staging PSRAM->SRAM antes do DMA.
+ * Bancada 2026-07-06: 80 MHz apresentou artefatos; 60 MHz ficou visualmente
+ * normal, mas não melhorou fps, indicando clock efetivo/overhead sem ganho
+ * de produção. O default volta ao ponto estável; S4.1a reduz bytes. */
 #define NB_DISPLAY_HAL_PIXEL_CLOCK_HZ (40 * 1000 * 1000)
 
 /* S4.1: o flush era um único draw_bitmap de 320x240x2 = 150 KB. Como o
- * esp_lcd_panel_io_spi não faz DMA direto da PSRAM (use_psram=false, ver
- * comentário acima), o spi_master aloca um bounce buffer interno
- * DMA-capable do tamanho da transferência a cada frame. Depois que o I2S
- * (audio_hal) subiu e passou a consumir SRAM interna DMA-capable do mesmo
- * pool, esse bounce de 150 KB deixou de caber -> setup_dma_priv_buffer
- * falhava com ESP_ERR_NO_MEM em todo flush (tela congelava num frame
- * cortado, render seguia normal por trás). Fatiar o flush em bandas
- * horizontais deixa cada bounce pequeno (~19 KB @ 30 linhas) e sempre
- * alocável mesmo com o I2S ativo, mantendo o framebuffer em PSRAM e o I2S
- * DMA em SRAM (invariantes do CLAUDE.md). 240 linhas / 8 = 30 exatas. */
+ * staging PSRAM->SRAM é o caminho suportado pelo driver SPI, esse staging
+ * também consome SRAM interna DMA-capable. Depois que o I2S (audio_hal)
+ * subiu e passou a consumir SRAM do mesmo pool, o staging de 150 KB deixou
+ * de caber -> setup_dma_priv_buffer falhava com ESP_ERR_NO_MEM em todo
+ * flush. Fatiar em bandas deixa cada staging pequeno (~19 KB @ 30 linhas),
+ * mantendo framebuffer em PSRAM e I2S DMA em SRAM. */
 #define NB_DISPLAY_HAL_FLUSH_BANDS 8u
+#define NB_DISPLAY_HAL_MAX_STAGING_BYTES \
+    (((size_t)NB_DISPLAY_HAL_WIDTH * NB_DISPLAY_HAL_HEIGHT * sizeof(uint16_t)) / \
+     NB_DISPLAY_HAL_FLUSH_BANDS)
 
 static const char *TAG = "display_hal";
 static nb_display_hal_t s_hal;
 static esp_lcd_panel_handle_t s_panel;
+static uint16_t *s_flush_stage;
 
 /* esp_lcd_panel_draw_bitmap() no SPI é assíncrono: enfileira a transferência
  * DMA e retorna antes de os pixels saírem pela SPI. Um frame cheio
@@ -79,11 +73,10 @@ esp_err_t nb_display_hal_shell_init(void)
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_err_t err;
 
-    /* esp_cache_msync() exige endereço alinhado à linha de cache (32 bytes
-     * no ESP32-S3) -- heap_caps_malloc não garante isso, só o tamanho já
-     * é múltiplo de 32 por acaso (320x240x2). Usar aligned_alloc evita o
-     * ESP_ERR_INVALID_ARG visto em bancada quando o 2º buffer caía
-     * desalinhado. */
+    /* Mantém os framebuffers alinhados à linha de cache. O flush normal de
+     * S4.1a copia dirty rectangles para um staging DMA interno, mas buffers
+     * alinhados preservam margem para diagnósticos/full-frame e evitam
+     * reabrir a classe de bugs de coerência vista no S2.1. */
     buffer_a = heap_caps_aligned_alloc(32, buffer_bytes, MALLOC_CAP_SPIRAM);
     buffer_b = heap_caps_aligned_alloc(32, buffer_bytes, MALLOC_CAP_SPIRAM);
     if (buffer_a == NULL || buffer_b == NULL) {
@@ -92,6 +85,14 @@ esp_err_t nb_display_hal_shell_init(void)
         return ESP_ERR_NO_MEM;
     }
     nb_display_hal_init(&s_hal, buffer_a, buffer_b);
+
+    s_flush_stage = heap_caps_aligned_alloc(32, NB_DISPLAY_HAL_MAX_STAGING_BYTES,
+                                            MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    if (s_flush_stage == NULL) {
+        ESP_LOGE(TAG, "falha ao alocar staging DMA do display (%u bytes)",
+                 (unsigned)NB_DISPLAY_HAL_MAX_STAGING_BYTES);
+        return ESP_ERR_NO_MEM;
+    }
 
     spi_bus_config_t bus_cfg = {
         .sclk_io_num = NB_DISPLAY_HAL_PIN_SCLK,
@@ -190,8 +191,10 @@ esp_err_t nb_display_hal_shell_init(void)
         return err;
     }
 
-    ESP_LOGI(TAG, "display_hal inicializado (%ux%u, SPI %d MHz)", NB_DISPLAY_HAL_WIDTH,
-             NB_DISPLAY_HAL_HEIGHT, NB_DISPLAY_HAL_PIXEL_CLOCK_HZ / 1000000);
+    ESP_LOGI(TAG, "display_hal inicializado (%ux%u, SPI %d MHz, stage=%u bytes)",
+             NB_DISPLAY_HAL_WIDTH, NB_DISPLAY_HAL_HEIGHT,
+             NB_DISPLAY_HAL_PIXEL_CLOCK_HZ / 1000000,
+             (unsigned)NB_DISPLAY_HAL_MAX_STAGING_BYTES);
     return ESP_OK;
 }
 
@@ -200,42 +203,51 @@ uint16_t *nb_display_hal_shell_get_back_buffer(void)
     return nb_display_hal_get_back_buffer(&s_hal);
 }
 
-esp_err_t nb_display_hal_shell_flush_and_swap(void)
+static esp_err_t nb_display_hal_shell_flush_aligned_rect_and_swap(nb_display_hal_rect_t rect)
 {
     esp_err_t err;
     uint16_t *const back_buffer = nb_display_hal_get_back_buffer(&s_hal);
     const int width = (int)NB_DISPLAY_HAL_WIDTH;
-    const int height = (int)NB_DISPLAY_HAL_HEIGHT;
-    const int band_rows = (height + (int)NB_DISPLAY_HAL_FLUSH_BANDS - 1) /
-                          (int)NB_DISPLAY_HAL_FLUSH_BANDS;
+    const int rect_x0 = (int)rect.x;
+    const int rect_x1 = (int)rect.x + (int)rect.w;
+    const int rect_y1 = (int)rect.y + (int)rect.h;
+    const size_t row_bytes = (size_t)rect.w * sizeof(uint16_t);
+    size_t max_rows = NB_DISPLAY_HAL_MAX_STAGING_BYTES / row_bytes;
 
-    /* Envia o frame em bandas horizontais, serializando banda a banda pelo
+    if (back_buffer == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (max_rows == 0u) {
+        max_rows = 1u;
+    }
+
+    /* Envia a região em bandas horizontais, serializando banda a banda pelo
      * s_trans_done: uma única transferência (e um único bounce interno) em
      * voo por vez. Cada banda começa em endereço e tem tamanho múltiplos de
-     * 32 bytes (offset = y0*320*2, tamanho = linhas*320*2), então o
-     * esp_cache_msync continua com o alinhamento que ele exige. */
-    for (int y0 = 0; y0 < height; y0 += band_rows) {
-        int y1 = y0 + band_rows;
-        if (y1 > height) {
-            y1 = height;
+     * 32 bytes porque o retângulo foi alinhado em X para 16 pixels RGB565. */
+    for (int y0 = (int)rect.y; y0 < rect_y1; y0 += (int)max_rows) {
+        int y1 = y0 + (int)max_rows;
+        if (y1 > rect_y1) {
+            y1 = rect_y1;
         }
-        uint16_t *const band = back_buffer + (size_t)y0 * (size_t)width;
-        const size_t band_bytes = (size_t)(y1 - y0) * (size_t)width * sizeof(uint16_t);
+        if (s_flush_stage == NULL) {
+            return ESP_ERR_INVALID_STATE;
+        }
 
-        /* Espera a banda anterior terminar antes de enfileirar a próxima. */
+        /* Espera a banda anterior terminar antes de sobrescrever o staging
+         * DMA único e enfileirar a próxima. */
         xSemaphoreTake(s_trans_done, portMAX_DELAY);
 
-        /* esp_lcd_panel_io_spi não seta SPI_TRANS_DMA_USE_PSRAM, então o
-         * spi_master não sincroniza cache sozinho pra buffers em PSRAM (ver
-         * comentário no topo). Sem isso o DMA pode ler dado ainda em cache
-         * -> corrupção de cor (confirmado em bancada). */
-        err = esp_cache_msync(band, band_bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-        if (err != ESP_OK) {
-            xSemaphoreGive(s_trans_done);
-            return err;
+        for (int y = y0; y < y1; ++y) {
+            const uint16_t *const src =
+                back_buffer + (size_t)y * (size_t)width + (size_t)rect.x;
+            uint16_t *const dst =
+                s_flush_stage + (size_t)(y - y0) * (size_t)rect.w;
+            memcpy(dst, src, row_bytes);
         }
 
-        err = esp_lcd_panel_draw_bitmap(s_panel, 0, y0, width, y1, band);
+        err = esp_lcd_panel_draw_bitmap(s_panel, rect_x0, y0, rect_x1, y1, s_flush_stage);
         if (err != ESP_OK) {
             /* Banda não enfileirada: devolve o token para não travar o loop. */
             xSemaphoreGive(s_trans_done);
@@ -249,6 +261,21 @@ esp_err_t nb_display_hal_shell_flush_and_swap(void)
     nb_display_hal_swap(&s_hal);
     xSemaphoreGive(s_trans_done);
     return ESP_OK;
+}
+
+esp_err_t nb_display_hal_shell_flush_rect_and_swap(nb_display_hal_rect_t rect)
+{
+    rect = nb_display_hal_rect_align_for_flush(rect);
+    if (nb_display_hal_rect_is_empty(rect)) {
+        return ESP_OK;
+    }
+
+    return nb_display_hal_shell_flush_aligned_rect_and_swap(rect);
+}
+
+esp_err_t nb_display_hal_shell_flush_and_swap(void)
+{
+    return nb_display_hal_shell_flush_rect_and_swap(NB_DISPLAY_HAL_RECT_FULL);
 }
 
 void nb_display_hal_shell_draw_test_pattern(uint16_t *buffer, int offset_rows)

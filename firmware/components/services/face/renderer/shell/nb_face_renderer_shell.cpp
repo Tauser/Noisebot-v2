@@ -31,6 +31,8 @@ const char *TAG = "face_renderer";
 
 LGFX_Sprite s_sprite;
 bool s_bound = false;
+bool s_has_last_dirty = false;
+nb_display_hal_rect_t s_last_dirty = {0, 0, 0, 0};
 
 uint32_t blend_black(uint32_t color, float alpha)
 {
@@ -71,6 +73,49 @@ void draw_eye(int16_t cx, float cy, float open, float tl, float tr, float bl, fl
     }
 }
 
+nb_display_hal_rect_t rect_from_bounds(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+{
+    if (x0 < 0) {
+        x0 = 0;
+    }
+    if (y0 < 0) {
+        y0 = 0;
+    }
+    if (x1 > static_cast<int16_t>(NB_DISPLAY_HAL_WIDTH)) {
+        x1 = static_cast<int16_t>(NB_DISPLAY_HAL_WIDTH);
+    }
+    if (y1 > static_cast<int16_t>(NB_DISPLAY_HAL_HEIGHT)) {
+        y1 = static_cast<int16_t>(NB_DISPLAY_HAL_HEIGHT);
+    }
+    if (x1 <= x0 || y1 <= y0) {
+        return {0, 0, 0, 0};
+    }
+
+    return {static_cast<uint16_t>(x0), static_cast<uint16_t>(y0),
+            static_cast<uint16_t>(x1 - x0), static_cast<uint16_t>(y1 - y0)};
+}
+
+nb_display_hal_rect_t eye_dirty_rect(int16_t cx, float cy, int16_t half_width)
+{
+    constexpr int16_t kPadX = 3;
+    constexpr int16_t kPadY = 16;
+    const int16_t half_height = static_cast<int16_t>(NB_FACE_EYE_HALF_HEIGHT) + kPadY;
+    const int16_t y_center = static_cast<int16_t>(cy + ((cy >= 0.0f) ? 0.5f : -0.5f));
+
+    return rect_from_bounds(static_cast<int16_t>(cx - half_width - kPadX),
+                            static_cast<int16_t>(y_center - half_height),
+                            static_cast<int16_t>(cx + half_width + kPadX + 1),
+                            static_cast<int16_t>(y_center + half_height + 1));
+}
+
+nb_display_hal_rect_t face_dirty_rect(int16_t left_x, float left_y, int16_t half_width_l,
+                                      int16_t right_x, float right_y, int16_t half_width_r)
+{
+    const nb_display_hal_rect_t left = eye_dirty_rect(left_x, left_y, half_width_l);
+    const nb_display_hal_rect_t right = eye_dirty_rect(right_x, right_y, half_width_r);
+    return nb_display_hal_rect_union(left, right);
+}
+
 } // namespace
 
 esp_err_t nb_face_renderer_shell_bind_buffer(uint16_t *buffer)
@@ -88,9 +133,17 @@ esp_err_t nb_face_renderer_shell_bind_buffer(uint16_t *buffer)
 void nb_face_renderer_shell_draw(const nb_face_state_t *face, float gaze_x, float gaze_y,
                                  float width_l, float width_r, float tilt, uint32_t color)
 {
+    (void)nb_face_renderer_shell_draw_dirty(face, gaze_x, gaze_y, width_l, width_r, tilt, color);
+}
+
+nb_display_hal_rect_t nb_face_renderer_shell_draw_dirty(const nb_face_state_t *face,
+                                                        float gaze_x, float gaze_y,
+                                                        float width_l, float width_r,
+                                                        float tilt, uint32_t color)
+{
     if (face == NULL || !s_bound) {
         ESP_LOGE(TAG, "draw chamado sem face ou sem buffer amarrado");
-        return;
+        return {0, 0, 0, 0};
     }
 
     const float clamped_gaze_x = nb_face_core_clampf(gaze_x, -1.0f, 1.0f);
@@ -116,6 +169,13 @@ void nb_face_renderer_shell_draw(const nb_face_state_t *face, float gaze_x, floa
         static_cast<int16_t>(NB_FACE_EYE_HALF_WIDTH * nb_face_core_clampf(width_l, 0.5f, 1.5f));
     const int16_t half_width_r =
         static_cast<int16_t>(NB_FACE_EYE_HALF_WIDTH * nb_face_core_clampf(width_r, 0.5f, 1.5f));
+    const nb_display_hal_rect_t current_dirty =
+        face_dirty_rect(left_x, left_y, half_width_l, right_x, right_y, half_width_r);
+    const nb_display_hal_rect_t dirty =
+        s_has_last_dirty ? nb_display_hal_rect_union(s_last_dirty, current_dirty)
+                         : nb_display_hal_rect_t{
+                               0, 0, static_cast<uint16_t>(NB_DISPLAY_HAL_WIDTH),
+                               static_cast<uint16_t>(NB_DISPLAY_HAL_HEIGHT)};
 
     s_sprite.startWrite();
     s_sprite.fillScreen(0x000000U);
@@ -126,4 +186,8 @@ void nb_face_renderer_shell_draw(const nb_face_state_t *face, float gaze_x, floa
              face->squint_r, face->round_top, face->round_bottom, face->curve_top,
              face->curve_bottom, half_width_r, color);
     s_sprite.endWrite();
+
+    s_last_dirty = current_dirty;
+    s_has_last_dirty = true;
+    return dirty;
 }

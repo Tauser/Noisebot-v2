@@ -29,6 +29,10 @@ uint16_t *nb_display_hal_shell_get_back_buffer(void);
  * front/back no núcleo. */
 esp_err_t nb_display_hal_shell_flush_and_swap(void);
 
+/* Manda só o retângulo sujo do back buffer. A casca alinha e fatia a região
+ * para manter o staging PSRAM->SRAM pequeno e compatível com cache. */
+esp_err_t nb_display_hal_shell_flush_rect_and_swap(nb_display_hal_rect_t rect);
+
 /* Padrão de teste visual (bandas de cor horizontais; `offset_rows` existe
  * para testes manuais de scroll, mas o bring-up padrão usa 0 para deixar a
  * imagem estática e facilitar diagnóstico de cor/sinal). */
