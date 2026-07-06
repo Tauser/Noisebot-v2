@@ -1755,9 +1755,112 @@ antes do go.**
   contexto):** executado e confirmado pelo usuário — spike aprovado.
 - **Decisão: GO.** Passo 0 do S3.7 fechado — todos os critérios de
   go/no-go do item 5 atendidos (Turing de mesa, fps/heap/PSRAM, reflexo de
-  toque). Libera o "Plano S3.7 completo" (item 7: postura, motor de
-  energia, campo contínuo, boca, variantes), a ser detalhado em documento
-  separado antes de implementar.
+  toque). Libera o "Plano S3.7 completo" abaixo.
+
+**Plano S3.7 completo (pós-go, antes de implementar):**
+
+Mesmo ID `S3.7` (governança do roadmap proíbe sub-IDs novos); sequência de
+passos, cada um com núcleo puro + host-test + gate, do menor pro maior
+risco — motores 100% dentro do `idle_engine` primeiro (mesmo padrão de
+baixo risco do spike), renderer/`emotion_core` por último.
+
+**Correções de escopo vs. o RFC** (fatos verificados no código, não no
+doc — o RFC assume coisas que não são verdade hoje):
+
+1. `nb_face_state_t` (`renderer.h:40-49`) **não tem boca** — é uma struct
+   só de olhos (18 campos: curvatura, abertura, offset vertical, `x_off`,
+   arredondamento, squint). Boca é renderer novo (C++/LovyanGFX), não
+   fiação de campo já existente.
+2. São **10 âncoras**, não 4 (`nb_face_expr_t`: `NEUTRAL, HAPPY, CURIOUS,
+   SLEEPY, FOCUSED, SUSPICIOUS, SURPRISED, SAD, ALARMED, ANGRY`). Campo
+   contínuo só nos 4 hubs (`NEUTRAL/HAPPY/SAD/ANGRY`); as outras 6
+   continuam nearest-neighbor discreto, intocadas.
+3. `nb_face_core_lerp()` (`renderer.c:50-72`) é só linear 2-pontos,
+   escalar `t` — campo contínuo por posição `(v,a)` entre 4 hubs é um
+   blend N-way novo (pode reaproveitar o helper por campo, não a função
+   de pesos).
+4. `circadian_core` não expõe hora do dia nem tempo-na-fase (só `phase`,
+   `quiet_mode`, `brightness_scale`, `has_time_source`) — offset
+   circadiano do vetor (RFC §7) precisa de campo novo.
+5. `led_service` tem fase própria por estado da FSM (`state_elapsed_ms`),
+   independente do clock do `idle_engine` — sincronizar respiração×LED é
+   fiação nova em `main.c` (mesmo padrão de `circadian.brightness_scale`).
+6. Não existe tracker de "tempo desde o último estímulo" em lugar nenhum
+   — o motor de energia (tédio) parte do zero.
+
+1. **Motor de postura** (`nb_posture.c/.h`, novo núcleo em `idle_engine`):
+   a cada 30-90s, transição ~400ms pra nova micro-pose (roll ≤1°, gaze
+   offset ≤0.05, assimetria ≤3%) que vira o novo repouso, nunca volta à
+   pose exata (RFC §7, motor 2). Mesmo padrão de `nb_attention.c` (núcleo
+   puro, RNG embutido, alvo re-sorteado + suavização exponencial).
+   Invariante H7 crítico: entrada em IDLE reseta ao centro, deriva
+   recomeça dali — host-test dedicado. Host-tests: nunca 2 poses
+   consecutivas idênticas, envelope respeitado, reset limpo em IDLE. Gate:
+   host-test verde, build limpo, zero mudança fora do `idle_engine`.
+2. **Motor de energia** (`nb_energy.c/.h`, novo núcleo em `idle_engine`):
+   circadiano + tédio + vetor modulam blink/pálpebra/gaze/sacada/
+   respiração até `SLEEPING` (RFC §7, motor 3). Entrada de tédio: casca
+   (`main.c`) alimenta "ms desde a última prioridade acima de
+   BASELINE/IDLE_MOTIF" (já disponível via `nb_reflex_engine_shell_tick()`)
+   por um novo parâmetro/setter, mesmo padrão de
+   `nb_idle_engine_set_mode()`. Entrada circadiana: exige o campo novo do
+   item 4 das correções — única exceção documentada a "zero mudança fora
+   do idle_engine" nesta fase. `tiny_fsm` continua decidindo o corte pra
+   `SLEEPING`; o motor só entrega o sinal contínuo. Gate: host-test verde,
+   build limpo.
+3. **Acoplamentos + blink unificado:** liga `nb_attention_set_saccade_callback()`
+   a um blink de fato (blink×sacada); respiração em fase com o LED idle
+   (fiação nova em `main.c`); roll segue gaze com ~100ms de atraso. Funde
+   os processos de blink independente + gancho de sacada + motor de
+   energia num agendador único. Host-tests: envelope de Poisson/refratário
+   preservado (média 5s, refratário 1.8s, ~28% duplos); LED×respiração
+   sincronizados dentro de tolerância. Gate: host-test verde, build
+   limpo, confirmação visual em bancada (fase é coisa que só se vê ao
+   vivo).
+4. **Gestos nomeados** `CHECK_IN` (~1×/1-3min), `SLOW_BLINK`, `SIGH`:
+   fisiologia/automanutenção (RFC §2, Regra da Causa — não é "atenção"
+   fingida), slot exclusivo com motif/gesto em curso, `quiet_mode`
+   dobra os tempos. Gate: host-test verde, build limpo.
+   **Checkpoint intermediário:** com 1-4 fechados, os 3 motores do RFC §7
+   estão completos e testados sem tocar renderer/`emotion_core` — bom
+   ponto pra bancada intermediária (fps/heap/toque) antes do resto.
+5. **Boca no renderer** (`nb_face_state_t` + `renderer.c` +
+   `nb_face_renderer_shell`): campos de boca (abertura/curvatura — RFC
+   §3), estender `nb_face_core_lerp()`, desenhar em LovyanGFX, novo
+   parâmetro em `draw()`/`draw_dirty()` (hoje só `gaze_x/y, width_l/r,
+   tilt, color`, sem gancho de boca). Sem host-test de "parece bom" — só
+   bounds/interpolação numérica. Gate: build limpo + bancada (boca
+   estática nos 4 hubs, sem campo contínuo ainda).
+6. **Campo contínuo + temperamento + circadiano no vetor** (`emotion_core`):
+   substitui `nb_emotion_core_nearest_expression()` por blend contínuo só
+   entre os 4 hubs (fallback nearest-neighbor pras outras 6, sem
+   regressão); temperamento (decay alvo em `(+0.10, +0.05)`); offset
+   circadiano (campo novo do item 4). Host-tests do RFC §9: campo passa
+   exatamente pelas âncoras calibradas e é contínuo entre elas; decay
+   assimétrico fica pra S3.8. Gate: host-test verde, build limpo, bancada
+   (as 6 âncoras fora do escopo não podem quebrar).
+7. **Variantes episódicas** (2 por hub): sorteadas ao entrar na região,
+   duram o episódio. Host-test RFC §9(5): nunca sai do envelope da região.
+   Gate: host-test verde, build limpo, bancada (perceptível sem confundir
+   a emoção-base).
+8. **Aposentar o catálogo antigo (S2.4) + docs:** `NB_IDLE_V2_SPIKE` vira
+   único caminho — remove `pick_long_motif`/`start_long_motif`/
+   `sample_next_motif_ms` (hoje atrás de `#if !NB_IDLE_V2_SPIKE`) e os
+   testes que dependiam deles. Atualiza `docs/VISUAL.md` §1-4 (RFC já
+   declara esse escopo) e `docs/BEHAVIOR.md` §2/5. Registra que S2.2
+   deixa de ser critério de paridade. Gate: host-tests verdes numa config
+   só, build limpo, docs revisados.
+9. **Gate final da S3.7:** host-tests 1-6 do RFC §9 verdes; bancada 60s
+   (§9 — ≥2 blinks, ≥2 fixações >2s, respiração mensurável em vídeo,
+   postura final ≠ inicial, zero ação intencional sem causa, nenhum
+   intervalo de 15s idêntico); soak 48h modo pet; side-by-side v1
+   registrando o novo baseline de persona.
+
+Verificação por item: host-test do núcleo primeiro; suíte inteira
+(`tools/run_host_tests.py`) verde, não só o componente tocado; build
+limpo (`idf.py build`, prova compilação, não comportamento); itens com
+saída visual (5, 6, 7, fase do LED no item 3) exigem confirmação em
+bancada antes de fechar — nunca declarar `FEITO` só com build limpo.
 
 ### S4 — Voz (o robô conversa)
 
