@@ -70,10 +70,21 @@ respeitando exclusividade de slot); roll segue gaze com ~100ms de atraso
 (filtro passa-baixa, ganho sutil); respiração em fase com o LED idle
 (`main.c` multiplica o brilho pelo mesmo fator que modula os olhos).
 Blink independente (Poisson, mesmos parâmetros da tabela legada abaixo)
-continua ativo nas duas configs. Ainda faltam: gestos `CHECK_IN`/
-`SLOW_BLINK`/`SIGH` e a fiação real de tédio/ativação pro motor de
-energia — ver "Plano S3.7 completo" em `docs/ROADMAP.md` pro estado de
-cada item.
+continua ativo nas duas configs.
+
+**Gestos nomeados** (mesmo slot exclusivo dos motifs, sem núcleo novo):
+`CHECK_IN` (~1×/1-3min — gaze ao centro + micro-abertura + blink),
+`SLOW_BLINK` (fecha/reabre devagar, ~650ms, contentamento), `SIGH` (gaze
+desce e volta suave, ~1.8s, acomodação). `quiet_mode` dobra os três.
+
+**Artefato conhecido, não corrigido:** o acoplamento blink×sacada
+aumentou muito a frequência de piscadas, expondo um bug raro e
+pré-existente no renderer (linhas diagonais/buracos nos cantos do olho
+durante a piscada) — causa raiz não confirmada, ver `docs/ROADMAP.md`
+item 4 do "Plano S3.7 completo".
+
+Ainda falta a fiação real de tédio/ativação pro motor de energia — ver
+"Plano S3.7 completo" em `docs/ROADMAP.md` pro estado de cada item.
 
 **Catálogo legado (`NB_IDLE_V2_SPIKE=0`, S2.4)** — calibrado contra o EMO
 (v1 `IDLE_REFERENCE.md`, análise por olho de vídeo real):

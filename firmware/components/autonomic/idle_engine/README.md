@@ -165,3 +165,37 @@ de roll nunca sai do envelope do gaze e nunca copia o valor instantâneo
 (prova que é atraso, não passagem direta). Suíte inteira verde nas duas
 configs de flag; build limpo — confirmação visual da fase (LED×respiração)
 fica pra bancada.
+
+**Achado de bancada (2026-07-06, não corrigido ainda):** com o blink×sacada
+disparando bem mais que o blink Poisson sozinho, ficou visível um artefato
+raro no renderer (linhas diagonais/buracos nos cantos dos olhos durante a
+piscada) que provavelmente já existia mas era raro demais pra notar antes.
+Analisado o cálculo de curvatura (`nb_face_core_eye_column`) e o retângulo
+de flush (`eye_dirty_rect`/`nb_display_hal_rect_union`) sem achar a causa
+raiz por leitura estática -- fica registrado pra investigação futura
+(fora do escopo do `idle_engine`; usuário decidiu não instrumentar agora).
+
+## S3.7 completo — item 4: gestos nomeados
+
+Três gestos (RFC §7), reaproveitando o mesmo mecanismo de slot exclusivo
+(`active_motif`) dos motifs -- sem núcleo novo, só 3 casos a mais no
+`switch` de `compute_output()` e 3 agendadores independentes (mesmo
+padrão do blink Poisson), todos só sob `NB_IDLE_V2_SPIKE`:
+
+- **`CHECK_IN`** ("gaze à frente + micro-abertura + blink", ~1×/1-3min,
+  frequência literal do RFC): puxa o gaze pro centro no pico do gesto,
+  abre os olhos um pouco mais (+8%), fecha rápido perto do fim.
+- **`SLOW_BLINK`** (contentamento): fecha e reabre suavemente (onda
+  senoidal, ~650ms) — bem mais lento que o blink normal (80-120ms,
+  corte instantâneo).
+- **`SIGH`** (acomodação): gaze desce e volta suave (~1.8s), bem mais
+  sutil que `LOOK_DOWN_BLINK` (amplitude 0.15 vs 0.7 -- sem blink, sem
+  hold).
+
+`SLOW_BLINK`/`SIGH` não têm frequência no RFC — intervalos práticos
+(30-90s / 45-120s), mesma classe de retune-em-bancada de
+`NB_IDLE_DRIFT_AMPLITUDE`. `quiet_mode` dobra os três intervalos, mesma
+regra do blink/motifs. Host-tests: os três disparam dentro da janela
+simulada; `quiet_mode` reduz a contagem total. Suíte inteira verde nas
+duas configs de flag; build limpo — confirmação visual (a "textura" de
+cada gesto) fica pra bancada.

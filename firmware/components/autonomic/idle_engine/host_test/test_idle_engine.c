@@ -463,6 +463,63 @@ static void test_spike_roll_follows_gaze_with_lag(void)
     }
     CHECK(lag_differs_from_instantaneous_gaze);
 }
+
+/* Gestos nomeados (RFC §7, "Plano S3.7 completo" item 4): cada um
+ * dispara dentro do próprio intervalo, nunca dois ao mesmo tempo (mesmo
+ * slot exclusivo de active_motif), e quiet_mode dobra os intervalos --
+ * mesma verificação estatística já usada pro blink/motifs antigos. */
+static void test_spike_named_gestures_fire(void)
+{
+    nb_idle_engine_t e;
+    const uint32_t duration_ms = 3600000u; /* 60 min simulados */
+
+    nb_idle_engine_init(&e, 2024);
+    for (uint32_t ms = 0; ms < duration_ms; ms += TICK_MS) {
+        nb_idle_engine_tick(&e, TICK_MS, NULL);
+    }
+
+    /* "Nunca dois ao mesmo tempo" já é garantido estruturalmente por
+     * active_motif ser um campo único (não um bitset) -- não há o que
+     * testar em runtime além disso. O que vale conferir é que os três
+     * gestos de fato disparam dentro da janela. */
+    const nb_idle_metrics_t *m = nb_idle_engine_get_metrics(&e);
+    /* Em 60 min, CHECK_IN (1-3min) deve disparar bastante mais vezes que
+     * SLOW_BLINK/SIGH (30-90s/45-120s teriam mais chances, mas todos
+     * disputam o mesmo slot com blink -- só confere presença, não conta
+     * exata). */
+    CHECK(m->check_in_count >= 1u);
+    CHECK(m->slow_blink_count >= 1u);
+    CHECK(m->sigh_count >= 1u);
+}
+
+/* quiet_mode dobra os intervalos dos três gestos -- menos disparos na
+ * mesma janela, mesmo critério estatístico de
+ * test_quiet_mode_roughly_halves_event_frequency(). */
+static void test_spike_quiet_mode_slows_named_gestures(void)
+{
+    nb_idle_engine_t normal;
+    nb_idle_engine_t quiet;
+    const uint32_t duration_ms = 3600000u; /* 60 min simulados */
+
+    nb_idle_engine_init(&normal, 77);
+    nb_idle_engine_init(&quiet, 77);
+    nb_idle_engine_set_mode(&quiet, true, NB_IDLE_ATTENTION_IDLE);
+
+    for (uint32_t ms = 0; ms < duration_ms; ms += TICK_MS) {
+        nb_idle_engine_tick(&normal, TICK_MS, NULL);
+        nb_idle_engine_tick(&quiet, TICK_MS, NULL);
+    }
+
+    const nb_idle_metrics_t *m_normal = nb_idle_engine_get_metrics(&normal);
+    const nb_idle_metrics_t *m_quiet = nb_idle_engine_get_metrics(&quiet);
+    const uint32_t gestures_normal =
+        m_normal->check_in_count + m_normal->slow_blink_count + m_normal->sigh_count;
+    const uint32_t gestures_quiet =
+        m_quiet->check_in_count + m_quiet->slow_blink_count + m_quiet->sigh_count;
+
+    CHECK(gestures_normal > 0u);
+    CHECK(gestures_quiet < gestures_normal);
+}
 #endif /* NB_IDLE_V2_SPIKE */
 
 int main(void)
@@ -489,6 +546,8 @@ int main(void)
     test_spike_energy_droops_eyelid_and_slows_blink();
     test_spike_saccade_triggers_blink();
     test_spike_roll_follows_gaze_with_lag();
+    test_spike_named_gestures_fire();
+    test_spike_quiet_mode_slows_named_gestures();
 #endif
 
     if (failures == 0) {

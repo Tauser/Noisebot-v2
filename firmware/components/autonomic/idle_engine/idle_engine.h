@@ -48,6 +48,13 @@ typedef enum {
     NB_IDLE_MOTIF_SIDE_PEEK,
     NB_IDLE_MOTIF_VERTICAL_SCAN,
     NB_IDLE_MOTIF_CROSS_SCAN,
+    /* S3.7 completo, item 4: gestos nomeados (RFC-VIDA-V2.md §7) -- só
+     * agendados sob NB_IDLE_V2_SPIKE, mesmo slot exclusivo dos motifs
+     * acima (nunca dois ao mesmo tempo). Fisiologia/automanutenção
+     * (Regra da Causa, RFC §2), não "atenção" fingida. */
+    NB_IDLE_MOTIF_CHECK_IN,   /* gaze à frente + micro-abertura + blink */
+    NB_IDLE_MOTIF_SLOW_BLINK, /* blink lento (contentamento) */
+    NB_IDLE_MOTIF_SIGH,       /* gaze desce e volta suave (acomodação) */
     NB_IDLE_MOTIF_COUNT,
 } nb_idle_motif_t;
 
@@ -89,6 +96,12 @@ typedef struct {
     uint32_t side_peek_count;
     uint32_t scan_count; /* VERTICAL_SCAN + CROSS_SCAN */
     uint32_t last_event_at_ms; /* último instante em que algo mudou (blink ou motif) */
+
+    /* S3.7 completo, item 4: gestos nomeados (só incrementam sob
+     * NB_IDLE_V2_SPIKE). */
+    uint32_t check_in_count;
+    uint32_t slow_blink_count;
+    uint32_t sigh_count;
 } nb_idle_metrics_t;
 
 typedef struct {
@@ -136,6 +149,13 @@ typedef struct {
      * de atraso" (RFC §7) -- filtro passa-baixa do gaze horizontal,
      * somado ao tilt em compute_output() sob NB_IDLE_V2_SPIKE. */
     float roll_gaze_lag_x;
+
+    /* S3.7 completo, item 4: agendamento independente dos 3 gestos
+     * nomeados -- cada um no seu próprio timer, todos disputando o mesmo
+     * slot de exclusividade (active_motif) que blink/motifs. */
+    uint32_t next_check_in_at_ms;
+    uint32_t next_slow_blink_at_ms;
+    uint32_t next_sigh_at_ms;
 
     nb_idle_metrics_t metrics;
 } nb_idle_engine_t;

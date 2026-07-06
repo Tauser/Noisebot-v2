@@ -1836,10 +1836,25 @@ doc — o RFC assume coisas que não são verdade hoje):
    do envelope do gaze e nunca copia o valor instantâneo. Suíte inteira
    verde nas duas configs de flag; build limpo; confirmação visual da
    fase (LED×respiração) pendente de bancada.
-4. **Gestos nomeados** `CHECK_IN` (~1×/1-3min), `SLOW_BLINK`, `SIGH`:
-   fisiologia/automanutenção (RFC §2, Regra da Causa — não é "atenção"
-   fingida), slot exclusivo com motif/gesto em curso, `quiet_mode`
-   dobra os tempos. Gate: host-test verde, build limpo.
+4. **Gestos nomeados** `CHECK_IN` (~1×/1-3min), `SLOW_BLINK`, `SIGH` —
+   **`FEITO` (2026-07-06).** Reaproveitou o slot exclusivo `active_motif`
+   dos motifs (sem núcleo novo): `CHECK_IN` puxa o gaze pro centro +
+   micro-abertura (+8%) + blink no fim; `SLOW_BLINK` fecha/reabre
+   suavemente (~650ms, onda senoidal, bem mais lento que o blink normal);
+   `SIGH` desce o gaze suave (~1.8s, amplitude 0.15 — bem mais sutil que
+   `LOOK_DOWN_BLINK`). `SLOW_BLINK`/`SIGH` sem frequência no RFC —
+   intervalos práticos (30-90s/45-120s). `quiet_mode` dobra os três.
+   Fisiologia/automanutenção (RFC §2, Regra da Causa — não é "atenção"
+   fingida). Host-tests: os três disparam na janela simulada; `quiet_mode`
+   reduz a contagem total. Suíte inteira verde nas duas configs de flag;
+   build limpo.
+   **Achado de bancada (não corrigido):** blink×sacada (item 3) aumentou
+   muito a frequência de piscadas, expondo um artefato visual raro e
+   pré-existente no renderer (linhas diagonais/buracos nos cantos do
+   olho durante a piscada) — analisado (`nb_face_core_eye_column`,
+   `eye_dirty_rect`) sem causa raiz confirmada por leitura estática;
+   usuário decidiu não instrumentar/investigar agora. Registrado pra
+   quando o item 5 (renderer) começar.
    **Checkpoint intermediário:** com 1-4 fechados, os 3 motores do RFC §7
    estão completos e testados sem tocar renderer/`emotion_core` — bom
    ponto pra bancada intermediária (fps/heap/toque) antes do resto.

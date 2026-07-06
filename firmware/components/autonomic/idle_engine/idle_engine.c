@@ -40,6 +40,24 @@
 #define NB_IDLE_ROLL_FOLLOWS_GAZE_TAU_MS 100.0f
 #define NB_IDLE_ROLL_FOLLOWS_GAZE_GAIN 0.15f
 
+/* Gestos nomeados (S3.7 completo, item 4, RFC-VIDA-V2.md §7). CHECK_IN
+ * tem frequência literal do RFC (~1x/1-3min); SLOW_BLINK/SIGH não têm
+ * número no RFC -- amplitudes/intervalos práticos, mesma classe de
+ * retune-em-bancada de NB_IDLE_DRIFT_AMPLITUDE. */
+#define NB_IDLE_CHECK_IN_MIN_MS 60000u
+#define NB_IDLE_CHECK_IN_MAX_MS 180000u
+#define NB_IDLE_CHECK_IN_DURATION_MS 700u
+#define NB_IDLE_CHECK_IN_OPEN_BOOST 0.08f /* "micro-abertura" */
+
+#define NB_IDLE_SLOW_BLINK_MIN_MS 30000u
+#define NB_IDLE_SLOW_BLINK_MAX_MS 90000u
+#define NB_IDLE_SLOW_BLINK_DURATION_MS 650u /* bem mais lento que o blink normal (80-120ms) */
+
+#define NB_IDLE_SIGH_MIN_MS 45000u
+#define NB_IDLE_SIGH_MAX_MS 120000u
+#define NB_IDLE_SIGH_DURATION_MS 1800u
+#define NB_IDLE_SIGH_GAZE_DOWN_AMPLITUDE 0.15f /* bem mais sutil que LOOK_DOWN_BLINK (0.7) */
+
 static uint32_t xorshift32(uint32_t *state)
 {
     uint32_t x = *state;
@@ -202,7 +220,62 @@ static void on_attention_saccade(void *ctx)
         start_blink_motif(e);
     }
 }
-#endif
+
+/* Gestos nomeados (S3.7 completo, item 4): agendamento independente por
+ * gesto, cada um com seu próprio intervalo -- quiet_mode dobra os três,
+ * mesma regra do blink/motifs antigos. */
+static uint32_t sample_next_check_in_ms(nb_idle_engine_t *e)
+{
+    const uint32_t lo = e->quiet_mode ? NB_IDLE_CHECK_IN_MIN_MS * 2u : NB_IDLE_CHECK_IN_MIN_MS;
+    const uint32_t span = NB_IDLE_CHECK_IN_MAX_MS - NB_IDLE_CHECK_IN_MIN_MS;
+    return e->now_ms + lo + (uint32_t)(rand01(&e->rng_state) * (float)span);
+}
+
+static uint32_t sample_next_slow_blink_ms(nb_idle_engine_t *e)
+{
+    const uint32_t lo =
+        e->quiet_mode ? NB_IDLE_SLOW_BLINK_MIN_MS * 2u : NB_IDLE_SLOW_BLINK_MIN_MS;
+    const uint32_t span = NB_IDLE_SLOW_BLINK_MAX_MS - NB_IDLE_SLOW_BLINK_MIN_MS;
+    return e->now_ms + lo + (uint32_t)(rand01(&e->rng_state) * (float)span);
+}
+
+static uint32_t sample_next_sigh_ms(nb_idle_engine_t *e)
+{
+    const uint32_t lo = e->quiet_mode ? NB_IDLE_SIGH_MIN_MS * 2u : NB_IDLE_SIGH_MIN_MS;
+    const uint32_t span = NB_IDLE_SIGH_MAX_MS - NB_IDLE_SIGH_MIN_MS;
+    return e->now_ms + lo + (uint32_t)(rand01(&e->rng_state) * (float)span);
+}
+
+static void start_check_in(nb_idle_engine_t *e)
+{
+    e->active_motif = NB_IDLE_MOTIF_CHECK_IN;
+    e->motif_started_ms = e->now_ms;
+    e->motif_duration_ms = NB_IDLE_CHECK_IN_DURATION_MS;
+    e->metrics.check_in_count++;
+    e->metrics.last_event_at_ms = e->now_ms;
+    e->next_check_in_at_ms = sample_next_check_in_ms(e);
+}
+
+static void start_slow_blink(nb_idle_engine_t *e)
+{
+    e->active_motif = NB_IDLE_MOTIF_SLOW_BLINK;
+    e->motif_started_ms = e->now_ms;
+    e->motif_duration_ms = NB_IDLE_SLOW_BLINK_DURATION_MS;
+    e->metrics.slow_blink_count++;
+    e->metrics.last_event_at_ms = e->now_ms;
+    e->next_slow_blink_at_ms = sample_next_slow_blink_ms(e);
+}
+
+static void start_sigh(nb_idle_engine_t *e)
+{
+    e->active_motif = NB_IDLE_MOTIF_SIGH;
+    e->motif_started_ms = e->now_ms;
+    e->motif_duration_ms = NB_IDLE_SIGH_DURATION_MS;
+    e->metrics.sigh_count++;
+    e->metrics.last_event_at_ms = e->now_ms;
+    e->next_sigh_at_ms = sample_next_sigh_ms(e);
+}
+#endif /* NB_IDLE_V2_SPIKE */
 
 #if !NB_IDLE_V2_SPIKE
 static void start_long_motif(nb_idle_engine_t *e)
@@ -342,6 +415,45 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
         break;
     }
 
+    case NB_IDLE_MOTIF_CHECK_IN: {
+        /* "gaze à frente + micro-abertura + blink" (RFC §7): puxa o gaze
+         * (o que quer que a atenção/postura estejam pedindo) de volta pro
+         * centro durante o pico do gesto, abre um pouco mais os olhos
+         * (env positivo), e fecha rápido perto do fim -- ease_envelope dá
+         * o "sobe, segura, desce" em vez de saltar. */
+        const float env = ease_envelope(elapsed, e->motif_duration_ms, 200u, 200u);
+
+        out->gaze_x *= (1.0f - env);
+        out->gaze_y *= (1.0f - env);
+        out->open_l *= 1.0f + NB_IDLE_CHECK_IN_OPEN_BOOST * env;
+        out->open_r *= 1.0f + NB_IDLE_CHECK_IN_OPEN_BOOST * env;
+        if (elapsed >= e->motif_duration_ms - 150u && elapsed < e->motif_duration_ms - 50u) {
+            out->open_l = 0.0f;
+            out->open_r = 0.0f;
+        }
+        break;
+    }
+
+    case NB_IDLE_MOTIF_SLOW_BLINK: {
+        /* Blink lento (contentamento): fecha e reabre suavemente (onda
+         * senoidal, não corte instantâneo do blink normal). */
+        const float t = (float)elapsed / (float)e->motif_duration_ms;
+        const float close_amount = sinf(NB_IDLE_PI * t);
+
+        out->open_l *= 1.0f - close_amount;
+        out->open_r *= 1.0f - close_amount;
+        break;
+    }
+
+    case NB_IDLE_MOTIF_SIGH: {
+        /* Acomodação: gaze desce e volta suave, bem mais sutil que
+         * LOOK_DOWN_BLINK (sem blink, sem hold -- só um "afundar"). */
+        const float t = (float)elapsed / (float)e->motif_duration_ms;
+
+        out->gaze_y += NB_IDLE_SIGH_GAZE_DOWN_AMPLITUDE * sinf(NB_IDLE_PI * t);
+        break;
+    }
+
     case NB_IDLE_MOTIF_NONE:
     default:
         break;
@@ -407,6 +519,13 @@ void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed)
     /* Semente derivada, distinta da de attention_v2 (mesma lógica acima). */
     nb_posture_init(&engine->posture_v2, engine->rng_state ^ 0x87654321u);
     nb_energy_init(&engine->energy_v2); /* sem RNG -- não precisa de semente */
+#if NB_IDLE_V2_SPIKE
+    /* Gestos nomeados (item 4) -- só existem sob a flag, mesma regra do
+     * callback de sacada acima. */
+    engine->next_check_in_at_ms = sample_next_check_in_ms(engine);
+    engine->next_slow_blink_at_ms = sample_next_slow_blink_ms(engine);
+    engine->next_sigh_at_ms = sample_next_sigh_ms(engine);
+#endif
 }
 
 void nb_idle_engine_reset_transient(nb_idle_engine_t *engine)
@@ -508,6 +627,23 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
         start_long_motif(engine);
 #endif
     }
+
+#if NB_IDLE_V2_SPIKE
+    /* Gestos nomeados (S3.7 completo, item 4): mesmo slot exclusivo,
+     * cada um no seu próprio timer independente. Checados em sequência
+     * -- se dois calharem de vencer no mesmo tick (raro, timers bem
+     * espaçados), o primeiro checado ganha o slot livre. */
+    if (engine->active_motif == NB_IDLE_MOTIF_NONE &&
+        engine->now_ms >= engine->next_check_in_at_ms) {
+        start_check_in(engine);
+    } else if (engine->active_motif == NB_IDLE_MOTIF_NONE &&
+              engine->now_ms >= engine->next_slow_blink_at_ms) {
+        start_slow_blink(engine);
+    } else if (engine->active_motif == NB_IDLE_MOTIF_NONE &&
+              engine->now_ms >= engine->next_sigh_at_ms) {
+        start_sigh(engine);
+    }
+#endif
 
     compute_output(engine, out);
 }
