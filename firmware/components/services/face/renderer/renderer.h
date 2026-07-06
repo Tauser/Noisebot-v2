@@ -22,6 +22,19 @@ extern "C" {
 #define NB_FACE_EXPR_COUNT 10u
 #define NB_FACE_EYE_HALF_WIDTH 46
 #define NB_FACE_EYE_HALF_HEIGHT 46.0f
+/* Boca (S3.7 completo, item 5, RFC-VIDA-V2.md §3): geometria estática por
+ * enquanto -- campo contínuo/variantes ficam pro item 6. Meia-largura
+ * menor que o olho (boca é mais estreita que os olhos juntos); meia-altura
+ * é o teto de abertura em mouth_open=1 (visemas de fala, ainda não
+ * ligados -- fica pra S4 voz). */
+#define NB_FACE_MOUTH_HALF_WIDTH 32
+#define NB_FACE_MOUTH_HALF_HEIGHT 20.0f
+/* Curvatura da boca -- maior que a do olho (NB_FACE_CURVE_PX, privada de
+ * renderer.c) porque a boca precisa de um arco visivelmente mais aberto
+ * pra "sorriso"/"franzido" ficarem legíveis nessa largura menor. Exposta
+ * aqui (não em renderer.c) porque a casca (shell/) precisa dela pro
+ * padding do retângulo de flush. */
+#define NB_FACE_MOUTH_CURVE_PX 14.0f
 
 typedef enum {
     NB_FACE_EXPR_NEUTRAL = 0,
@@ -46,6 +59,13 @@ typedef struct {
     float round_top, round_bottom;
     float curve_top, curve_bottom;
     float squint_l, squint_r;
+    /* Boca (S3.7 completo, item 5): mouth_open em [0,1] (0 = fechada,
+     * controlado por visemas de fala em S4 -- ainda não ligado);
+     * mouth_curve em [-1,+1] (negativo = franzido/triste, positivo =
+     * sorriso; persiste durante a fala, RFC §3 "a curvatura emocional
+     * persiste"). */
+    float mouth_open;
+    float mouth_curve;
 } nb_face_state_t;
 
 /* Tabela canônica indexada por nb_face_expr_t. expr fora do intervalo
@@ -77,6 +97,25 @@ void nb_face_core_eye_column(float open, float tl, float tr, float bl, float br,
                              float round_top, float round_bottom, float curve_top,
                              float curve_bottom, int16_t half_width, float cy, int16_t x_rel,
                              nb_face_eye_column_t *out);
+
+/* Geometria vertical de uma coluna da boca (S3.7 completo, item 5) --
+ * mais simples que o olho: sem squint/canto/arredondamento, só abertura
+ * (espessura da faixa) e curvatura (toda a faixa sobe/desce nas pontas
+ * via parábola, mesma técnica de curve_top/curve_bottom do olho). Nunca
+ * "fecha" de vez -- mouth_open baixo ainda desenha uma linha fina (a
+ * curvatura precisa aparecer mesmo de boca fechada: micro-sorriso do
+ * NEUTRAL, franzido do SAD/ANGRY). */
+typedef struct {
+    int16_t top_full;
+    int16_t bottom_full;
+    bool has_top_aa;
+    float alpha_top;
+    bool has_bottom_aa;
+    float alpha_bottom;
+} nb_face_mouth_column_t;
+
+void nb_face_core_mouth_column(float mouth_open, float mouth_curve, int16_t half_width, float cy,
+                               int16_t x_rel, nb_face_mouth_column_t *out);
 
 #ifdef __cplusplus
 }

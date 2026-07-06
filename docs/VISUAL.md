@@ -48,6 +48,14 @@ Regra: boot nunca restaura expressão negativa (clamp em `emotion_core`).
 Expressões nunca substituem o baseline de IDLE — são estados transitórios ou
 mapeamentos da emoção que decaem para NEUTRAL.
 
+**Boca (S3.7 completo, item 5, RFC §3):** só os 4 hubs (`NEUTRAL`/
+`HAPPY`/`SAD`/`ANGRY`) ganharam `mouth_open`/`mouth_curve` não-neutros —
+`NEUTRAL` fechada com micro-sorriso sutil, `HAPPY` aberta e sorrindo,
+`SAD` curva suave pra baixo, `ANGRY` curva invertida mais firme que
+`SAD`. As outras 6 âncoras continuam boca neutra (`0,0`), intocadas.
+Estático por enquanto: sem variação por variante episódica nem visemas
+de fala (item 6 e S4 voz, respectivamente).
+
 ## 3. Vida em IDLE (idle_engine)
 
 O baseline não é estático — é **movimento mínimo vivo**. Desde a S3.7

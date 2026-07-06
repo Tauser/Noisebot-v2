@@ -1,5 +1,6 @@
 #include "../renderer.h"
 
+#include <stddef.h>
 #include <stdio.h>
 
 static int failures;
@@ -119,6 +120,79 @@ static void test_eye_column_squint_can_close_locally(void)
     CHECK(col.bottom_full < col.top_full);
 }
 
+/* Boca (S3.7 completo, item 5, RFC-VIDA-V2.md §3.1): só os 4 hubs têm
+ * boca não-neutra; as outras 6 âncoras continuam "boca neutra" (0,0),
+ * intocadas conforme o RFC decidiu pra esta fase. */
+static void test_mouth_only_four_hubs_are_non_neutral(void)
+{
+    const nb_face_expr_t hubs[] = {NB_FACE_EXPR_NEUTRAL, NB_FACE_EXPR_HAPPY, NB_FACE_EXPR_SAD,
+                                   NB_FACE_EXPR_ANGRY};
+    const nb_face_expr_t non_hubs[] = {NB_FACE_EXPR_CURIOUS,   NB_FACE_EXPR_SLEEPY,
+                                       NB_FACE_EXPR_FOCUSED,   NB_FACE_EXPR_SUSPICIOUS,
+                                       NB_FACE_EXPR_SURPRISED, NB_FACE_EXPR_ALARMED};
+
+    for (size_t i = 0; i < sizeof(non_hubs) / sizeof(non_hubs[0]); ++i) {
+        const nb_face_state_t *s = nb_face_core_get_expression(non_hubs[i]);
+        CHECK(float_eq(s->mouth_open, 0.0f));
+        CHECK(float_eq(s->mouth_curve, 0.0f));
+    }
+
+    const nb_face_state_t *neutral = nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
+    const nb_face_state_t *happy = nb_face_core_get_expression(NB_FACE_EXPR_HAPPY);
+    const nb_face_state_t *sad = nb_face_core_get_expression(NB_FACE_EXPR_SAD);
+    const nb_face_state_t *angry = nb_face_core_get_expression(NB_FACE_EXPR_ANGRY);
+
+    /* "fechada, micro-curva": NEUTRAL tem um sorriso bem sutil, não zero. */
+    CHECK(neutral->mouth_curve > 0.0f && neutral->mouth_curve < 0.2f);
+    /* "sorriso (aberto no nível alto)": HAPPY abre e curva positivo. */
+    CHECK(happy->mouth_curve > 0.3f);
+    CHECK(happy->mouth_open > 0.0f);
+    /* "curva pra baixo suave" / "curva invertida firme": ambos negativos,
+     * ANGRY mais acentuado que SAD ("firme" vs "suave"). */
+    CHECK(sad->mouth_curve < 0.0f);
+    CHECK(angry->mouth_curve < sad->mouth_curve);
+    (void)hubs;
+}
+
+static void test_mouth_column_never_vanishes_even_when_closed(void)
+{
+    nb_face_mouth_column_t col;
+
+    nb_face_core_mouth_column(0.0f, -0.7f, NB_FACE_MOUTH_HALF_WIDTH, 190.0f, 0,
+                              &col);
+    /* Mesmo fechada e bem franzida, a faixa nunca fica vazia -- a
+     * curvatura precisa aparecer com a boca fechada (ANGRY). */
+    CHECK(col.bottom_full >= col.top_full);
+}
+
+static void test_mouth_column_smile_curves_up_at_edges(void)
+{
+    const nb_face_state_t *happy = nb_face_core_get_expression(NB_FACE_EXPR_HAPPY);
+    nb_face_mouth_column_t center;
+    nb_face_mouth_column_t edge;
+    const float cy = 190.0f;
+
+    nb_face_core_mouth_column(happy->mouth_open, happy->mouth_curve, NB_FACE_MOUTH_HALF_WIDTH, cy,
+                              NB_FACE_MOUTH_HALF_WIDTH, &center);
+    nb_face_core_mouth_column(happy->mouth_open, happy->mouth_curve, NB_FACE_MOUTH_HALF_WIDTH, cy,
+                              0, &edge);
+
+    /* Sorriso: pontas sobem em relação ao centro -- top_full da ponta é
+     * menor (mais alto na tela) que o do centro. */
+    CHECK(edge.top_full < center.top_full);
+}
+
+static void test_mouth_lerp_interpolates(void)
+{
+    const nb_face_state_t *neutral = nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
+    const nb_face_state_t *happy = nb_face_core_get_expression(NB_FACE_EXPR_HAPPY);
+    nb_face_state_t out;
+
+    nb_face_core_lerp(neutral, happy, 0.5f, &out);
+    CHECK(float_eq(out.mouth_open, (neutral->mouth_open + happy->mouth_open) / 2.0f));
+    CHECK(float_eq(out.mouth_curve, (neutral->mouth_curve + happy->mouth_curve) / 2.0f));
+}
+
 int main(void)
 {
     test_all_expressions_resolve_and_neutral_is_symmetric();
@@ -128,6 +202,10 @@ int main(void)
     test_eye_column_closed_when_open_near_zero();
     test_eye_column_open_neutral_is_symmetric_and_centered();
     test_eye_column_squint_can_close_locally();
+    test_mouth_only_four_hubs_are_non_neutral();
+    test_mouth_column_never_vanishes_even_when_closed();
+    test_mouth_column_smile_curves_up_at_edges();
+    test_mouth_lerp_interpolates();
 
     if (failures == 0) {
         printf("face_renderer host_test: ok\n");

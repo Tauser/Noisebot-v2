@@ -8,32 +8,43 @@
  * -- reescritos aqui na estrutura núcleo/casca do NB2, não copiados do
  * arquivo do v1. Ordem dos campos por linha:
  * tl_l,tr_l,bl_l,br_l, tl_r,tr_r,bl_r,br_r, open_l,open_r, y_l,y_r, x_off,
- * round_top,round_bottom, curve_top,curve_bottom, squint_l,squint_r.
+ * round_top,round_bottom, curve_top,curve_bottom, squint_l,squint_r,
+ * mouth_open,mouth_curve.
+ *
+ * Boca (S3.7 completo, item 5, RFC-VIDA-V2.md §3.1): só os 4 hubs
+ * (NEUTRAL/HAPPY/SAD/ANGRY) ganham valor não-neutro -- as outras 6
+ * âncoras continuam "boca neutra" (0,0), intocadas, conforme o RFC
+ * decidiu explicitamente pra esta fase. Sem variantes/campo contínuo
+ * ainda (item 6).
  */
 static const nb_face_state_t s_expressions[NB_FACE_EXPR_COUNT] = {
-    /* NEUTRAL */
-    {0, 0, 0, 0, 0, 0, 0, 0, .88f, .88f, 0, 0, .60f, .64f, .64f, 0, 0, 0, 0},
-    /* HAPPY */
-    {0, 0, .72f, .72f, 0, 0, .72f, .72f, .41f, .41f, 0, 0, .60f, .27f, .52f, 1, -1, .22f, .22f},
-    /* CURIOUS */
-    {0, 0, 0, 0, .19f, 0, 0, 0, .82f, .96f, 0, 0, .60f, .64f, .64f, 0, 0, 0, 0},
-    /* SLEEPY */
-    {0, 0, 0, 0, 0, 0, 0, 0, .14f, .14f, -.55f, -.55f, .60f, .19f, 1, -.38f, .45f, .51f, .51f},
-    /* FOCUSED */
-    {0, .30f, 0, 0, .30f, 0, 0, 0, .80f, .80f, 0, 0, .60f, .64f, .64f, .30f, .05f, .10f, .10f},
-    /* SUSPICIOUS */
+    /* NEUTRAL -- "fechada, micro-curva" (RFC §3.1) */
+    {0, 0, 0, 0, 0, 0, 0, 0, .88f, .88f, 0, 0, .60f, .64f, .64f, 0, 0, 0, 0, 0.0f, .05f},
+    /* HAPPY -- "sorriso (aberto no nível alto)" */
+    {0, 0, .72f, .72f, 0, 0, .72f, .72f, .41f, .41f, 0, 0, .60f, .27f, .52f, 1, -1, .22f, .22f,
+     .25f, .70f},
+    /* CURIOUS -- boca neutra */
+    {0, 0, 0, 0, .19f, 0, 0, 0, .82f, .96f, 0, 0, .60f, .64f, .64f, 0, 0, 0, 0, 0.0f, 0.0f},
+    /* SLEEPY -- boca neutra */
+    {0, 0, 0, 0, 0, 0, 0, 0, .14f, .14f, -.55f, -.55f, .60f, .19f, 1, -.38f, .45f, .51f, .51f,
+     0.0f, 0.0f},
+    /* FOCUSED -- boca neutra */
+    {0, .30f, 0, 0, .30f, 0, 0, 0, .80f, .80f, 0, 0, .60f, .64f, .64f, .30f, .05f, .10f, .10f,
+     0.0f, 0.0f},
+    /* SUSPICIOUS -- boca neutra */
     {0, .38f, 0, 0, .38f, 0, 0, 0, .86f, .86f, .10f, .10f, .60f, .64f, .64f, -.44f, .05f, .38f,
-     .38f},
-    /* SURPRISED */
-    {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, .60f, .64f, .64f, 0, 0, 0, 0},
-    /* SAD */
+     .38f, 0.0f, 0.0f},
+    /* SURPRISED -- boca neutra */
+    {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, .60f, .64f, .64f, 0, 0, 0, 0, 0.0f, 0.0f},
+    /* SAD -- "curva pra baixo suave" */
     {.70f, .13f, 0, .44f, 0, .70f, .44f, 0, .68f, .68f, .20f, .20f, .60f, .64f, .64f, -.16f, .08f,
-     .08f, .08f},
-    /* ALARMED */
-    {0, .28f, 0, 0, .28f, 0, 0, 0, .88f, .88f, -.18f, -.18f, .60f, .64f, .64f, .55f, .10f, 0, 0},
-    /* ANGRY */
+     .08f, .08f, 0.0f, -.50f},
+    /* ALARMED -- boca neutra */
+    {0, .28f, 0, 0, .28f, 0, 0, 0, .88f, .88f, -.18f, -.18f, .60f, .64f, .64f, .55f, .10f, 0, 0,
+     0.0f, 0.0f},
+    /* ANGRY -- "curva invertida firme" */
     {0, .88f, .93f, .60f, .88f, 0, .60f, .93f, .82f, .82f, 0, 0, .60f, .26f, .14f, .06f, -.10f, 0,
-     0},
+     0, 0.0f, -.70f},
 };
 
 const nb_face_state_t *nb_face_core_get_expression(nb_face_expr_t expr)
@@ -69,6 +80,8 @@ void nb_face_core_lerp(const nb_face_state_t *a, const nb_face_state_t *b, float
     out->curve_bottom = nb_face_lerpf(a->curve_bottom, b->curve_bottom, t);
     out->squint_l = nb_face_lerpf(a->squint_l, b->squint_l, t);
     out->squint_r = nb_face_lerpf(a->squint_r, b->squint_r, t);
+    out->mouth_open = nb_face_lerpf(a->mouth_open, b->mouth_open, t);
+    out->mouth_curve = nb_face_lerpf(a->mouth_curve, b->mouth_curve, t);
 }
 
 float nb_face_core_clampf(float v, float lo, float hi)
@@ -148,4 +161,32 @@ void nb_face_core_eye_column(float open, float tl, float tr, float bl, float br,
         out->has_bottom_aa = true;
         out->alpha_bottom = alpha_bottom;
     }
+}
+
+void nb_face_core_mouth_column(float mouth_open, float mouth_curve, int16_t half_width, float cy,
+                               int16_t x_rel, nb_face_mouth_column_t *out)
+{
+    const float span = (float)half_width * 2.0f;
+    const float t = (float)x_rel / span;
+    const float parabola = 4.0f * t * (1.0f - t); /* 0 nas pontas, 1 no centro */
+    /* mouth_curve > 0: pontas sobem em relação ao centro (sorriso, "⌣").
+     * mouth_curve < 0: pontas descem (franzido, "⌢"). */
+    const float center_y = cy - mouth_curve * NB_FACE_MOUTH_CURVE_PX * (1.0f - parabola);
+    /* Nunca some de vez -- mesmo mouth_open=0 precisa mostrar a curvatura
+     * (micro-sorriso do NEUTRAL, franzido de SAD/ANGRY com boca fechada). */
+    const float half_h = fmaxf(mouth_open * NB_FACE_MOUTH_HALF_HEIGHT, 0.5f);
+
+    const float top = center_y - half_h;
+    const float bottom = center_y + half_h;
+    const int16_t top_full = (int16_t)ceilf(top);
+    const int16_t bottom_full = (int16_t)floorf(bottom);
+    const float alpha_top = (float)top_full - top;
+    const float alpha_bottom = bottom - (float)bottom_full;
+
+    out->top_full = top_full;
+    out->bottom_full = bottom_full;
+    out->has_top_aa = alpha_top > .04f;
+    out->alpha_top = out->has_top_aa ? alpha_top : 0.0f;
+    out->has_bottom_aa = alpha_bottom > .04f;
+    out->alpha_bottom = out->has_bottom_aa ? alpha_bottom : 0.0f;
 }

@@ -26,6 +26,13 @@ constexpr float kGazeYLimit = .55f;
  * assimetria ±0.10 de VISUAL.md §3) -- ponto de partida, mesma lição do
  * gaze (kGazeXTravel/kYTravel): valor a confirmar/ajustar em bancada. */
 constexpr float kTiltTravel = 80.0f;
+/* Boca (S3.7 completo, item 5): posição fixa, não segue gaze/x_off/tilt
+ * nesta fase (estático -- campo contínuo/acoplamentos ficam pro item 6).
+ * Centralizada entre os dois olhos, abaixo da linha kEyeBaseY com folga
+ * suficiente pro olho aberto (NB_FACE_EYE_HALF_HEIGHT=46) não se
+ * sobrepor à boca fechada. */
+constexpr int16_t kMouthCenterX = (kBaseLeftX + kBaseRightX) / 2;
+constexpr float kMouthBaseY = kEyeBaseY + 66.0f;
 
 const char *TAG = "face_renderer";
 
@@ -58,6 +65,28 @@ void draw_eye(int16_t cx, float cy, float open, float tl, float tr, float bl, fl
     for (int16_t x_rel = 0; x_rel <= half_width * 2; ++x_rel) {
         nb_face_core_eye_column(open, tl, tr, bl, br, squint, round_top, round_bottom, curve_top,
                                 curve_bottom, half_width, cy, x_rel, &col);
+
+        const int16_t x = static_cast<int16_t>(cx - half_width + x_rel);
+
+        if (col.has_top_aa) {
+            s_sprite.drawPixel(x, col.top_full - 1, blend_black(color, col.alpha_top));
+        }
+        if (col.bottom_full >= col.top_full) {
+            s_sprite.drawFastVLine(x, col.top_full, col.bottom_full - col.top_full + 1, color);
+        }
+        if (col.has_bottom_aa) {
+            s_sprite.drawPixel(x, col.bottom_full + 1, blend_black(color, col.alpha_bottom));
+        }
+    }
+}
+
+void draw_mouth(int16_t cx, float cy, float mouth_open, float mouth_curve, int16_t half_width,
+               uint32_t color)
+{
+    nb_face_mouth_column_t col;
+
+    for (int16_t x_rel = 0; x_rel <= half_width * 2; ++x_rel) {
+        nb_face_core_mouth_column(mouth_open, mouth_curve, half_width, cy, x_rel, &col);
 
         const int16_t x = static_cast<int16_t>(cx - half_width + x_rel);
 
@@ -108,12 +137,31 @@ nb_display_hal_rect_t eye_dirty_rect(int16_t cx, float cy, int16_t half_width)
                             static_cast<int16_t>(y_center + half_height + 1));
 }
 
+/* Padding generoso: cobre o desvio máximo da curvatura
+ * (NB_FACE_MOUTH_CURVE_PX=14px) + meia-altura máxima em mouth_open=1
+ * (NB_FACE_MOUTH_HALF_HEIGHT=20px) + AA -- mesma folga de segurança do
+ * kPadY do olho. */
+nb_display_hal_rect_t mouth_dirty_rect(int16_t cx, float cy)
+{
+    constexpr int16_t kPadX = 3;
+    constexpr int16_t kPadY = 6;
+    const int16_t half_height =
+        static_cast<int16_t>(NB_FACE_MOUTH_HALF_HEIGHT + NB_FACE_MOUTH_CURVE_PX) + kPadY;
+    const int16_t y_center = static_cast<int16_t>(cy + 0.5f);
+
+    return rect_from_bounds(static_cast<int16_t>(cx - NB_FACE_MOUTH_HALF_WIDTH - kPadX),
+                            static_cast<int16_t>(y_center - half_height),
+                            static_cast<int16_t>(cx + NB_FACE_MOUTH_HALF_WIDTH + kPadX + 1),
+                            static_cast<int16_t>(y_center + half_height + 1));
+}
+
 nb_display_hal_rect_t face_dirty_rect(int16_t left_x, float left_y, int16_t half_width_l,
                                       int16_t right_x, float right_y, int16_t half_width_r)
 {
     const nb_display_hal_rect_t left = eye_dirty_rect(left_x, left_y, half_width_l);
     const nb_display_hal_rect_t right = eye_dirty_rect(right_x, right_y, half_width_r);
-    return nb_display_hal_rect_union(left, right);
+    const nb_display_hal_rect_t mouth = mouth_dirty_rect(kMouthCenterX, kMouthBaseY);
+    return nb_display_hal_rect_union(nb_display_hal_rect_union(left, right), mouth);
 }
 
 } // namespace
@@ -185,6 +233,8 @@ nb_display_hal_rect_t nb_face_renderer_shell_draw_dirty(const nb_face_state_t *f
     draw_eye(right_x, right_y, face->open_r, face->tl_r, face->tr_r, face->bl_r, face->br_r,
              face->squint_r, face->round_top, face->round_bottom, face->curve_top,
              face->curve_bottom, half_width_r, color);
+    draw_mouth(kMouthCenterX, kMouthBaseY, face->mouth_open, face->mouth_curve,
+              NB_FACE_MOUTH_HALF_WIDTH, color);
     s_sprite.endWrite();
 
     s_last_dirty = current_dirty;

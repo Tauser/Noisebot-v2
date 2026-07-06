@@ -1859,11 +1859,19 @@ doc — o RFC assume coisas que não são verdade hoje):
    estão completos e testados sem tocar renderer/`emotion_core` — bom
    ponto pra bancada intermediária (fps/heap/toque) antes do resto.
 5. **Boca no renderer** (`nb_face_state_t` + `renderer.c` +
-   `nb_face_renderer_shell`): campos de boca (abertura/curvatura — RFC
-   §3), estender `nb_face_core_lerp()`, desenhar em LovyanGFX, novo
-   parâmetro em `draw()`/`draw_dirty()` (hoje só `gaze_x/y, width_l/r,
-   tilt, color`, sem gancho de boca). Sem host-test de "parece bom" — só
-   bounds/interpolação numérica. Gate: build limpo + bancada (boca
+   `nb_face_renderer_shell`) — **`FEITO` (2026-07-06), pendente bancada.**
+   Campos `mouth_open`/`mouth_curve` em `nb_face_state_t`, interpolados
+   por `nb_face_core_lerp()`; geometria nova `nb_face_core_mouth_column()`
+   (banda que curva nas pontas via parábola, nunca desaparece mesmo
+   fechada — a curvatura precisa aparecer com boca fechada). Só os 4 hubs
+   ganharam boca não-neutra; as outras 6 continuam `0,0`, intocadas.
+   **Sem parâmetro novo em `draw()`/`draw_dirty()`** — a boca já chega
+   interpolada dentro do `nb_face_state_t` que a casca já passa, zero
+   mudança em `main.c`. `face_dirty_rect` agora une olho esquerdo+direito+
+   boca (`mouth_dirty_rect()`, padding cobrindo curvatura+altura máximas).
+   Host-tests: só os 4 hubs não-neutros; coluna nunca vazia mesmo
+   fechada; sorriso curva as pontas pra cima; lerp interpola os campos
+   novos. Build limpo. **Falta:** confirmação visual em bancada (boca
    estática nos 4 hubs, sem campo contínuo ainda).
 6. **Campo contínuo + temperamento + circadiano no vetor** (`emotion_core`):
    substitui `nb_emotion_core_nearest_expression()` por blend contínuo só
