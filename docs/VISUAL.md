@@ -50,8 +50,28 @@ mapeamentos da emoção que decaem para NEUTRAL.
 
 ## 3. Vida em IDLE (idle_engine)
 
-O baseline não é estático — é **movimento mínimo vivo**. Catálogo calibrado
-contra o EMO (v1 `IDLE_REFERENCE.md`, análise por olho de vídeo real):
+O baseline não é estático — é **movimento mínimo vivo**. Desde a S3.7
+(`NB_IDLE_V2_SPIKE` ligada por padrão, `GO` confirmado em 2026-07-06,
+`docs/RFC-VIDA-V2.md` §7), o modelo em produção é o abaixo; o catálogo de
+motifs de S2.4 (segunda tabela) só roda na config legada
+`NB_IDLE_V2_SPIKE=0`, mantida por enquanto pra regressão de host-test.
+
+**Modelo atual (`NB_IDLE_V2_SPIKE=1`, padrão):**
+
+| Motor | Núcleo | Descrição |
+| --- | --- | --- |
+| Respiração | `nb_breath.c` | Fator 1±2% (período ~6 s) sobre `open_l`/`open_r`, aplicado depois do blink. |
+| Atenção | `nb_attention.c` | FSM `FIXATE⇄SACCADE`: fixação 0.5–3 s com micro-tremor (amplitude 0.06, suavizado, retunado em bancada), sacada 80 ms ease-out pra alvo em `[-0.35,0.35]²`, ~40% de viés de retorno ao centro. Substitui `SOFT_DRIFT`. |
+| Postura | `nb_posture.c` | FSM `HOLD⇄TRANSITION`: a cada 30–90 s, deriva ~400 ms pra uma nova micro-pose (roll/gaze offset/assimetria pequenos) que vira o novo repouso — nunca repete a pose exata. Soma-se a `tilt`/`gaze`/`width_l`-`width_r`. |
+
+Blink independente (Poisson, mesmos parâmetros da tabela legada abaixo)
+continua ativo nas duas configs. O restante do RFC §7 (motor de energia,
+acoplamentos blink×sacada, LED em fase com a respiração, gestos
+`CHECK_IN`/`SLOW_BLINK`/`SIGH`) ainda não está implementado — ver "Plano
+S3.7 completo" em `docs/ROADMAP.md` pro estado de cada item.
+
+**Catálogo legado (`NB_IDLE_V2_SPIKE=0`, S2.4)** — calibrado contra o EMO
+(v1 `IDLE_REFERENCE.md`, análise por olho de vídeo real):
 
 | Motif | Descrição | Duração | Distribuição IDLE |
 | --- | --- | --- | --- |
@@ -68,9 +88,10 @@ contra o EMO (v1 `IDLE_REFERENCE.md`, análise por olho de vídeo real):
 Motifs longos a cada 15–40 s em IDLE; em ATTENTIVE, 5–13 s com peeks/scans
 mais frequentes. Modo `quiet`/NIGHT: frequências ÷2, brilho reduzido.
 
-**Critério de aceite (gate S2.4, sessão de 60 s):** ≥1 expressão sustentada
-(CURIOUS_TILT ou HEAD_TILT_HOLD); ≥1 LOOK_DOWN_BLINK ou double blink; ≥2
-blink bars; drift ≤ 0.04; nenhum intervalo de 15 s com os olhos idênticos.
+**Critério de aceite (gate S2.4, sessão de 60 s, só se aplica à config
+legada):** ≥1 expressão sustentada (CURIOUS_TILT ou HEAD_TILT_HOLD); ≥1
+LOOK_DOWN_BLINK ou double blink; ≥2 blink bars; drift ≤ 0.04; nenhum
+intervalo de 15 s com os olhos idênticos.
 
 ## 4. Sequências compostas
 
