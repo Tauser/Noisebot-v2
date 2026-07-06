@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "nb_attention.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,6 +23,17 @@ extern "C" {
  * DOUBLE_BLINK / LINE_BLINK) segue um processo de Poisson próprio,
  * independente do agendamento dos motifs longos sustentados/peek/scan.
  */
+
+/* S3.7 -- spike go/no-go (passo 0, docs/RFC-VIDA-V2.md §7): liga o motor de
+ * atenção (nb_attention.h) no lugar do SOFT_DRIFT/scheduling de motifs
+ * longos, e a respiração (nb_breath.h) modulando a altura dos olhos. O
+ * blink independente (Poisson) permanece intocado nas duas configs.
+ * Ligada por padrão nesta fase (escopo do spike); comentar pra voltar ao
+ * catálogo de motifs de S2.4 puro (usado pelos host-tests de regressão em
+ * NB_IDLE_V2_SPIKE=0, docs/ROADMAP.md "Plano S3.7 -- passo 0"). */
+#ifndef NB_IDLE_V2_SPIKE
+#define NB_IDLE_V2_SPIKE 1
+#endif
 
 typedef enum {
     NB_IDLE_MOTIF_NONE = 0,
@@ -90,6 +103,12 @@ typedef struct {
     float drift_target_x;
     float drift_target_y;
     uint32_t drift_next_target_at_ms;
+
+    /* S3.7 spike: motor de atenção (nb_attention.h), alimenta drift_x/y
+     * quando NB_IDLE_V2_SPIKE está ligado. Campo sempre presente (mesmo
+     * com a flag desligada) pra manter o layout do struct estável entre
+     * as duas configs de build. */
+    nb_attention_t attention_v2;
 
     nb_idle_metrics_t metrics;
 } nb_idle_engine_t;

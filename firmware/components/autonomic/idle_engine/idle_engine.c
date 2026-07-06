@@ -1,5 +1,8 @@
 #include "idle_engine.h"
 
+#include "nb_attention.h"
+#include "nb_breath.h"
+
 #include <math.h>
 #include <string.h>
 
@@ -90,6 +93,11 @@ static uint32_t sample_next_blink_ms(nb_idle_engine_t *e)
     return e->now_ms + (uint32_t)interval;
 }
 
+/* Sorteio de motifs longos e sua distribuição só existem na config sem o
+ * spike (NB_IDLE_V2_SPIKE=0) -- sob a flag, o motor de atenção e a
+ * respiração tomam o lugar deles (docs/ROADMAP.md "Plano S3.7 -- passo
+ * 0"). Guardado atrás de #if pra não violar -Werror=unused-function. */
+#if !NB_IDLE_V2_SPIKE
 static uint32_t sample_next_motif_ms(nb_idle_engine_t *e)
 {
     uint32_t lo = (e->attention == NB_IDLE_ATTENTION_ATTENTIVE) ? 5000u : 15000u;
@@ -136,6 +144,8 @@ static nb_idle_motif_t pick_long_motif(nb_idle_engine_t *e)
     return NB_IDLE_MOTIF_CROSS_SCAN;
 }
 
+#endif /* !NB_IDLE_V2_SPIKE */
+
 static void start_blink_motif(nb_idle_engine_t *e)
 {
     const bool is_double = rand01(&e->rng_state) < 0.30f; /* ~30% dos blinks */
@@ -156,6 +166,7 @@ static void start_blink_motif(nb_idle_engine_t *e)
     e->next_blink_at_ms = sample_next_blink_ms(e);
 }
 
+#if !NB_IDLE_V2_SPIKE
 static void start_long_motif(nb_idle_engine_t *e)
 {
     const nb_idle_motif_t motif = pick_long_motif(e);
@@ -200,6 +211,7 @@ static void start_long_motif(nb_idle_engine_t *e)
     e->metrics.last_event_at_ms = e->now_ms;
     e->next_motif_at_ms = sample_next_motif_ms(e);
 }
+#endif /* !NB_IDLE_V2_SPIKE */
 
 static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
 {
@@ -295,6 +307,16 @@ static void compute_output(const nb_idle_engine_t *e, nb_idle_output_t *out)
     default:
         break;
     }
+
+#if NB_IDLE_V2_SPIKE
+    /* Respiração (RFC-VIDA-V2.md §7): modula a altura/abertura dos olhos
+     * continuamente. Aplicada depois do blink -- 0 * fator continua 0, o
+     * olho fechado não "respira". */
+    const float breath = nb_breath_scale(e->now_ms, NB_BREATH_PERIOD_MS_DEFAULT,
+                                         NB_BREATH_AMPLITUDE_DEFAULT);
+    out->open_l *= breath;
+    out->open_r *= breath;
+#endif
 }
 
 void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed)
@@ -306,7 +328,14 @@ void nb_idle_engine_init(nb_idle_engine_t *engine, uint32_t rng_seed)
     engine->rng_state = (rng_seed != 0u) ? rng_seed : 0x9E3779B9u;
     engine->attention = NB_IDLE_ATTENTION_IDLE;
     engine->next_blink_at_ms = sample_next_blink_ms(engine);
+#if !NB_IDLE_V2_SPIKE
     engine->next_motif_at_ms = sample_next_motif_ms(engine);
+#endif
+    /* Sempre inicializada (mesmo com a flag desligada, ver
+     * nb_idle_engine_t.attention_v2) -- semente derivada, xorshift32 não
+     * pode receber o mesmo estado inicial de engine->rng_state sem
+     * acoplar as duas sequências de sorteio. */
+    nb_attention_init(&engine->attention_v2, engine->rng_state ^ 0x1234567u);
 }
 
 void nb_idle_engine_set_mode(nb_idle_engine_t *engine, bool quiet_mode,
@@ -326,6 +355,13 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
     }
     engine->now_ms += dt_ms;
 
+#if NB_IDLE_V2_SPIKE
+    /* Motor de atenção (RFC-VIDA-V2.md §7) substitui o SOFT_DRIFT: gaze de
+     * fixação+sacada com viés de retorno ao centro, em vez do passeio
+     * aleatório contínuo. Escreve direto em drift_x/y -- compute_output()
+     * não precisa saber qual dos dois gerou a saída. */
+    nb_attention_tick(&engine->attention_v2, dt_ms, &engine->drift_x, &engine->drift_y);
+#else
     /* SOFT_DRIFT: em vez de ruído tick-a-tick (que em bancada lia como
      * parado -- passo pequeno demais pra ser visível), o gaze desliza
      * suavemente rumo a um alvo dentro de ±NB_IDLE_DRIFT_AMPLITUDE,
@@ -343,6 +379,7 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
     const float drift_alpha = clampf((float)dt_ms / drift_tau_ms, 0.0f, 1.0f);
     engine->drift_x += (engine->drift_target_x - engine->drift_x) * drift_alpha;
     engine->drift_y += (engine->drift_target_y - engine->drift_y) * drift_alpha;
+#endif
 
     if (engine->active_motif != NB_IDLE_MOTIF_NONE &&
         engine->now_ms - engine->motif_started_ms >= engine->motif_duration_ms) {
@@ -350,12 +387,17 @@ void nb_idle_engine_tick(nb_idle_engine_t *engine, uint32_t dt_ms, nb_idle_outpu
     }
 
     /* Blink independente e motif longo só disparam com o slot livre --
-     * nenhum dos dois interrompe um motif em andamento. */
+     * nenhum dos dois interrompe um motif em andamento. Sob o spike
+     * (NB_IDLE_V2_SPIKE), o sorteio de motifs longos fica desligado (RFC
+     * §7 -- motor de atenção substitui SIDE_PEEK/scans, respiração
+     * substitui os demais); o blink independente continua. */
     if (engine->active_motif == NB_IDLE_MOTIF_NONE && engine->now_ms >= engine->next_blink_at_ms) {
         start_blink_motif(engine);
+#if !NB_IDLE_V2_SPIKE
     } else if (engine->active_motif == NB_IDLE_MOTIF_NONE &&
               engine->now_ms >= engine->next_motif_at_ms) {
         start_long_motif(engine);
+#endif
     }
 
     compute_output(engine, out);

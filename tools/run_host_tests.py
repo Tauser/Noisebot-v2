@@ -33,6 +33,13 @@ def main() -> int:
     cc = compiler()
     BUILD.mkdir(parents=True, exist_ok=True)
 
+    # Flags extras (ex.: NB_HOST_TEST_CFLAGS="-DNB_IDLE_V2_SPIKE=0") -- usado
+    # pra rodar a mesma suíte em configs alternativas de flag de compilação
+    # (S3.7 spike: idle_engine tem comportamento sob NB_IDLE_V2_SPIKE, ligado
+    # por padrão no header; passar =0 aqui roda a suíte inteira com o motif
+    # antigo, sem precisar de um segundo script).
+    extra_cflags = os.environ.get("NB_HOST_TEST_CFLAGS", "").split()
+
     tests = sorted(FIRMWARE.glob("components/**/host_test/test_*.c"))
     if not tests:
         print("host-tests: nenhum teste encontrado")
@@ -50,14 +57,21 @@ def main() -> int:
         if os.name == "nt":
             exe = exe.with_suffix(".exe")
 
+        # Um componente pode ter mais de um arquivo .c de núcleo (ex.:
+        # idle_engine ganhou nb_breath.c/nb_attention.c em S3.7 além de
+        # idle_engine.c) -- compila todos os fontes do diretório, não só
+        # <componente>.c.
+        core_sources = sorted(component_dir.glob("*.c"))
+
         cmd = [
             cc,
             "-std=c17",
             "-Wall",
             "-Wextra",
             "-Werror",
+            *extra_cflags,
             *[f"-I{d}" for d in component_dirs],
-            str(component_dir / f"{component_dir.name}.c"),
+            *[str(src) for src in core_sources],
             str(test),
             "-o",
             str(exe),
