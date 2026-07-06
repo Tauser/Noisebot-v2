@@ -37,9 +37,13 @@ extern "C" {
  * em vez de vida sutil -- mesma classe de problema que SOFT_DRIFT já
  * resolveu em idle_engine.c, alvo re-sorteado periodicamente + suavização
  * exponencial em vez de ruído puro tick-a-tick). */
-#define NB_ATTENTION_TREMOR_RESAMPLE_MIN_MS 150u
-#define NB_ATTENTION_TREMOR_RESAMPLE_MAX_MS 350u
-#define NB_ATTENTION_TREMOR_TAU_MS 80.0f
+/* Retunado em bancada (2026-07-06): 150-350ms/tau 80ms ficava com
+ * amplitude certa mas frequência alta demais ("tremidinha" constante em
+ * vez de tique ocasional). Intervalo e tau maiores -- o olho passa mais
+ * tempo parado de fato entre um reajuste e outro. */
+#define NB_ATTENTION_TREMOR_RESAMPLE_MIN_MS 600u
+#define NB_ATTENTION_TREMOR_RESAMPLE_MAX_MS 1400u
+#define NB_ATTENTION_TREMOR_TAU_MS 200.0f
 
 typedef enum {
     NB_ATTENTION_FIXATE = 0,
