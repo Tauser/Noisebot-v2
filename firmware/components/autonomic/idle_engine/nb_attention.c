@@ -112,12 +112,26 @@ void nb_attention_tick(nb_attention_t *att, uint32_t dt_ms, float *gaze_x, float
         gx = att->from_x + (att->target_x - att->from_x) * ease;
         gy = att->from_y + (att->target_y - att->from_y) * ease;
     } else {
-        /* Micro-tremor: ruído branco por tick, amplitude <= NB_ATTENTION_TREMOR_AMPLITUDE
-         * -- "quietude deliberada" do RFC §7 (fixação viva, não estática). */
-        const float tremor_x = (rand01(&att->rng_state) * 2.0f - 1.0f) * NB_ATTENTION_TREMOR_AMPLITUDE;
-        const float tremor_y = (rand01(&att->rng_state) * 2.0f - 1.0f) * NB_ATTENTION_TREMOR_AMPLITUDE;
-        gx = att->target_x + tremor_x;
-        gy = att->target_y + tremor_y;
+        /* Micro-tremor suavizado: alvo re-sorteado a cada 150-350ms,
+         * aproximado por suavização exponencial (mesma técnica do
+         * SOFT_DRIFT em idle_engine.c) -- ruído branco puro por tick lia
+         * como flicker de alta frequência em bancada, não vida sutil. */
+        if (att->now_ms >= att->tremor_next_resample_ms) {
+            att->tremor_target_x =
+                (rand01(&att->rng_state) * 2.0f - 1.0f) * NB_ATTENTION_TREMOR_AMPLITUDE;
+            att->tremor_target_y =
+                (rand01(&att->rng_state) * 2.0f - 1.0f) * NB_ATTENTION_TREMOR_AMPLITUDE;
+            const uint32_t span =
+                NB_ATTENTION_TREMOR_RESAMPLE_MAX_MS - NB_ATTENTION_TREMOR_RESAMPLE_MIN_MS;
+            att->tremor_next_resample_ms = att->now_ms + NB_ATTENTION_TREMOR_RESAMPLE_MIN_MS +
+                                           (uint32_t)(rand01(&att->rng_state) * (float)span);
+        }
+        const float tremor_alpha = clampf((float)dt_ms / NB_ATTENTION_TREMOR_TAU_MS, 0.0f, 1.0f);
+        att->tremor_x += (att->tremor_target_x - att->tremor_x) * tremor_alpha;
+        att->tremor_y += (att->tremor_target_y - att->tremor_y) * tremor_alpha;
+
+        gx = att->target_x + att->tremor_x;
+        gy = att->target_y + att->tremor_y;
     }
 
     gx = clampf(gx, -NB_ATTENTION_ENVELOPE, NB_ATTENTION_ENVELOPE);

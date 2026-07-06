@@ -26,6 +26,14 @@ extern "C" {
 #define NB_ATTENTION_FIXATION_MAX_MS 3000u
 #define NB_ATTENTION_SACCADE_MS 80u
 #define NB_ATTENTION_TREMOR_AMPLITUDE 0.02f
+/* Tremor suavizado (bug real de bancada, 2026-07-06: ruído branco
+ * resorteado a cada tick de 20-33ms lia como "flicker" de alta frequência
+ * em vez de vida sutil -- mesma classe de problema que SOFT_DRIFT já
+ * resolveu em idle_engine.c, alvo re-sorteado periodicamente + suavização
+ * exponencial em vez de ruído puro tick-a-tick). */
+#define NB_ATTENTION_TREMOR_RESAMPLE_MIN_MS 150u
+#define NB_ATTENTION_TREMOR_RESAMPLE_MAX_MS 350u
+#define NB_ATTENTION_TREMOR_TAU_MS 80.0f
 
 typedef enum {
     NB_ATTENTION_FIXATE = 0,
@@ -50,6 +58,12 @@ typedef struct {
     float from_y;
     float target_x; /* alvo da fixação atual (sem tremor) */
     float target_y;
+
+    float tremor_x; /* tremor suavizado, somado ao alvo durante FIXATE */
+    float tremor_y;
+    float tremor_target_x;
+    float tremor_target_y;
+    uint32_t tremor_next_resample_ms;
 
     nb_attention_saccade_cb_t on_saccade;
     void *on_saccade_ctx;
