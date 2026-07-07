@@ -36,7 +36,11 @@ void nb_circadian_core_shell_init(void) {
     }
     nb_circadian_core_set_time_anchor(&s_core, (uint64_t)last_known_s * 1000u);
 
-    s_last_phase = NB_CIRCADIAN_PHASE_DAY;
+    /* Semeia com a fase real da âncora restaurada -- travar em DAY aqui
+     * fazia todo boot que acordasse de noite (comum com o clock acelerado
+     * 240x + persistência a cada 30s) disparar um SLEEP espúrio no
+     * primeiro tick, mesmo sem transição de fase de verdade. */
+    s_last_phase = nb_circadian_core_tick(&s_core, 0u).phase;
     s_pending_sleep = false;
     s_pending_wake = false;
     s_since_persist_ms = 0u;
