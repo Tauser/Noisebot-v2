@@ -24,10 +24,12 @@
 #define NB_MIND_LINK_RECV_TIMEOUT_MS 200u
 #define NB_MIND_LINK_FRAME_BUF_CAP (NBP2_FRAME_OVERHEAD + NBP2_MAX_CTRL_PAYLOAD)
 #define NB_MIND_LINK_HELLO_SEQ 1u
+#define NB_MIND_LINK_VOICE_QUEUE_CAP 8u
 
 static const char *TAG = "mind_link";
 static nb_mind_link_session_t s_session;
 static TaskHandle_t s_task_handle;
+static portMUX_TYPE s_voice_mux = portMUX_INITIALIZER_UNLOCKED;
 
 /* S3.5: disparo de timer pedido de fora da task (main.c/schedule_core_shell)
  * -- flag simples em vez de socket compartilhado entre tasks (só a task de
@@ -36,6 +38,28 @@ static TaskHandle_t s_task_handle;
  * task), suficiente sem fila/mutex. */
 static volatile bool s_pending_timer_fired;
 static volatile uint32_t s_pending_timer_fired_id;
+
+typedef enum {
+    NB_MIND_LINK_VOICE_ITEM_EVENT_WAKE = 0,
+    NB_MIND_LINK_VOICE_ITEM_LISTEN_START = 1,
+    NB_MIND_LINK_VOICE_ITEM_LISTEN_AUDIO = 2,
+    NB_MIND_LINK_VOICE_ITEM_LISTEN_END = 3,
+} nb_mind_link_voice_item_type_t;
+
+typedef struct {
+    nb_mind_link_voice_item_type_t type;
+    uint32_t session_id;
+    uint32_t sample_rate;
+    float wake_score;
+    uint16_t pcm_len_bytes;
+    uint8_t pcm[1024];
+} nb_mind_link_voice_item_t;
+
+static nb_mind_link_voice_item_t s_voice_queue[NB_MIND_LINK_VOICE_QUEUE_CAP];
+static uint8_t s_voice_queue_head;
+static uint8_t s_voice_queue_tail;
+static uint8_t s_voice_queue_count;
+static uint32_t s_voice_queue_dropped;
 
 typedef struct {
     uint8_t data[NB_MIND_LINK_FRAME_BUF_CAP];
@@ -104,12 +128,13 @@ static int nb_mind_link_shell_connect(void)
     return sock;
 }
 
-/* Buffers de envio ficam static de propósito: HELLO/HEARTBEAT são
- * mensagens pequenas, mas empilhar dois buffers deste tamanho na pilha da
- * task (send_hello chama send_frame, os dois ficam vivos ao mesmo tempo) já
- * causou stack overflow real em bancada — ver nb_mind_link_shell_task. Só
- * a task chama estas funções, sequencialmente, então static é seguro aqui. */
-#define NB_MIND_LINK_SEND_BUF_CAP 256u
+/* Buffers de envio ficam static de propósito: HELLO/HEARTBEAT são pequenas,
+ * mas S4.3 já envia LISTEN_AUDIO com payload CBOR >1 KB; deixar o frame
+ * final em 256 bytes fazia o primeiro chunk de áudio falhar no
+ * nbp2_encode_frame() e derrubar a sessão logo após LISTEN_START.
+ * O pior caso desta fatia continua muito abaixo do teto de CTRL (4 KB), então
+ * reaproveitamos a mesma capacidade máxima do framing local. */
+#define NB_MIND_LINK_SEND_BUF_CAP NB_MIND_LINK_FRAME_BUF_CAP
 
 static bool nb_mind_link_shell_send_frame(int sock, uint16_t type, uint32_t seq,
                                           const uint8_t *payload, uint16_t payload_len)
@@ -119,9 +144,19 @@ static bool nb_mind_link_shell_send_frame(int sock, uint16_t type, uint32_t seq,
 
     if (nbp2_encode_frame(type, seq, payload, payload_len, frame, sizeof(frame), &frame_len) !=
         NBP2_OK) {
+        ESP_LOGW(TAG,
+                 "encode_frame falhou type=0x%04x seq=%u payload_len=%u cap=%u",
+                 (unsigned)type, (unsigned)seq, (unsigned)payload_len,
+                 (unsigned)sizeof(frame));
         return false;
     }
-    return send(sock, frame, frame_len, 0) == (ssize_t)frame_len;
+    const ssize_t sent = send(sock, frame, frame_len, 0);
+    if (sent != (ssize_t)frame_len) {
+        ESP_LOGW(TAG, "send falhou type=0x%04x seq=%u sent=%d expected=%u errno=%d",
+                 (unsigned)type, (unsigned)seq, (int)sent, (unsigned)frame_len, errno);
+        return false;
+    }
+    return true;
 }
 
 static bool nb_mind_link_shell_send_hello(int sock, uint32_t boot_id)
@@ -144,7 +179,8 @@ static bool nb_mind_link_shell_send_hello(int sock, uint32_t boot_id)
                                          (uint16_t)payload_len);
 }
 
-static bool nb_mind_link_shell_send_heartbeat(int sock, uint32_t counter, uint32_t now_ms)
+static bool nb_mind_link_shell_send_heartbeat(int sock, uint32_t counter, uint32_t now_ms,
+                                              uint32_t seq)
 {
     nbp2_msg_heartbeat_t heartbeat;
     uint8_t payload[32];
@@ -157,7 +193,7 @@ static bool nb_mind_link_shell_send_heartbeat(int sock, uint32_t counter, uint32
     if (nbp2_encode_heartbeat(&heartbeat, payload, sizeof(payload), &payload_len) != NBP2_OK) {
         return false;
     }
-    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_HEARTBEAT, counter, payload,
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_HEARTBEAT, seq, payload,
                                          (uint16_t)payload_len);
 }
 
@@ -174,6 +210,114 @@ static bool nb_mind_link_shell_send_timer_fired(int sock, uint32_t timer_id, uin
     }
     return nb_mind_link_shell_send_frame(sock, NBP2_MSG_EVENT_TIMER_FIRED, seq, payload,
                                          (uint16_t)payload_len);
+}
+
+static bool nb_mind_link_shell_send_event_wake(int sock, float score, uint32_t seq)
+{
+    nbp2_msg_event_wake_t event;
+    uint8_t payload[32];
+    size_t payload_len;
+
+    event.score = score;
+    if (nbp2_encode_event_wake(&event, payload, sizeof(payload), &payload_len) != NBP2_OK) {
+        return false;
+    }
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_EVENT_WAKE, seq, payload,
+                                         (uint16_t)payload_len);
+}
+
+static bool nb_mind_link_shell_send_listen_start(int sock, uint32_t session_id,
+                                                 uint32_t sample_rate, uint32_t seq)
+{
+    nbp2_msg_listen_start_t msg;
+    uint8_t payload[32];
+    size_t payload_len;
+
+    msg.session_id = session_id;
+    msg.sample_rate = sample_rate;
+    if (nbp2_encode_listen_start(&msg, payload, sizeof(payload), &payload_len) != NBP2_OK) {
+        return false;
+    }
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_LISTEN_START, seq, payload,
+                                         (uint16_t)payload_len);
+}
+
+static bool nb_mind_link_shell_send_listen_audio(int sock, uint32_t session_id,
+                                                 const uint8_t *pcm, uint16_t pcm_len,
+                                                 uint32_t seq)
+{
+    nbp2_msg_listen_audio_t msg;
+    uint8_t payload[1200];
+    size_t payload_len;
+
+    memset(&msg, 0, sizeof(msg));
+    msg.session_id = session_id;
+    msg.pcm_len = pcm_len;
+    memcpy(msg.pcm, pcm, pcm_len);
+    if (nbp2_encode_listen_audio(&msg, payload, sizeof(payload), &payload_len) != NBP2_OK) {
+        return false;
+    }
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_LISTEN_AUDIO, seq, payload,
+                                         (uint16_t)payload_len);
+}
+
+static bool nb_mind_link_shell_send_listen_end(int sock, uint32_t session_id, uint32_t seq)
+{
+    nbp2_msg_listen_end_t msg;
+    uint8_t payload[32];
+    size_t payload_len;
+
+    msg.session_id = session_id;
+    if (nbp2_encode_listen_end(&msg, payload, sizeof(payload), &payload_len) != NBP2_OK) {
+        return false;
+    }
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_LISTEN_END, seq, payload,
+                                         (uint16_t)payload_len);
+}
+
+static bool nb_mind_link_shell_voice_queue_push(const nb_mind_link_voice_item_t *item)
+{
+    bool ok = false;
+
+    if (item == NULL) {
+        return false;
+    }
+
+    portENTER_CRITICAL(&s_voice_mux);
+    if (s_voice_queue_count < NB_MIND_LINK_VOICE_QUEUE_CAP) {
+        s_voice_queue[s_voice_queue_tail] = *item;
+        s_voice_queue_tail = (uint8_t)((s_voice_queue_tail + 1u) % NB_MIND_LINK_VOICE_QUEUE_CAP);
+        ++s_voice_queue_count;
+        ok = true;
+    } else {
+        ++s_voice_queue_dropped;
+    }
+    portEXIT_CRITICAL(&s_voice_mux);
+
+    if (!ok) {
+        ESP_LOGW(TAG, "fila de voz cheia, descartando item type=%u drop=%u",
+                 (unsigned)item->type, (unsigned)s_voice_queue_dropped);
+    }
+    return ok;
+}
+
+static bool nb_mind_link_shell_voice_queue_pop(nb_mind_link_voice_item_t *out)
+{
+    bool ok = false;
+
+    if (out == NULL) {
+        return false;
+    }
+
+    portENTER_CRITICAL(&s_voice_mux);
+    if (s_voice_queue_count > 0u) {
+        *out = s_voice_queue[s_voice_queue_head];
+        s_voice_queue_head = (uint8_t)((s_voice_queue_head + 1u) % NB_MIND_LINK_VOICE_QUEUE_CAP);
+        --s_voice_queue_count;
+        ok = true;
+    }
+    portEXIT_CRITICAL(&s_voice_mux);
+    return ok;
 }
 
 /* Extrai um frame completo do acumulador, se houver. Descarta byte a byte
@@ -316,6 +460,55 @@ void nb_mind_link_shell_notify_timer_fired(uint32_t timer_id)
     s_pending_timer_fired = true;
 }
 
+bool nb_mind_link_shell_notify_event_wake(float score)
+{
+    nb_mind_link_voice_item_t item;
+
+    memset(&item, 0, sizeof(item));
+    item.type = NB_MIND_LINK_VOICE_ITEM_EVENT_WAKE;
+    item.wake_score = score;
+    return nb_mind_link_shell_voice_queue_push(&item);
+}
+
+bool nb_mind_link_shell_notify_listen_start(uint32_t session_id, uint32_t sample_rate)
+{
+    nb_mind_link_voice_item_t item;
+
+    memset(&item, 0, sizeof(item));
+    item.type = NB_MIND_LINK_VOICE_ITEM_LISTEN_START;
+    item.session_id = session_id;
+    item.sample_rate = sample_rate;
+    return nb_mind_link_shell_voice_queue_push(&item);
+}
+
+bool nb_mind_link_shell_notify_listen_audio(uint32_t session_id, const int16_t *pcm,
+                                            uint32_t samples)
+{
+    nb_mind_link_voice_item_t item;
+    uint32_t pcm_len_bytes = samples * (uint32_t)sizeof(int16_t);
+
+    if (pcm == NULL || pcm_len_bytes == 0u || pcm_len_bytes > sizeof(item.pcm)) {
+        return false;
+    }
+
+    memset(&item, 0, sizeof(item));
+    item.type = NB_MIND_LINK_VOICE_ITEM_LISTEN_AUDIO;
+    item.session_id = session_id;
+    item.pcm_len_bytes = (uint16_t)pcm_len_bytes;
+    memcpy(item.pcm, pcm, pcm_len_bytes);
+    return nb_mind_link_shell_voice_queue_push(&item);
+}
+
+bool nb_mind_link_shell_notify_listen_end(uint32_t session_id)
+{
+    nb_mind_link_voice_item_t item;
+
+    memset(&item, 0, sizeof(item));
+    item.type = NB_MIND_LINK_VOICE_ITEM_LISTEN_END;
+    item.session_id = session_id;
+    return nb_mind_link_shell_voice_queue_push(&item);
+}
+
 static void nb_mind_link_shell_task(void *arg)
 {
     /* static, não na pilha: NB_MIND_LINK_FRAME_BUF_CAP (~4.1 KB) não cabe
@@ -324,6 +517,7 @@ static void nb_mind_link_shell_task(void *arg)
      * em bancada real antes desta correção. */
     static nb_mind_link_frame_buf_t buf;
     uint32_t heartbeat_counter;
+    uint32_t tx_seq;
 
     (void)arg;
 
@@ -340,6 +534,7 @@ static void nb_mind_link_shell_task(void *arg)
 
         boot_id = esp_random();
         heartbeat_counter = 0u;
+        tx_seq = NB_MIND_LINK_HELLO_SEQ + 1u;
         buf.len = 0u;
 
         nb_mind_link_session_on_connected(&s_session, nb_mind_link_shell_now_ms(), boot_id);
@@ -362,7 +557,7 @@ static void nb_mind_link_shell_task(void *arg)
             static nb_mind_link_parsed_frame_t frame;
 
             if (nb_mind_link_session_tick(&s_session, now_ms)) {
-                if (!nb_mind_link_shell_send_heartbeat(sock, ++heartbeat_counter, now_ms)) {
+                if (!nb_mind_link_shell_send_heartbeat(sock, ++heartbeat_counter, now_ms, tx_seq++)) {
                     ESP_LOGW(TAG, "falha ao enviar HEARTBEAT");
                     nb_mind_link_session_on_disconnected(&s_session);
                     break;
@@ -378,11 +573,48 @@ static void nb_mind_link_shell_task(void *arg)
                 const uint32_t timer_id = s_pending_timer_fired_id;
                 s_pending_timer_fired = false;
                 if (nb_mind_link_session_get_state(&s_session) == NB_MIND_LINK_STATE_READY) {
-                    if (nb_mind_link_shell_send_timer_fired(sock, timer_id, ++heartbeat_counter)) {
+                    if (nb_mind_link_shell_send_timer_fired(sock, timer_id, tx_seq++)) {
                         ESP_LOGI(TAG, "EVENT_TIMER_FIRED enviado -- id=%u", (unsigned)timer_id);
                     } else {
                         ESP_LOGW(TAG, "falha ao enviar EVENT_TIMER_FIRED -- id=%u", (unsigned)timer_id);
                     }
+                }
+            }
+
+            if (nb_mind_link_session_get_state(&s_session) == NB_MIND_LINK_STATE_READY) {
+                nb_mind_link_voice_item_t voice_item;
+
+                while (nb_mind_link_shell_voice_queue_pop(&voice_item)) {
+                    bool sent = false;
+
+                    switch (voice_item.type) {
+                    case NB_MIND_LINK_VOICE_ITEM_EVENT_WAKE:
+                        sent = nb_mind_link_shell_send_event_wake(sock, voice_item.wake_score, tx_seq++);
+                        break;
+                    case NB_MIND_LINK_VOICE_ITEM_LISTEN_START:
+                        sent = nb_mind_link_shell_send_listen_start(sock, voice_item.session_id,
+                                                                    voice_item.sample_rate, tx_seq++);
+                        break;
+                    case NB_MIND_LINK_VOICE_ITEM_LISTEN_AUDIO:
+                        sent = nb_mind_link_shell_send_listen_audio(sock, voice_item.session_id,
+                                                                    voice_item.pcm,
+                                                                    voice_item.pcm_len_bytes, tx_seq++);
+                        break;
+                    case NB_MIND_LINK_VOICE_ITEM_LISTEN_END:
+                        sent = nb_mind_link_shell_send_listen_end(sock, voice_item.session_id, tx_seq++);
+                        break;
+                    default:
+                        break;
+                    }
+
+                    if (!sent) {
+                        ESP_LOGW(TAG, "falha ao enviar item de voz type=%u", (unsigned)voice_item.type);
+                        nb_mind_link_session_on_disconnected(&s_session);
+                        break;
+                    }
+                }
+                if (nb_mind_link_session_get_state(&s_session) == NB_MIND_LINK_STATE_DEAD) {
+                    break;
                 }
             }
 
@@ -426,6 +658,10 @@ esp_err_t nb_mind_link_shell_init(void)
     }
 
     nb_mind_link_session_init(&s_session);
+    s_voice_queue_head = 0u;
+    s_voice_queue_tail = 0u;
+    s_voice_queue_count = 0u;
+    s_voice_queue_dropped = 0u;
 
     if (xTaskCreate(nb_mind_link_shell_task, "mind_link", NB_MIND_LINK_TASK_STACK, NULL,
                     NB_MIND_LINK_TASK_PRIO, &s_task_handle) != pdPASS) {

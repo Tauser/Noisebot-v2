@@ -46,6 +46,14 @@ static nb_reflex_stimulus_t map_voice_event(const nb_voice_event_payload_t *payl
     switch ((nb_voice_event_kind_t)payload->kind) {
     case NB_VOICE_EVENT_WAKE:
         return NB_REFLEX_STIMULUS_VOICE_START;
+    case NB_VOICE_EVENT_LISTEN_AUDIO:
+        if ((nb_voice_audio_level_t)payload->detail == NB_VOICE_AUDIO_LEVEL_LOUD) {
+            return NB_REFLEX_STIMULUS_VOICE_LOUD;
+        }
+        if ((nb_voice_audio_level_t)payload->detail == NB_VOICE_AUDIO_LEVEL_SOFT) {
+            return NB_REFLEX_STIMULUS_VOICE_SOFT;
+        }
+        return NB_REFLEX_STIMULUS_COUNT;
     default:
         return NB_REFLEX_STIMULUS_COUNT;
     }

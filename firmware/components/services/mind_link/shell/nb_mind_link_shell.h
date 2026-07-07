@@ -25,6 +25,11 @@ nb_mind_link_state_t nb_mind_link_shell_get_state(void);
  * descartado, sem reenvio depois). Chamada de fora da task de mind_link
  * (main.c/schedule_core_shell), por isso não recebe o socket direto. */
 void nb_mind_link_shell_notify_timer_fired(uint32_t timer_id);
+bool nb_mind_link_shell_notify_event_wake(float score);
+bool nb_mind_link_shell_notify_listen_start(uint32_t session_id, uint32_t sample_rate);
+bool nb_mind_link_shell_notify_listen_audio(uint32_t session_id, const int16_t *pcm,
+                                            uint32_t samples);
+bool nb_mind_link_shell_notify_listen_end(uint32_t session_id);
 
 #ifdef __cplusplus
 }

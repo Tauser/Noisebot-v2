@@ -156,6 +156,24 @@ def handle_connection(
                 conn.sendall(
                     nbp2.encode_frame(nbp2.MSG_HEARTBEAT, view.seq, nbp2.encode_heartbeat(reply))
                 )
+            elif view.msg_type == nbp2.MSG_EVENT_WAKE:
+                wake = nbp2.decode_event_wake(view.payload)
+                print(f"nbp2-fake-server: EVENT_WAKE score={wake.score:.2f}")
+            elif view.msg_type == nbp2.MSG_LISTEN_START:
+                listen = nbp2.decode_listen_start(view.payload)
+                print(
+                    "nbp2-fake-server: LISTEN_START "
+                    f"session_id={listen.session_id} sample_rate={listen.sample_rate}"
+                )
+            elif view.msg_type == nbp2.MSG_LISTEN_AUDIO:
+                audio = nbp2.decode_listen_audio(view.payload)
+                print(
+                    "nbp2-fake-server: LISTEN_AUDIO "
+                    f"session_id={audio.session_id} bytes={len(audio.pcm)}"
+                )
+            elif view.msg_type == nbp2.MSG_LISTEN_END:
+                listen = nbp2.decode_listen_end(view.payload)
+                print(f"nbp2-fake-server: LISTEN_END session_id={listen.session_id}")
             else:
                 print(f"nbp2-fake-server: frame tipo 0x{view.msg_type:04x} ignorado")
 

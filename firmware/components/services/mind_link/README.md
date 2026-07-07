@@ -21,9 +21,13 @@ Contrato do núcleo:
   consciente para manter testável): `min(500 ms * 2^tentativa, 30 s)`;
   tentativas zeram no primeiro `HELLO_ACK` bem-sucedido.
 
-**Pendente (fora do escopo desta fatia, ver `docs/ROADMAP.md` §S1.7):** casca
-com socket TCP real, reconexão de verdade e persistência do token em NVS —
-isso exige compilar `protocol/generated/c` dentro do build do ESP-IDF
-(codegen Python + PyYAML no toolchain do firmware), decisão adiada de
-propósito para não arriscar o `firmware-build` do CI sem um consumidor real
-ainda. Soak de 100 reconexões só faz sentido contra a casca real.
+**Avanço S4.3 (2026-07-07, parcial):** além de `HEARTBEAT` e
+`EVENT_TIMER_FIRED`, a casca passou a aceitar pedidos externos enfileirados
+para `EVENT_WAKE` e `LISTEN_START/LISTEN_AUDIO/LISTEN_END` por uma fila
+estática protegida por critical section. O socket continua sendo propriedade
+exclusiva da task `mind_link`; produtores externos só enfileiram intent de
+envio, nunca fazem `send()` direto.
+
+**Ainda pendente:** recepção de `SAY_*`, backpressure/queda no meio do
+stream, métricas de queue/drop para `STATUS`, e soak completo do fluxo contra
+um server fake ou a mente real.

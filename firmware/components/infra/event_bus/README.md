@@ -18,5 +18,9 @@ com critical section (`portENTER_CRITICAL`/`portEXIT_CRITICAL`).
 
 **S3.2:** primeira casca real (`shell/nb_event_bus_shell.c`, instância única
 protegida por critical section) — `touch_service_shell` publica
-`NB_EVENT_TYPE_TOUCH`, `reflex_engine_shell` faz o poll. `nb_event_type_t`
-já reserva IDs para VOICE/SAFETY/MIND_HINT (S4/S6), sem produtor ainda.
+`NB_EVENT_TYPE_TOUCH`, `reflex_engine_shell` faz o poll.
+
+**S4.2:** `wake_service_shell` passou a publicar `NB_EVENT_TYPE_VOICE`.
+`nb_voice_event_payload_t.kind` distingue wake/listen/feedback e
+`detail` carrega metadado coarse específico por evento (nível de áudio,
+motivo de end, feedback honesto) sem estourar os 16 bytes do payload.

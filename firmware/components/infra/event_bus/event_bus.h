@@ -58,12 +58,18 @@ typedef enum {
     NB_VOICE_EVENT_FEEDBACK = 4,
 } nb_voice_event_kind_t;
 
+typedef enum {
+    NB_VOICE_AUDIO_LEVEL_NONE = 0,
+    NB_VOICE_AUDIO_LEVEL_SOFT = 1,
+    NB_VOICE_AUDIO_LEVEL_LOUD = 2,
+} nb_voice_audio_level_t;
+
 typedef struct {
     uint32_t session_id;
     uint32_t samples;
     float wake_score; /* só relevante em NB_VOICE_EVENT_WAKE */
     uint8_t kind;
-    uint8_t detail;   /* end_reason ou feedback, conforme o kind */
+    uint8_t detail;   /* audio_level/end_reason/feedback, conforme o kind */
     uint16_t reserved;
 } nb_voice_event_payload_t;
 

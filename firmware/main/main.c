@@ -125,6 +125,47 @@
 
 static const char *TAG = "nb2";
 
+static nb_voice_audio_level_t nb_app_main_voice_level_from_rms(float rms)
+{
+    if (rms >= 1800.0f) {
+        return NB_VOICE_AUDIO_LEVEL_LOUD;
+    }
+    if (rms >= 700.0f) {
+        return NB_VOICE_AUDIO_LEVEL_SOFT;
+    }
+    return NB_VOICE_AUDIO_LEVEL_NONE;
+}
+
+static void nb_app_main_voice_sink(const nb_wake_output_t *out, const int16_t *pcm,
+                                   uint32_t samples, float wake_score, void *ctx)
+{
+    (void)ctx;
+
+    if (out == NULL) {
+        return;
+    }
+
+    switch (out->action) {
+    case NB_WAKE_ACTION_SESSION_ARMED:
+        (void)nb_mind_link_shell_notify_event_wake(wake_score);
+        break;
+    case NB_WAKE_ACTION_LISTEN_BEGIN_WITH_AUDIO:
+        (void)nb_mind_link_shell_notify_listen_start(out->session_id, NB_WAKE_SERVICE_SAMPLE_RATE);
+        (void)nb_mind_link_shell_notify_listen_audio(out->session_id, pcm, samples);
+        break;
+    case NB_WAKE_ACTION_LISTEN_AUDIO:
+        (void)nb_mind_link_shell_notify_listen_audio(out->session_id, pcm, samples);
+        break;
+    case NB_WAKE_ACTION_LISTEN_END:
+        (void)nb_mind_link_shell_notify_listen_end(out->session_id);
+        break;
+    case NB_WAKE_ACTION_FEEDBACK:
+    case NB_WAKE_ACTION_NONE:
+    default:
+        break;
+    }
+}
+
 #if CONFIG_NB_WAKE_BENCH_HARNESS
 static float nb_app_main_clamp01(float x)
 {
@@ -318,6 +359,7 @@ static void nb_app_main_audio_task(void *arg)
         const int64_t now_us = esp_timer_get_time();
         nb_wake_service_shell_tick();
         const float rms = nb_audio_hal_rms_s16(mic_buf, read_count);
+        const nb_voice_audio_level_t audio_level = nb_app_main_voice_level_from_rms(rms);
         if (read_count > 0u) {
 #if CONFIG_NB_WAKE_BENCH_HARNESS
             const uint32_t now_ms = (uint32_t)(now_us / 1000);
@@ -335,7 +377,8 @@ static void nb_app_main_audio_task(void *arg)
             }
 
             if (nb_wake_service_shell_get_state() != NB_WAKE_STATE_IDLE) {
-                nb_wake_service_shell_on_audio_frame(speech_detected, (uint32_t)read_count);
+                nb_wake_service_shell_on_audio_frame(mic_buf, speech_detected, (uint32_t)read_count,
+                                                     audio_level);
             }
 #endif
         }
@@ -431,6 +474,7 @@ void app_main(void)
 #else
         nb_wake_service_shell_set_vad_available(false);
 #endif
+        nb_wake_service_shell_set_voice_sink(nb_app_main_voice_sink, NULL);
         nb_wake_service_shell_set_routes(
             nb_mind_link_shell_get_state() == NB_MIND_LINK_STATE_READY, false);
     }

@@ -7,9 +7,17 @@
 #include "nb_event_bus_shell.h"
 
 static const char *TAG = "wake_service";
+static const uint32_t NB_WAKE_LISTEN_BUDGET_MS = 250u;
 
 static nb_wake_service_t s_svc;
 static bool s_initialized;
+static uint32_t s_last_armed_at_ms;
+static uint32_t s_last_listen_latency_ms;
+static uint32_t s_max_listen_latency_ms;
+static uint32_t s_listen_budget_miss_count;
+static uint32_t s_listen_start_count;
+static nb_wake_service_shell_voice_sink_t s_voice_sink;
+static void *s_voice_sink_ctx;
 
 static uint32_t nb_wake_service_shell_now_ms(void)
 {
@@ -41,7 +49,9 @@ static void nb_wake_service_shell_publish(nb_voice_event_kind_t kind, uint32_t s
     }
 }
 
-static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, float wake_score)
+static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, float wake_score,
+                                                nb_voice_audio_level_t audio_level,
+                                                const int16_t *pcm)
 {
     if (out == NULL) {
         return;
@@ -49,25 +59,65 @@ static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, flo
 
     switch (out->action) {
     case NB_WAKE_ACTION_SESSION_ARMED:
+        s_last_armed_at_ms = nb_wake_service_shell_now_ms();
         ESP_LOGI(TAG, "wake armado -- session=%u score=%.2f", (unsigned)out->session_id,
                  (double)wake_score);
         nb_wake_service_shell_publish(NB_VOICE_EVENT_WAKE, out->session_id, 0u, wake_score, 0u);
+        if (s_voice_sink != NULL) {
+            s_voice_sink(out, NULL, 0u, wake_score, s_voice_sink_ctx);
+        }
         break;
     case NB_WAKE_ACTION_LISTEN_BEGIN_WITH_AUDIO:
-        ESP_LOGI(TAG, "listen_start -- session=%u samples=%u", (unsigned)out->session_id,
-                 (unsigned)out->samples);
+        s_last_listen_latency_ms = 0u;
+        if (s_last_armed_at_ms != 0u) {
+            s_last_listen_latency_ms = nb_wake_service_shell_now_ms() - s_last_armed_at_ms;
+            if (s_last_listen_latency_ms > s_max_listen_latency_ms) {
+                s_max_listen_latency_ms = s_last_listen_latency_ms;
+            }
+            ++s_listen_start_count;
+            if (s_last_listen_latency_ms > NB_WAKE_LISTEN_BUDGET_MS) {
+                ++s_listen_budget_miss_count;
+                ESP_LOGW(TAG,
+                         "listen_start -- session=%u samples=%u latency_ms=%u budget_ms=%u miss=%u/%u",
+                         (unsigned)out->session_id, (unsigned)out->samples,
+                         (unsigned)s_last_listen_latency_ms,
+                         (unsigned)NB_WAKE_LISTEN_BUDGET_MS,
+                         (unsigned)s_listen_budget_miss_count,
+                         (unsigned)s_listen_start_count);
+            } else {
+                ESP_LOGI(TAG,
+                         "listen_start -- session=%u samples=%u latency_ms=%u budget_ms=%u",
+                         (unsigned)out->session_id, (unsigned)out->samples,
+                         (unsigned)s_last_listen_latency_ms,
+                         (unsigned)NB_WAKE_LISTEN_BUDGET_MS);
+            }
+        } else {
+            ESP_LOGI(TAG, "listen_start -- session=%u samples=%u", (unsigned)out->session_id,
+                     (unsigned)out->samples);
+        }
         nb_wake_service_shell_publish(NB_VOICE_EVENT_LISTEN_START, out->session_id, out->samples,
                                       0.0f, 0u);
+        nb_wake_service_shell_publish(NB_VOICE_EVENT_LISTEN_AUDIO, out->session_id, out->samples,
+                                      0.0f, (uint8_t)audio_level);
+        if (s_voice_sink != NULL) {
+            s_voice_sink(out, pcm, out->samples, 0.0f, s_voice_sink_ctx);
+        }
         break;
     case NB_WAKE_ACTION_LISTEN_AUDIO:
         nb_wake_service_shell_publish(NB_VOICE_EVENT_LISTEN_AUDIO, out->session_id, out->samples,
-                                      0.0f, 0u);
+                                      0.0f, (uint8_t)audio_level);
+        if (s_voice_sink != NULL) {
+            s_voice_sink(out, pcm, out->samples, 0.0f, s_voice_sink_ctx);
+        }
         break;
     case NB_WAKE_ACTION_LISTEN_END:
         ESP_LOGI(TAG, "listen_end -- session=%u reason=%u samples=%u", (unsigned)out->session_id,
                  (unsigned)out->end_reason, (unsigned)out->samples);
         nb_wake_service_shell_publish(NB_VOICE_EVENT_LISTEN_END, out->session_id, out->samples,
                                       0.0f, (uint8_t)out->end_reason);
+        if (s_voice_sink != NULL) {
+            s_voice_sink(out, NULL, 0u, 0.0f, s_voice_sink_ctx);
+        }
         break;
     case NB_WAKE_ACTION_FEEDBACK:
         ESP_LOGW(TAG, "feedback honesto -- session=%u feedback=%u", (unsigned)out->session_id,
@@ -88,6 +138,13 @@ esp_err_t nb_wake_service_shell_init(void)
     }
 
     nb_wake_service_init(&s_svc);
+    s_last_armed_at_ms = 0u;
+    s_last_listen_latency_ms = 0u;
+    s_max_listen_latency_ms = 0u;
+    s_listen_budget_miss_count = 0u;
+    s_listen_start_count = 0u;
+    s_voice_sink = NULL;
+    s_voice_sink_ctx = NULL;
     s_initialized = true;
     return ESP_OK;
 }
@@ -110,6 +167,12 @@ void nb_wake_service_shell_set_routes(bool mind_connected, bool local_intent_ava
     nb_wake_service_set_routes(&s_svc, mind_connected, local_intent_available);
 }
 
+void nb_wake_service_shell_set_voice_sink(nb_wake_service_shell_voice_sink_t sink, void *ctx)
+{
+    s_voice_sink = sink;
+    s_voice_sink_ctx = ctx;
+}
+
 void nb_wake_service_shell_trigger_wake(float score)
 {
     nb_wake_output_t out;
@@ -125,11 +188,12 @@ void nb_wake_service_shell_trigger_wake(float score)
     }
 
     if (nb_wake_service_on_wake(&s_svc, nb_wake_service_shell_now_ms(), &out)) {
-        nb_wake_service_shell_handle_output(&out, score);
+        nb_wake_service_shell_handle_output(&out, score, NB_VOICE_AUDIO_LEVEL_NONE, NULL);
     }
 }
 
-void nb_wake_service_shell_on_audio_frame(bool vad_detected_speech, uint32_t samples)
+void nb_wake_service_shell_on_audio_frame(const int16_t *pcm, bool vad_detected_speech,
+                                          uint32_t samples, nb_voice_audio_level_t audio_level)
 {
     nb_wake_output_t out;
 
@@ -139,7 +203,7 @@ void nb_wake_service_shell_on_audio_frame(bool vad_detected_speech, uint32_t sam
 
     if (nb_wake_service_on_audio_frame(&s_svc, nb_wake_service_shell_now_ms(),
                                        vad_detected_speech, samples, &out)) {
-        nb_wake_service_shell_handle_output(&out, 0.0f);
+        nb_wake_service_shell_handle_output(&out, 0.0f, audio_level, pcm);
     }
 }
 
@@ -152,7 +216,7 @@ void nb_wake_service_shell_tick(void)
     }
 
     if (nb_wake_service_tick(&s_svc, nb_wake_service_shell_now_ms(), &out)) {
-        nb_wake_service_shell_handle_output(&out, 0.0f);
+        nb_wake_service_shell_handle_output(&out, 0.0f, NB_VOICE_AUDIO_LEVEL_NONE, NULL);
     }
 }
 
