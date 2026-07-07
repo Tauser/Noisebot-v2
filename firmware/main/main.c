@@ -151,7 +151,7 @@ static void nb_app_main_face_demo_task(void *arg)
     (void)arg;
 
     nb_idle_engine_init(&idle, esp_random());
-    nb_emotion_core_init(&emotion);
+    nb_emotion_core_init(&emotion, esp_random());
     nb_tiny_fsm_init(&fsm);
     nb_tiny_fsm_apply_event(&fsm, NB_FSM_EVENT_BOOT_OK);
 

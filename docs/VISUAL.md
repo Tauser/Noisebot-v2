@@ -63,9 +63,17 @@ mapeamentos da emoção que decaem para NEUTRAL.
 `NEUTRAL` fechada com micro-sorriso sutil, `HAPPY` aberta e sorrindo,
 `SAD` curva suave pra baixo, `ANGRY` curva invertida mais firme que
 `SAD`. As outras 6 âncoras continuam boca neutra (`0,0`) — e, desde o
-item 6, nem são mais alcançáveis pelo vetor de qualquer forma. Estático
-por enquanto: sem variação por variante episódica nem visemas de fala
-(item 7 e S4 voz, respectivamente).
+item 6, nem são mais alcançáveis pelo vetor de qualquer forma. Sem
+visemas de fala ainda (S4 voz).
+
+**Variantes episódicas (item 7):** 2 por hub, sorteadas ao entrar na
+região (troca de hub dominante) e mantidas por todo o episódio —
+`NEUTRAL` sereno (pálpebra ~5% mais baixa) / atento (gaze um traço mais
+alto); `HAPPY` radiante (boca mais aberta) / contido (sorriso mais
+fechado); `SAD` murcho (gaze baixo) / magoado (assimetria); `ANGRY`
+irritado (squint parcial) / bravo (squint cheio). Tempera o resultado do
+campo contínuo, escalado pelo peso do hub dominante — nunca sai do
+envelope da região (clamp).
 
 ## 3. Vida em IDLE (idle_engine)
 

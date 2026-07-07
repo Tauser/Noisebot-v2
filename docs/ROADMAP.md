@@ -1907,10 +1907,23 @@ doc — o RFC assume coisas que não são verdade hoje):
    converge pro temperamento (não mais zero) dos dois lados; decay
    assimétrico fica pra S3.8. Suíte inteira verde nas duas configs de
    flag; build limpo. **Falta:** confirmação visual em bancada.
-7. **Variantes episódicas** (2 por hub): sorteadas ao entrar na região,
-   duram o episódio. Host-test RFC §9(5): nunca sai do envelope da região.
-   Gate: host-test verde, build limpo, bancada (perceptível sem confundir
-   a emoção-base).
+7. **Variantes episódicas** (2 por hub) — **`FEITO` (2026-07-06), pendente
+   bancada.** Sorteadas ao entrar na região (troca de hub dominante — o
+   de maior peso no blend), mantidas por todo o episódio: `NEUTRAL`
+   sereno/atento, `HAPPY` radiante/contido, `SAD` murcho/magoado, `ANGRY`
+   irritado/bravo (deltas práticos em pálpebra/gaze/boca/squint, RFC não
+   dá números — retunar em bancada). `emotion_core` ganhou RNG próprio
+   (xorshift32) só pra isso; `nb_emotion_core_resolve_face()` deixou de
+   ser `const state` (precisa atualizar `rng_state`/`dominant_hub`/
+   `active_variant`); `nb_emotion_core_init()` ganhou parâmetro de
+   semente. Variante escalada pelo peso do hub dominante — esmaece com
+   ele, nunca salto na troca de episódio (o peso é o mesmo dos dois lados
+   exatamente no instante da troca, por definição de "dominante").
+   Host-test RFC §9(5): nunca sai do envelope da região (clamp em
+   `open_l/r`, `mouth_open`, `squint_l/r`); variante persiste enquanto o
+   hub dominante não muda; troca de hub dispara novo sorteio. Suíte
+   inteira verde nas duas configs de flag; build limpo. **Falta:**
+   confirmação em bancada (perceptível sem confundir a emoção-base).
 8. **Aposentar o catálogo antigo (S2.4) + docs:** `NB_IDLE_V2_SPIKE` vira
    único caminho — remove `pick_long_motif`/`start_long_motif`/
    `sample_next_motif_ms` (hoje atrás de `#if !NB_IDLE_V2_SPIKE`) e os

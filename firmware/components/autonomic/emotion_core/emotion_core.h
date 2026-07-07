@@ -1,6 +1,8 @@
 #ifndef NB_EMOTION_CORE_H
 #define NB_EMOTION_CORE_H
 
+#include <stdbool.h>
+
 #include "renderer.h"
 
 #ifdef __cplusplus
@@ -22,6 +24,14 @@ extern "C" {
  * para a casca, quando existir -- fora do escopo desta fatia.
  */
 
+/* Variante episódica (S3.7 completo, item 7, RFC-VIDA-V2.md §3.1): duas
+ * por hub, sorteada ao entrar na região (troca de hub dominante), dura o
+ * episódio inteiro. */
+typedef enum {
+    NB_EMOTION_VARIANT_A = 0,
+    NB_EMOTION_VARIANT_B = 1,
+} nb_emotion_variant_t;
+
 typedef struct {
     float valence; /* [-1, +1] */
     float arousal; /* [-1, +1] */
@@ -33,9 +43,21 @@ typedef struct {
      * Gancho exposto via nb_emotion_core_set_circadian_offset(), ainda
      * não ligado por nenhuma casca (default 0.0, sem efeito). */
     float circadian_arousal_offset;
+
+    /* S3.7 completo, item 7: RNG embutido (xorshift32, mesma técnica dos
+     * núcleos do idle_engine) só pra sortear a variante episódica --
+     * nada mais aqui é estocástico. hub dominante + variante ativa
+     * rastreados pra detectar troca de episódio em
+     * nb_emotion_core_resolve_face(). */
+    uint32_t rng_state;
+    nb_face_expr_t dominant_hub;
+    nb_emotion_variant_t active_variant;
+    bool has_dominant_hub; /* false até a primeira resolve_face() */
 } nb_emotion_state_t;
 
-void nb_emotion_core_init(nb_emotion_state_t *state);
+/* Semente 0 é substituída por um valor fixo não-zero (xorshift32 trava em
+ * 0) -- mesma regra dos núcleos do idle_engine. */
+void nb_emotion_core_init(nb_emotion_state_t *state, uint32_t rng_seed);
 
 /* Soma um estímulo {delta_valence, delta_arousal} ao vetor, clampando o
  * resultado em [-1, +1] em cada eixo (BEHAVIOR.md §2: "delta é clampeado
@@ -67,10 +89,16 @@ nb_face_expr_t nb_emotion_core_nearest_expression(const nb_emotion_state_t *stat
  * os 4 hubs (NEUTRAL/HAPPY/SAD/ANGRY -- únicos com boca/campo contínuo;
  * as outras 6 âncoras saem de uso nesta decisão de produto, 2026-07-06).
  * Pesos por distância inversa ao quadrado (Shepard), normalizados; se o
- * vetor coincide exatamente com uma âncora, retorna aquela âncora bit-a-
- * bit (sem divisão por zero, RFC §9 "campo passa exatamente pelas
- * âncoras calibradas"). Nunca falha -- out sempre escrito. */
-void nb_emotion_core_resolve_face(const nb_emotion_state_t *state, nb_face_state_t *out);
+ * vetor coincide exatamente com uma âncora, retorna aquela âncora +
+ * variante (sem divisão por zero). Nunca falha -- out sempre escrito.
+ *
+ * S3.7 completo, item 7 (variantes episódicas, RFC §3.1): detecta troca
+ * de hub dominante (o de maior peso) e sorteia uma nova variante (A/B,
+ * 50/50) só nesse instante -- state deixa de ser const porque isso muda
+ * rng_state/dominant_hub/active_variant. A variante tempera o resultado
+ * do blend (escalada pelo peso do hub dominante, então esmaece junto com
+ * ele -- nunca um salto visual na troca de episódio). */
+void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *out);
 
 float nb_emotion_core_clampf(float v, float lo, float hi);
 

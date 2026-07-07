@@ -66,8 +66,43 @@ Host-test cobre: estado inicial neutro, clamp de estímulo por eixo e
 acumulado, decaimento convergindo pro temperamento (não mais zero) de
 ambos os lados, nearest-neighbor batendo exatamente em cada uma das 10
 âncoras (mantido), `resolve_face()` batendo exatamente em cada um dos 4
-hubs e variando continuamente entre eles (sem salto grande passo a
-passo), `NULL` seguro.
+hubs (com tolerância pro delta da variante) e variando continuamente
+entre eles (sem salto grande passo a passo), `NULL` seguro.
+
+## S3.7 completo — item 7: variantes episódicas
+
+Duas variantes por hub (RFC §3.1), sorteadas ao entrar na região (troca
+de hub dominante -- o de maior peso no blend) e mantidas por todo o
+episódio:
+
+| Hub | Variante A | Variante B |
+| --- | --- | --- |
+| `NEUTRAL` | "sereno": pálpebra ~5% mais baixa | "atento": gaze um traço mais alto |
+| `HAPPY` | "radiante": boca mais aberta | "contido": sorriso mais fechado |
+| `SAD` | "murcho": gaze baixo | "magoado": assimetria, evita olhar de frente |
+| `ANGRY` | "irritado": squint parcial | "bravo": squint cheio |
+
+`emotion_core` ganhou RNG próprio (xorshift32, mesma técnica dos núcleos
+do `idle_engine`) só pra isso — nada mais no componente é estocástico.
+`nb_emotion_core_resolve_face()` deixou de ser `const state` porque
+precisa atualizar `rng_state`/`dominant_hub`/`active_variant`. A
+variante tempera o resultado escalada pelo peso do hub dominante no
+blend — esmaece junto com ele, então trocar de episódio nunca causa um
+salto visual (o peso no instante da troca é o mesmo dos dois lados, por
+definição de "dominante").
+
+Deltas práticos (RFC não dá números pras variantes, só a intenção
+qualitativa) — retunar em bancada, mesma classe de
+`NB_IDLE_DRIFT_AMPLITUDE`. Envelope garantido por clamp (`open_l/r`,
+`mouth_open` em `[0,1]`; `squint_l/r` em `[0,2]`).
+
+`nb_emotion_core_init()` ganhou um parâmetro de semente (mesma regra dos
+núcleos do `idle_engine`); `main.c` semeia com `esp_random()`.
+
+Host-test cobre: variante persiste enquanto o hub dominante não muda;
+trocar de hub dominante atualiza `dominant_hub` (novo sorteio de
+variante); os testes de campo contínuo/exatidão do item 6 continuam
+verdes com a tolerância ajustada pro delta da variante.
 
 **Bug real achado em bancada (S2.5, histórico):** o pulso sintético de
 bring-up era aplicado a cada 15s, mais curto que a constante de
@@ -77,4 +112,4 @@ aumentando o intervalo para 90s; removido de vez em S3.2 quando o toque
 real chegou.
 
 **Fora do escopo desta fatia:** persistência da última expressão em NVS,
-decay assimétrico (S3.8), variantes episódicas (item 7 deste plano).
+decay assimétrico (S3.8).

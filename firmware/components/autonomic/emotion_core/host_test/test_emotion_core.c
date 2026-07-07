@@ -23,7 +23,7 @@ static void test_init_is_neutral(void)
 {
     nb_emotion_state_t state;
 
-    nb_emotion_core_init(&state);
+    nb_emotion_core_init(&state, 1u);
     CHECK(float_eq(state.valence, 0.0f, 0.0001f));
     CHECK(float_eq(state.arousal, 0.0f, 0.0001f));
     CHECK(nb_emotion_core_nearest_expression(&state) == NB_FACE_EXPR_NEUTRAL);
@@ -33,7 +33,7 @@ static void test_apply_stimulus_clamps_per_axis(void)
 {
     nb_emotion_state_t state;
 
-    nb_emotion_core_init(&state);
+    nb_emotion_core_init(&state, 1u);
     nb_emotion_core_apply_stimulus(&state, 2.0f, -3.0f);
     CHECK(float_eq(state.valence, 1.0f, 0.0001f));
     CHECK(float_eq(state.arousal, -1.0f, 0.0001f));
@@ -47,7 +47,7 @@ static void test_apply_stimulus_accumulates_within_bounds(void)
 {
     nb_emotion_state_t state;
 
-    nb_emotion_core_init(&state);
+    nb_emotion_core_init(&state, 1u);
     nb_emotion_core_apply_stimulus(&state, 0.3f, 0.2f);
     CHECK(float_eq(state.valence, 0.3f, 0.0001f));
     CHECK(float_eq(state.arousal, 0.2f, 0.0001f));
@@ -67,7 +67,7 @@ static void test_decay_reaches_5_percent_of_gap_to_temperament_by_60s(void)
 {
     nb_emotion_state_t state;
 
-    nb_emotion_core_init(&state);
+    nb_emotion_core_init(&state, 1u);
     nb_emotion_core_apply_stimulus(&state, 1.0f, -1.0f);
 
     for (uint32_t ms = 0; ms < 60000u; ms += 20u) {
@@ -84,7 +84,7 @@ static void test_decay_converges_monotonically_toward_temperament(void)
     nb_emotion_state_t state;
     float prev_valence;
 
-    nb_emotion_core_init(&state);
+    nb_emotion_core_init(&state, 1u);
     nb_emotion_core_apply_stimulus(&state, 0.8f, 0.0f);
     prev_valence = state.valence;
 
@@ -101,7 +101,7 @@ static void test_decay_from_negative_converges_toward_temperament(void)
 {
     nb_emotion_state_t state;
 
-    nb_emotion_core_init(&state);
+    nb_emotion_core_init(&state, 1u);
     nb_emotion_core_apply_stimulus(&state, -0.9f, -0.5f);
 
     for (int i = 0; i < 200; ++i) {
@@ -122,7 +122,11 @@ static void test_nearest_expression_matches_each_anchor_exactly(void)
     };
 
     for (uint32_t i = 0; i < NB_FACE_EXPR_COUNT; ++i) {
-        nb_emotion_state_t state = {anchors[i][0], anchors[i][1], 0.0f};
+        nb_emotion_state_t state;
+
+        nb_emotion_core_init(&state, 1u);
+        state.valence = anchors[i][0];
+        state.arousal = anchors[i][1];
         CHECK(nb_emotion_core_nearest_expression(&state) == (nb_face_expr_t)i);
     }
 }
@@ -141,7 +145,7 @@ static void test_clampf(void)
 
 static void test_null_is_safe(void)
 {
-    nb_emotion_core_init(NULL);
+    nb_emotion_core_init(NULL, 1u);
     nb_emotion_core_apply_stimulus(NULL, 1.0f, 1.0f);
     nb_emotion_core_tick(NULL, 100u);
     nb_face_state_t out;
@@ -152,7 +156,10 @@ static void test_null_is_safe(void)
 
 /* RFC-VIDA-V2.md §9, host-test (4): "campo passa exatamente pelas âncoras
  * calibradas" -- só os 4 hubs participam (as outras 6 saem de uso,
- * decisão de 2026-07-06). */
+ * decisão de 2026-07-06). Tolerância alargada (item 7): a variante
+ * episódica tempera o resultado mesmo exatamente na âncora (peso 1.0) --
+ * `mouth_curve` não é tocado por nenhuma variante, então continua exato;
+ * `mouth_open`/`open_l` têm folga pro delta máximo de variante (±0.15). */
 static void test_resolve_face_matches_each_hub_exactly(void)
 {
     const nb_face_expr_t hubs[] = {NB_FACE_EXPR_NEUTRAL, NB_FACE_EXPR_HAPPY, NB_FACE_EXPR_SAD,
@@ -162,15 +169,18 @@ static void test_resolve_face_matches_each_hub_exactly(void)
     const float anchor_a[] = {0.0f, 0.3f, -0.4f, 0.6f};
 
     for (size_t i = 0; i < sizeof(hubs) / sizeof(hubs[0]); ++i) {
-        nb_emotion_state_t state = {anchor_v[i], anchor_a[i], 0.0f};
+        nb_emotion_state_t state;
         nb_face_state_t out;
 
+        nb_emotion_core_init(&state, (uint32_t)i + 1u);
+        state.valence = anchor_v[i];
+        state.arousal = anchor_a[i];
         nb_emotion_core_resolve_face(&state, &out);
 
         const nb_face_state_t *expected = nb_face_core_get_expression(hubs[i]);
-        CHECK(float_eq(out.mouth_open, expected->mouth_open, 0.0001f));
         CHECK(float_eq(out.mouth_curve, expected->mouth_curve, 0.0001f));
-        CHECK(float_eq(out.open_l, expected->open_l, 0.0001f));
+        CHECK(float_eq(out.mouth_open, expected->mouth_open, 0.2f));
+        CHECK(float_eq(out.open_l, expected->open_l, 0.2f));
     }
 }
 
@@ -185,9 +195,12 @@ static void test_resolve_face_is_continuous_between_hubs(void)
 
     for (int i = 0; i <= steps; ++i) {
         const float t = (float)i / (float)steps;
-        nb_emotion_state_t state = {0.0f + t * 0.7f, 0.0f + t * 0.3f, 0.0f};
+        nb_emotion_state_t state;
         nb_face_state_t out;
 
+        nb_emotion_core_init(&state, 1u);
+        state.valence = 0.0f + t * 0.7f;
+        state.arousal = 0.0f + t * 0.3f;
         nb_emotion_core_resolve_face(&state, &out);
 
         if (has_prev) {
@@ -199,6 +212,49 @@ static void test_resolve_face_is_continuous_between_hubs(void)
         prev_mouth_curve = out.mouth_curve;
         has_prev = 1;
     }
+}
+
+/* S3.7 completo, item 7: a variante sorteada ao entrar numa região
+ * persiste enquanto o hub dominante não muda -- "dura o episódio"
+ * (RFC §3.1). */
+static void test_variant_persists_while_dominant_hub_unchanged(void)
+{
+    nb_emotion_state_t state;
+    nb_face_state_t out;
+
+    nb_emotion_core_init(&state, 42u);
+    state.valence = 0.7f;
+    state.arousal = 0.3f; /* HAPPY */
+    nb_emotion_core_resolve_face(&state, &out);
+    const nb_emotion_variant_t first_variant = state.active_variant;
+
+    /* Tick várias vezes sem sair da região de HAPPY -- a variante não
+     * pode mudar sozinha. */
+    for (int i = 0; i < 50; ++i) {
+        state.valence = 0.7f + (float)i * 0.0001f; /* ainda claramente HAPPY */
+        nb_emotion_core_resolve_face(&state, &out);
+        CHECK(state.active_variant == first_variant);
+    }
+}
+
+/* S3.7 completo, item 7: trocar de hub dominante dispara um novo sorteio
+ * de variante (não necessariamente diferente -- 50/50 -- mas o mecanismo
+ * de resample dispara; testamos que dominant_hub acompanha a troca). */
+static void test_variant_resamples_when_dominant_hub_changes(void)
+{
+    nb_emotion_state_t state;
+    nb_face_state_t out;
+
+    nb_emotion_core_init(&state, 7u);
+    state.valence = 0.0f;
+    state.arousal = 0.0f; /* NEUTRAL */
+    nb_emotion_core_resolve_face(&state, &out);
+    CHECK(state.dominant_hub == NB_FACE_EXPR_NEUTRAL);
+
+    state.valence = -0.8f;
+    state.arousal = 0.6f; /* ANGRY */
+    nb_emotion_core_resolve_face(&state, &out);
+    CHECK(state.dominant_hub == NB_FACE_EXPR_ANGRY);
 }
 
 int main(void)
@@ -215,6 +271,8 @@ int main(void)
     test_null_is_safe();
     test_resolve_face_matches_each_hub_exactly();
     test_resolve_face_is_continuous_between_hubs();
+    test_variant_persists_while_dominant_hub_unchanged();
+    test_variant_resamples_when_dominant_hub_changes();
 
     if (failures == 0) {
         printf("emotion_core host_test: ok\n");
