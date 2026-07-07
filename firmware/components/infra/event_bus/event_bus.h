@@ -46,6 +46,27 @@ typedef enum {
     NB_EVENT_TYPE_TIMER = 5,
 } nb_event_type_t;
 
+/* Payload de NB_EVENT_TYPE_VOICE -- definido aqui (L1 infra) pelo mesmo
+ * motivo de TIME_SYNC/TIMER: wake_service (L3) publica, reflex_engine
+ * (L4) consome, então o tipo neutro mora no event_bus em vez de um lado
+ * incluir header do outro. Cabe exatamente nos 16 bytes do payload. */
+typedef enum {
+    NB_VOICE_EVENT_WAKE = 0,
+    NB_VOICE_EVENT_LISTEN_START = 1,
+    NB_VOICE_EVENT_LISTEN_AUDIO = 2,
+    NB_VOICE_EVENT_LISTEN_END = 3,
+    NB_VOICE_EVENT_FEEDBACK = 4,
+} nb_voice_event_kind_t;
+
+typedef struct {
+    uint32_t session_id;
+    uint32_t samples;
+    float wake_score; /* só relevante em NB_VOICE_EVENT_WAKE */
+    uint8_t kind;
+    uint8_t detail;   /* end_reason ou feedback, conforme o kind */
+    uint16_t reserved;
+} nb_voice_event_payload_t;
+
 /* Payload de NB_EVENT_TYPE_TIMER -- cabe nos 16 bytes de nb_event_t.payload
  * (8+4+4). Definido aqui (L1 infra, não em schedule_core/L4) porque quem
  * publica (mind_link_shell, L3) não pode incluir um header de camada

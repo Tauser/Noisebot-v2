@@ -38,6 +38,19 @@ static nb_reflex_stimulus_t map_touch_event(nb_touch_event_t event) {
     }
 }
 
+static nb_reflex_stimulus_t map_voice_event(const nb_voice_event_payload_t *payload) {
+    if (payload == NULL) {
+        return NB_REFLEX_STIMULUS_COUNT;
+    }
+
+    switch ((nb_voice_event_kind_t)payload->kind) {
+    case NB_VOICE_EVENT_WAKE:
+        return NB_REFLEX_STIMULUS_VOICE_START;
+    default:
+        return NB_REFLEX_STIMULUS_COUNT;
+    }
+}
+
 static void apply_reaction(const nb_reflex_reaction_t *reaction, nb_emotion_state_t *emotion,
                            nb_tiny_fsm_t *fsm) {
     if (reaction->has_affect_delta && emotion != NULL) {
@@ -108,7 +121,24 @@ nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb
             continue;
         }
 
-        if (event.type != NB_EVENT_TYPE_TOUCH || event.payload_len != sizeof(nb_touch_event_payload_t)) {
+        if (event.type == NB_EVENT_TYPE_VOICE && event.payload_len == sizeof(nb_voice_event_payload_t)) {
+            nb_voice_event_payload_t payload;
+            memcpy(&payload, event.payload, sizeof(payload));
+            nb_reflex_stimulus_t stimulus = map_voice_event(&payload);
+            if (stimulus == NB_REFLEX_STIMULUS_COUNT) {
+                continue;
+            }
+            nb_reflex_engine_on_stimulus(&s_engine, stimulus, event.timestamp_ms, &reaction);
+            apply_reaction(&reaction, emotion, fsm);
+            const uint32_t latency_ms = now_ms - event.timestamp_ms;
+            ESP_LOGI(TAG, "voice kind=%u session=%u fsm_event=%d latency_ms=%u",
+                     (unsigned)payload.kind, (unsigned)payload.session_id,
+                     (int)reaction.fsm_event, (unsigned)latency_ms);
+            continue;
+        }
+
+        if (event.type != NB_EVENT_TYPE_TOUCH ||
+            event.payload_len != sizeof(nb_touch_event_payload_t)) {
             continue;
         }
         nb_touch_event_payload_t payload;

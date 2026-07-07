@@ -1,5 +1,42 @@
 menu "NoiseBot 2"
 
+    config NB_WAKE_BENCH_HARNESS
+        bool "Harness de bancada para wake_service (RMS heuristico)"
+        default n
+        help
+            Uso EXCLUSIVO de bancada para S4.2. Emula wake/VAD por RMS do
+            microfone dentro da task temporaria de audio_bringup, sem
+            WakeNet/ESP-SR reais. Serve para exercitar a sessao de voz e a
+            publicacao no event_bus antes da integracao final. Nunca usar
+            como fallback silencioso de producao (VOICE.md V-5).
+
+    config NB_WAKE_BENCH_WAKE_RMS
+        int "Limiar RMS para disparar wake (bench)"
+        depends on NB_WAKE_BENCH_HARNESS
+        default 1800
+        range 1 32767
+        help
+            RMS minimo do chunk de microfone para o harness de bancada
+            chamar wake_service_shell_trigger_wake().
+
+    config NB_WAKE_BENCH_VAD_RMS
+        int "Limiar RMS para speech/VAD (bench)"
+        depends on NB_WAKE_BENCH_HARNESS
+        default 700
+        range 1 32767
+        help
+            RMS minimo do chunk de microfone para o harness de bancada
+            tratar o frame como fala durante a sessao.
+
+    config NB_WAKE_BENCH_COOLDOWN_MS
+        int "Cooldown entre wakes (bench)"
+        depends on NB_WAKE_BENCH_HARNESS
+        default 3000
+        range 100 60000
+        help
+            Janela minima entre duas tentativas de wake no harness de
+            bancada, para evitar retrigger em cascata por ruido.
+
     config NBP2_SERVER_HOST
         string "Host (IP ou nome) do server NBP/2 (a mente)"
         default ""

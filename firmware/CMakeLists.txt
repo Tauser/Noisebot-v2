@@ -17,6 +17,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/hal/audio_hal"
     "components/services/touch_service"
     "components/services/led_service"
+    "components/services/wake_service"
     "components/infra/event_bus"
     "components/infra/logger"
     "components/infra/app_config"

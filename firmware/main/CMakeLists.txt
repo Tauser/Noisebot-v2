@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES boot_manager watchdog wifi_setup ota mind_link display_hal renderer idle_engine emotion_core touch_service tiny_fsm event_bus reflex_engine led_service circadian_core schedule_core audio_hal nb_hw_config
+    REQUIRES boot_manager watchdog wifi_setup ota mind_link display_hal renderer idle_engine emotion_core touch_service wake_service tiny_fsm event_bus reflex_engine led_service circadian_core schedule_core audio_hal nb_hw_config
 )
 
 # -Werror no código do projeto (componentes próprios seguem o mesmo padrão).

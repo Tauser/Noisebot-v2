@@ -86,6 +86,7 @@
 #include "nb_circadian_core_shell.h"
 #include "nb_schedule_core_shell.h"
 #include "nb_audio_hal_shell.h"
+#include "nb_wake_service_shell.h"
 #include "audio_hal.h"
 #include "nb_hw_config.h"
 #include "idle_engine.h"
@@ -123,6 +124,19 @@
 #define NB_APP_MAIN_AUDIO_LOG_PERIOD_US 5000000ll /* 5s, mesmo padrão do fps de face_demo */
 
 static const char *TAG = "nb2";
+
+#if CONFIG_NB_WAKE_BENCH_HARNESS
+static float nb_app_main_clamp01(float x)
+{
+    if (x < 0.0f) {
+        return 0.0f;
+    }
+    if (x > 1.0f) {
+        return 1.0f;
+    }
+    return x;
+}
+#endif
 
 /* idle_engine (S2.4) sobrepõe motifs de VISUAL.md §3 à expressão-âncora
  * mais próxima do vetor do emotion_core (S2.5). S3.2: reflex_engine_shell
@@ -267,6 +281,9 @@ static void nb_app_main_audio_task(void *arg)
     static int16_t tone[NB_APP_MAIN_AUDIO_TONE_SAMPLES];
     static int16_t mic_buf[NB_APP_MAIN_AUDIO_READ_CHUNK];
     int64_t next_log_us;
+#if CONFIG_NB_WAKE_BENCH_HARNESS
+    uint32_t next_wake_allowed_ms = 0u;
+#endif
 
     (void)arg;
 
@@ -299,9 +316,31 @@ static void nb_app_main_audio_task(void *arg)
         ++loop_count;
 
         const int64_t now_us = esp_timer_get_time();
+        nb_wake_service_shell_tick();
+        const float rms = nb_audio_hal_rms_s16(mic_buf, read_count);
+        if (read_count > 0u) {
+#if CONFIG_NB_WAKE_BENCH_HARNESS
+            const uint32_t now_ms = (uint32_t)(now_us / 1000);
+            const bool speech_detected = rms >= (float)CONFIG_NB_WAKE_BENCH_VAD_RMS;
+
+            if (nb_wake_service_shell_get_state() == NB_WAKE_STATE_IDLE &&
+                rms >= (float)CONFIG_NB_WAKE_BENCH_WAKE_RMS &&
+                now_ms >= next_wake_allowed_ms) {
+                const float score = nb_app_main_clamp01(
+                    rms / ((float)CONFIG_NB_WAKE_BENCH_WAKE_RMS * 2.0f));
+                nb_wake_service_shell_trigger_wake(score);
+                next_wake_allowed_ms = now_ms + CONFIG_NB_WAKE_BENCH_COOLDOWN_MS;
+                ESP_LOGI(TAG, "wake_bench: trigger rms=%.1f score=%.2f", (double)rms,
+                         (double)score);
+            }
+
+            if (nb_wake_service_shell_get_state() != NB_WAKE_STATE_IDLE) {
+                nb_wake_service_shell_on_audio_frame(speech_detected, (uint32_t)read_count);
+            }
+#endif
+        }
         if (now_us >= next_log_us) {
             next_log_us = now_us + NB_APP_MAIN_AUDIO_LOG_PERIOD_US;
-            const float rms = nb_audio_hal_rms_s16(mic_buf, read_count);
             ESP_LOGI(TAG, "audio_bringup: loops=%u write_err=%s(%d) written=%u read_err=%s(%d) read=%u",
                     (unsigned)loop_count, esp_err_to_name(last_write_err), (int)last_write_err,
                     (unsigned)written, esp_err_to_name(last_read_err), (int)last_read_err,
@@ -378,6 +417,24 @@ void app_main(void)
                  esp_err_to_name(mind_link_err));
     }
 
+    /* S4.2: wake_service nasce como casca mínima (sem WakeNet/ESP-SR
+     * reais ainda). Rota local ainda não existe; rota da mente é atualizada
+     * dinamicamente no loop principal conforme o mind_link entra/sai de
+     * READY. */
+    esp_err_t wake_err = nb_wake_service_shell_init();
+    if (wake_err != ESP_OK) {
+        ESP_LOGE(TAG, "wake_service falhou (%s) -- seguindo sem wake", esp_err_to_name(wake_err));
+    } else {
+#if CONFIG_NB_WAKE_BENCH_HARNESS
+        ESP_LOGW(TAG, "wake_bench_harness ativo -- RMS heuristico de bancada, nunca producao");
+        nb_wake_service_shell_set_vad_available(true);
+#else
+        nb_wake_service_shell_set_vad_available(false);
+#endif
+        nb_wake_service_shell_set_routes(
+            nb_mind_link_shell_get_state() == NB_MIND_LINK_STATE_READY, false);
+    }
+
     if (outcome == NB_BOOT_OUTCOME_OK) {
         esp_err_t ota_err = nb_ota_shell_confirm_boot_if_pending();
         if (ota_err != ESP_OK) {
@@ -436,6 +493,8 @@ void app_main(void)
         ESP_ERROR_CHECK(nb_watchdog_shell_feed());
         vTaskDelay(pdMS_TO_TICKS(NB_APP_MAIN_HEARTBEAT_MS));
         ESP_LOGI(TAG, "alive");
+        nb_wake_service_shell_set_routes(
+            nb_mind_link_shell_get_state() == NB_MIND_LINK_STATE_READY, false);
 
         /* Baseline de heap/PSRAM (S2.6): budget do soak de 48h. */
         ++heartbeat_count;
