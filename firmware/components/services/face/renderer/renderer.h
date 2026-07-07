@@ -98,14 +98,17 @@ void nb_face_core_eye_column(float open, float tl, float tr, float bl, float br,
                              float curve_bottom, int16_t half_width, float cy, int16_t x_rel,
                              nb_face_eye_column_t *out);
 
-/* Geometria vertical de uma coluna da boca (S3.7 completo, item 5) --
- * mais simples que o olho: sem squint/canto/arredondamento, só abertura
- * (espessura da faixa) e curvatura (toda a faixa sobe/desce nas pontas
- * via parábola, mesma técnica de curve_top/curve_bottom do olho). Nunca
- * "fecha" de vez -- mouth_open baixo ainda desenha uma linha fina (a
- * curvatura precisa aparecer mesmo de boca fechada: micro-sorriso do
- * NEUTRAL, franzido do SAD/ANGRY). */
+/* Geometria vertical de uma coluna da boca (S3.7 completo, item 5; gating
+ * de intensidade na emenda §3.1a) -- mais simples que o olho: sem squint/
+ * canto/arredondamento, só abertura (espessura da faixa) e curvatura
+ * (toda a faixa sobe/desce nas pontas via parábola, mesma técnica de
+ * curve_top/curve_bottom do olho). `mouth_absent` (RFC §3.1a item 1): boca
+ * é canal de intensidade, não traço permanente -- mouth_open <= 0 (o
+ * núcleo que produz o campo já zera abaixo do limiar de saída, ver
+ * emotion_core) não desenha nenhum pixel; sem piso de meia-altura
+ * mínima. */
 typedef struct {
+    bool mouth_absent; /* true: nenhum pixel desta coluna, ignorar os outros campos */
     int16_t top_full;
     int16_t bottom_full;
     bool has_top_aa;

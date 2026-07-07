@@ -60,11 +60,20 @@ mapeamentos da emoção que decaem para NEUTRAL.
 
 **Boca (S3.7 completo, item 5, RFC §3):** só os 4 hubs (`NEUTRAL`/
 `HAPPY`/`SAD`/`ANGRY`) ganharam `mouth_open`/`mouth_curve` não-neutros —
-`NEUTRAL` fechada com micro-sorriso sutil, `HAPPY` aberta e sorrindo,
-`SAD` curva suave pra baixo, `ANGRY` curva invertida mais firme que
-`SAD`. As outras 6 âncoras continuam boca neutra (`0,0`) — e, desde o
-item 6, nem são mais alcançáveis pelo vetor de qualquer forma. Sem
-visemas de fala ainda (S4 voz).
+`HAPPY` aberta e sorrindo, `SAD` curva suave pra baixo, `ANGRY` curva
+invertida mais firme que `SAD`. As outras 6 âncoras continuam boca
+neutra (`0,0`) — e, desde o item 6, nem são mais alcançáveis pelo vetor
+de qualquer forma. Sem visemas de fala ainda (S4 voz).
+
+**Emenda §3.1a (2026-07-07, decisão em bancada):** boca é canal de
+intensidade, não traço permanente — só existe quando a intensidade
+emocional (norma do vetor) cruza o nível médio (aparece em ≥0.40, some
+em <0.30, histerese sem flicker; escala contínua até o pico ~0.70).
+`NEUTRAL`/`IDLE` nunca mostra boca (repouso do temperamento é `+0.10`,
+bem abaixo do limiar) — o micro-sorriso de repouso vive nos *olhos*, não
+na boca. Fala e arcos/sequências (bocejo, `SIGH`) ignoram o limiar.
+Posição ancorada à face (soma `gaze_shift`/`x_offset` como os olhos,
+paralaxe 0.6 no eixo Y), não mais fixa no painel.
 
 **Variantes episódicas (item 7):** 2 por hub, sorteadas ao entrar na
 região (troca de hub dominante) e mantidas por todo o episódio —

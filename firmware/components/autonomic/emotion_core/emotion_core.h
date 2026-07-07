@@ -53,6 +53,15 @@ typedef struct {
     nb_face_expr_t dominant_hub;
     nb_emotion_variant_t active_variant;
     bool has_dominant_hub; /* false até a primeira resolve_face() */
+
+    /* RFC-VIDA-V2.md §3.1a: boca é canal de intensidade, não traço
+     * permanente -- histerese (aparece em >=0.40, some em <0.30) pra não
+     * piscar na fronteira. `mouth_forced` é a exceção de fala/arco (S4
+     * voz, gestos do idle_engine): gancho exposto via
+     * nb_emotion_core_set_mouth_forced(), ainda não ligado por nenhuma
+     * casca (default false). */
+    bool mouth_active;
+    bool mouth_forced;
 } nb_emotion_state_t;
 
 /* Semente 0 é substituída por um valor fixo não-zero (xorshift32 trava em
@@ -70,6 +79,15 @@ void nb_emotion_core_apply_stimulus(nb_emotion_state_t *state, float delta_valen
  * frame com o sinal real de circadian_core; sem chamada, fica em 0.0
  * (sem efeito). */
 void nb_emotion_core_set_circadian_offset(nb_emotion_state_t *state, float arousal_offset);
+
+/* Exceção de fala/arco (RFC §3.1a item 3): enquanto forced==true, a boca
+ * ignora o limiar de intensidade e fica sempre presente (abertura/
+ * curvatura vêm do blend normalmente -- visemas de fala ainda não
+ * existem, S4 voz vai sobrescrever mouth_open externamente quando
+ * existir). A casca chama isto durante fala real ou um gesto que force
+ * a boca (ex.: SIGH); sem chamada, fica false (comportamento normal de
+ * limiar). */
+void nb_emotion_core_set_mouth_forced(nb_emotion_state_t *state, bool forced);
 
 /* Avança dt_ms com decaimento exponencial rumo ao temperamento
  * (+0.10, +0.05 -- RFC §7: "em paz, o Noise é sutilmente caloroso e

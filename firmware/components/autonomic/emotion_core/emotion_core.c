@@ -36,6 +36,14 @@ static float rand01(uint32_t *state)
  * garante bit-a-bit igual à âncora quando o vetor coincide (RFC §9). */
 #define NB_EMOTION_HUB_EPSILON_SQ 1e-8f
 
+/* Boca é canal de intensidade (RFC-VIDA-V2.md §3.1a): histerese -- entra
+ * em >=0.40, sai em <0.30 (nunca pisca na fronteira). Entre a saída
+ * (0.30) e o pico (~0.70) a escala visual sobe continuamente; abaixo da
+ * saída, sempre zero. Intensidade = norma do vetor (v,a). */
+#define NB_EMOTION_MOUTH_ENTER_INTENSITY 0.40f
+#define NB_EMOTION_MOUTH_EXIT_INTENSITY 0.30f
+#define NB_EMOTION_MOUTH_PEAK_INTENSITY 0.70f
+
 /* Âncoras (valência, ativação) das 10 expressões-base, VISUAL.md §2 --
  * mesmo `nb_face_expr_t` do renderer, sem duplicar a tabela. */
 typedef struct {
@@ -95,6 +103,14 @@ void nb_emotion_core_set_circadian_offset(nb_emotion_state_t *state, float arous
         return;
     }
     state->circadian_arousal_offset = arousal_offset;
+}
+
+void nb_emotion_core_set_mouth_forced(nb_emotion_state_t *state, bool forced)
+{
+    if (state == NULL) {
+        return;
+    }
+    state->mouth_forced = forced;
 }
 
 void nb_emotion_core_tick(nb_emotion_state_t *state, uint32_t dt_ms)
@@ -209,6 +225,38 @@ static void apply_variant(nb_face_expr_t hub, nb_emotion_variant_t variant, floa
     out->squint_r = nb_emotion_core_clampf(out->squint_r, 0.0f, 2.0f);
 }
 
+/* RFC-VIDA-V2.md §3.1a: boca é canal de intensidade, não traço permanente.
+ * Histerese sobre a norma do vetor decide se a boca existe; entre a saída
+ * (0.30) e o pico (0.70) a escala sobe continuamente. `mouth_forced`
+ * (fala/arco) ignora tudo isso e mantém a boca cheia. Aplicado por cima do
+ * resultado final do blend+variante -- escala mouth_open/mouth_curve,
+ * nunca os outros campos (a intensidade não apaga os olhos). */
+static void apply_mouth_gate(nb_emotion_state_t *state, nb_face_state_t *out)
+{
+    if (state->mouth_forced) {
+        return;
+    }
+
+    const float intensity = sqrtf(state->valence * state->valence + state->arousal * state->arousal);
+
+    if (!state->mouth_active && intensity >= NB_EMOTION_MOUTH_ENTER_INTENSITY) {
+        state->mouth_active = true;
+    } else if (state->mouth_active && intensity < NB_EMOTION_MOUTH_EXIT_INTENSITY) {
+        state->mouth_active = false;
+    }
+
+    const float scale =
+        state->mouth_active
+            ? nb_emotion_core_clampf((intensity - NB_EMOTION_MOUTH_EXIT_INTENSITY) /
+                                         (NB_EMOTION_MOUTH_PEAK_INTENSITY -
+                                          NB_EMOTION_MOUTH_EXIT_INTENSITY),
+                                     0.0f, 1.0f)
+            : 0.0f;
+
+    out->mouth_open *= scale;
+    out->mouth_curve *= scale;
+}
+
 void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *out)
 {
     if (out == NULL) {
@@ -216,6 +264,10 @@ void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *ou
     }
     if (state == NULL) {
         *out = *nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
+        /* state==NULL -> sem histerese pra consultar; repouso nunca
+         * mostra boca (RFC §3.1a item 2), então zera aqui também. */
+        out->mouth_open = 0.0f;
+        out->mouth_curve = 0.0f;
         return;
     }
 
@@ -249,6 +301,7 @@ void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *ou
          * variante em peso 1.0 (é a única contribuição possível aqui). */
         *out = *hub_faces[dominant_idx];
         apply_variant(dominant_hub, state->active_variant, 1.0f, out);
+        apply_mouth_gate(state, out);
         return;
     }
 
@@ -265,4 +318,5 @@ void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *ou
 
     nb_face_core_blend(hub_faces, weights, 4u, out);
     apply_variant(dominant_hub, state->active_variant, weights[dominant_idx], out);
+    apply_mouth_gate(state, out);
 }

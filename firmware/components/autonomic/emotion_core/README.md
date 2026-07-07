@@ -104,6 +104,37 @@ trocar de hub dominante atualiza `dominant_hub` (novo sorteio de
 variante); os testes de campo contínuo/exatidão do item 6 continuam
 verdes com a tolerância ajustada pro delta da variante.
 
+## Emenda §3.1a (2026-07-07): boca é canal de intensidade
+
+Bancada confirmou dois defeitos na primeira versão da boca (item 5):
+sempre visível nos 4 hubs (mesmo parada em NEUTRAL) e em posição fixa no
+painel (a segunda mora no renderer, ver README de lá). Correção do lado
+`emotion_core`:
+
+- **Histerese de intensidade** (`mouth_active`, novo campo): a norma do
+  vetor `(valence, arousal)` decide se a boca existe — aparece em
+  `>= 0.40`, some em `< 0.30` (nunca pisca na fronteira). Entre a saída
+  (0.30) e o pico (~0.70), a escala aplicada a `mouth_open`/`mouth_curve`
+  sobe continuamente (`apply_mouth_gate()`, chamado nas duas saídas de
+  `resolve_face()` — âncora exata e blend). Consequência: NEUTRAL/IDLE
+  nunca mostra boca (repouso do temperamento é `+0.10`, bem abaixo do
+  limiar) — o "toque de calor" do repouso continua vivo nos *olhos*, via
+  o blend do campo contínuo, sem precisar tocar as âncoras 0-9.
+- **Exceção de fala/arco** (`mouth_forced`, novo campo +
+  `nb_emotion_core_set_mouth_forced()`): ignora o limiar por completo —
+  gancho exposto, ainda não ligado (S4 voz vai chamar isso durante fala
+  real; visemas ainda não existem, então por enquanto a boca só fica
+  "sempre cheia" quando forçada, sem controle fino de abertura por fala).
+
+Host-test cobre: intensidade abaixo do limiar de saída ⇒ boca ausente;
+sobe até o pico ⇒ boca cheia; banda de histerese (0.30-0.40) não desliga
+sozinha; abaixo de 0.30 desliga; `mouth_forced` ignora tudo. Os testes de
+"âncora exata"/"contínuo entre hubs" do item 6 foram ajustados: NEUTRAL
+não compara mais `mouth_curve` cru da âncora (fica ausente por design);
+o teste de continuidade passou a rastrear `open_l` em vez de
+`mouth_curve` (a boca agora tem um "pop" deliberado na entrada do
+limiar, não é mais contínua por definição — é a intenção da emenda).
+
 **Bug real achado em bancada (S2.5, histórico):** o pulso sintético de
 bring-up era aplicado a cada 15s, mais curto que a constante de
 decaimento (~60s) — os pulsos se acumulavam mais rápido do que decaíam,

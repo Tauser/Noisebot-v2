@@ -1862,17 +1862,27 @@ doc — o RFC assume coisas que não são verdade hoje):
    `nb_face_renderer_shell`) — **`FEITO` (2026-07-06), pendente bancada.**
    Campos `mouth_open`/`mouth_curve` em `nb_face_state_t`, interpolados
    por `nb_face_core_lerp()`; geometria nova `nb_face_core_mouth_column()`
-   (banda que curva nas pontas via parábola, nunca desaparece mesmo
-   fechada — a curvatura precisa aparecer com boca fechada). Só os 4 hubs
-   ganharam boca não-neutra; as outras 6 continuam `0,0`, intocadas.
-   **Sem parâmetro novo em `draw()`/`draw_dirty()`** — a boca já chega
-   interpolada dentro do `nb_face_state_t` que a casca já passa, zero
-   mudança em `main.c`. `face_dirty_rect` agora une olho esquerdo+direito+
-   boca (`mouth_dirty_rect()`, padding cobrindo curvatura+altura máximas).
-   Host-tests: só os 4 hubs não-neutros; coluna nunca vazia mesmo
-   fechada; sorriso curva as pontas pra cima; lerp interpola os campos
-   novos. Build limpo. **Falta:** confirmação visual em bancada (boca
-   estática nos 4 hubs, sem campo contínuo ainda).
+   (banda que curva nas pontas via parábola). Só os 4 hubs ganharam boca
+   não-neutra; as outras 6 continuam `0,0`, intocadas. **Sem parâmetro
+   novo em `draw()`/`draw_dirty()`** — a boca já chega interpolada dentro
+   do `nb_face_state_t` que a casca já passa, zero mudança em `main.c`.
+   `face_dirty_rect` une olho esquerdo+direito+boca (`mouth_dirty_rect()`).
+   **Emenda §3.1a (2026-07-07, decisão em bancada):** a versão original
+   deixava a boca sempre visível nos 4 hubs (mesmo em NEUTRAL parado) e
+   fixa no painel — dois defeitos confirmados ao vivo. Corrigido: (1)
+   boca é canal de intensidade — histerese na norma do vetor (aparece
+   ≥0.40, some <0.30, escala contínua até o pico ~0.70), gating em
+   `emotion_core` (`mouth_active`/`apply_mouth_gate()`), renderer perdeu
+   o piso de meia-altura mínima (`mouth_open<=0` = zero pixel,
+   `mouth_absent`); (2) posição ancorada à face (`mouth_x`/`mouth_y`
+   seguem `gaze_shift`/`x_offset` como os olhos, paralaxe 0.6 no Y) em
+   vez de fixa no painel; (3) exceção de fala/arco exposta
+   (`mouth_forced`), ainda não ligada (S4 voz). Host-tests atualizados:
+   `mouth_open<=0` sempre ausente; limiar/histerese; `mouth_forced`
+   ignora tudo; continuidade do campo passou a rastrear `open_l` (a boca
+   tem um "pop" deliberado na entrada do limiar, não é mais contínua por
+   design). Suíte inteira verde nas duas configs; build limpo. **Falta:**
+   confirmação visual em bancada da correção.
 6. **Campo contínuo + temperamento + circadiano no vetor** (`emotion_core`)
    — **`FEITO` (2026-07-06), pendente bancada. Escopo revisto pelo
    usuário: as 6 âncoras fora dos hubs

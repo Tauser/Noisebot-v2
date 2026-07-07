@@ -158,8 +158,12 @@ static void test_null_is_safe(void)
  * calibradas" -- só os 4 hubs participam (as outras 6 saem de uso,
  * decisão de 2026-07-06). Tolerância alargada (item 7): a variante
  * episódica tempera o resultado mesmo exatamente na âncora (peso 1.0) --
- * `mouth_curve` não é tocado por nenhuma variante, então continua exato;
- * `mouth_open`/`open_l` têm folga pro delta máximo de variante (±0.15). */
+ * `mouth_open`/`open_l` têm folga pro delta máximo de variante (±0.15).
+ * `mouth_curve` NÃO é comparado ao valor bruto da âncora (emenda §3.1a):
+ * a intensidade em cada hub decide se a boca aparece -- NEUTRAL tem
+ * intensidade 0 (bem abaixo do limiar de saída 0.30), então sua boca
+ * fica ausente mesmo "exatamente na âncora"; HAPPY/SAD/ANGRY têm
+ * intensidade > 0.70 (pico) nas próprias âncoras, então aparecem cheias. */
 static void test_resolve_face_matches_each_hub_exactly(void)
 {
     const nb_face_expr_t hubs[] = {NB_FACE_EXPR_NEUTRAL, NB_FACE_EXPR_HAPPY, NB_FACE_EXPR_SAD,
@@ -178,19 +182,27 @@ static void test_resolve_face_matches_each_hub_exactly(void)
         nb_emotion_core_resolve_face(&state, &out);
 
         const nb_face_state_t *expected = nb_face_core_get_expression(hubs[i]);
-        CHECK(float_eq(out.mouth_curve, expected->mouth_curve, 0.0001f));
-        CHECK(float_eq(out.mouth_open, expected->mouth_open, 0.2f));
         CHECK(float_eq(out.open_l, expected->open_l, 0.2f));
+        if (hubs[i] == NB_FACE_EXPR_NEUTRAL) {
+            CHECK(float_eq(out.mouth_open, 0.0f, 0.0001f));
+            CHECK(float_eq(out.mouth_curve, 0.0f, 0.0001f));
+        } else {
+            CHECK(float_eq(out.mouth_open, expected->mouth_open, 0.2f));
+            CHECK(float_eq(out.mouth_curve, expected->mouth_curve, 0.0001f));
+        }
     }
 }
 
 /* RFC §9(4): "contínuo entre elas" -- caminhando em passos pequenos de
- * NEUTRAL até HAPPY, a boca nunca dá um salto grande de um passo pro
- * outro. */
+ * NEUTRAL até HAPPY, o campo (fora da boca, que é canal de intensidade
+ * com limiar deliberado desde a emenda §3.1a) nunca dá um salto grande de
+ * um passo pro outro. `open_l` não é tocado pelo gating de boca nem por
+ * nenhuma variante de NEUTRAL/HAPPY que mude drasticamente (só a "sereno"
+ * de NEUTRAL toca open_l, com delta pequeno de 0.05). */
 static void test_resolve_face_is_continuous_between_hubs(void)
 {
     const int steps = 200;
-    float prev_mouth_curve = 0.0f;
+    float prev_open_l = 0.0f;
     int has_prev = 0;
 
     for (int i = 0; i <= steps; ++i) {
@@ -205,13 +217,67 @@ static void test_resolve_face_is_continuous_between_hubs(void)
 
         if (has_prev) {
             const float diff =
-                (out.mouth_curve > prev_mouth_curve) ? out.mouth_curve - prev_mouth_curve
-                                                     : prev_mouth_curve - out.mouth_curve;
+                (out.open_l > prev_open_l) ? out.open_l - prev_open_l : prev_open_l - out.open_l;
             CHECK(diff < 0.05f); /* passo pequeno, sem salto */
         }
-        prev_mouth_curve = out.mouth_curve;
+        prev_open_l = out.open_l;
         has_prev = 1;
     }
+}
+
+/* RFC §3.1a, host-test (5): boca é canal de intensidade -- ausente abaixo
+ * do limiar de saída, histerese sem flicker na fronteira, exceção de
+ * fala/arco ignora tudo. */
+static void test_mouth_gate_threshold_and_hysteresis(void)
+{
+    nb_emotion_state_t state;
+    nb_face_state_t out;
+
+    /* Intensidade bem abaixo de 0.30 (repouso do temperamento, ~0.11): boca
+     * ausente. */
+    nb_emotion_core_init(&state, 1u);
+    state.valence = 0.10f;
+    state.arousal = 0.05f;
+    nb_emotion_core_resolve_face(&state, &out);
+    CHECK(float_eq(out.mouth_open, 0.0f, 0.0001f) || out.mouth_open == 0.0f);
+    CHECK(out.mouth_curve == 0.0f);
+
+    /* Sobe até o pico (HAPPY, intensidade ~0.76): boca aparece cheia. */
+    state.valence = 0.7f;
+    state.arousal = 0.3f;
+    nb_emotion_core_resolve_face(&state, &out);
+    CHECK(out.mouth_curve != 0.0f);
+    CHECK(state.mouth_active);
+
+    /* Desce pra dentro da banda de histerese (0.30-0.40): continua ativa
+     * (não desliga ainda). */
+    state.valence = 0.30f;
+    state.arousal = 0.0f; /* intensidade 0.30 -- na borda de saída */
+    nb_emotion_core_resolve_face(&state, &out);
+    CHECK(state.mouth_active);
+
+    /* Desce de vez abaixo de 0.30: desliga. */
+    state.valence = 0.05f;
+    state.arousal = 0.0f;
+    nb_emotion_core_resolve_face(&state, &out);
+    CHECK(!state.mouth_active);
+    CHECK(out.mouth_curve == 0.0f);
+}
+
+/* RFC §3.1a item 3: mouth_forced ignora o limiar por completo. */
+static void test_mouth_forced_ignores_threshold(void)
+{
+    nb_emotion_state_t state;
+    nb_face_state_t out;
+
+    nb_emotion_core_init(&state, 1u);
+    state.valence = 0.0f;
+    state.arousal = 0.0f; /* NEUTRAL, intensidade 0 -- normalmente ausente */
+    nb_emotion_core_set_mouth_forced(&state, true);
+    nb_emotion_core_resolve_face(&state, &out);
+
+    const nb_face_state_t *neutral = nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
+    CHECK(float_eq(out.mouth_curve, neutral->mouth_curve, 0.0001f));
 }
 
 /* S3.7 completo, item 7: a variante sorteada ao entrar numa região
@@ -273,6 +339,8 @@ int main(void)
     test_resolve_face_is_continuous_between_hubs();
     test_variant_persists_while_dominant_hub_unchanged();
     test_variant_resamples_when_dominant_hub_changes();
+    test_mouth_gate_threshold_and_hysteresis();
+    test_mouth_forced_ignores_threshold();
 
     if (failures == 0) {
         printf("emotion_core host_test: ok\n");

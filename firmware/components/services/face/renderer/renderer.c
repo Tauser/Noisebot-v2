@@ -166,15 +166,31 @@ void nb_face_core_eye_column(float open, float tl, float tr, float bl, float br,
 void nb_face_core_mouth_column(float mouth_open, float mouth_curve, int16_t half_width, float cy,
                                int16_t x_rel, nb_face_mouth_column_t *out)
 {
+    out->mouth_absent = false;
+    out->top_full = 1;
+    out->bottom_full = 0;
+    out->has_top_aa = false;
+    out->alpha_top = 0.0f;
+    out->has_bottom_aa = false;
+    out->alpha_bottom = 0.0f;
+
+    /* RFC-VIDA-V2.md §3.1a item 1: boca é canal de intensidade, não traço
+     * permanente -- sem piso de meia-altura mínima. Quem produz o campo
+     * (emotion_core) já zera mouth_open abaixo do limiar de saída; aqui só
+     * garante que zero produz mesmo zero pixel, sem depender de
+     * arredondamento de ceil/floor coincidir. */
+    if (mouth_open <= 0.0f) {
+        out->mouth_absent = true;
+        return;
+    }
+
     const float span = (float)half_width * 2.0f;
     const float t = (float)x_rel / span;
     const float parabola = 4.0f * t * (1.0f - t); /* 0 nas pontas, 1 no centro */
     /* mouth_curve > 0: pontas sobem em relação ao centro (sorriso, "⌣").
      * mouth_curve < 0: pontas descem (franzido, "⌢"). */
     const float center_y = cy - mouth_curve * NB_FACE_MOUTH_CURVE_PX * (1.0f - parabola);
-    /* Nunca some de vez -- mesmo mouth_open=0 precisa mostrar a curvatura
-     * (micro-sorriso do NEUTRAL, franzido de SAD/ANGRY com boca fechada). */
-    const float half_h = fmaxf(mouth_open * NB_FACE_MOUTH_HALF_HEIGHT, 0.5f);
+    const float half_h = mouth_open * NB_FACE_MOUTH_HALF_HEIGHT;
 
     const float top = center_y - half_h;
     const float bottom = center_y + half_h;

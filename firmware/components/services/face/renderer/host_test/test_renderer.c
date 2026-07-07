@@ -154,14 +154,30 @@ static void test_mouth_only_four_hubs_are_non_neutral(void)
     (void)hubs;
 }
 
-static void test_mouth_column_never_vanishes_even_when_closed(void)
+/* RFC-VIDA-V2.md §3.1a (emenda 2026-07-07): boca é canal de intensidade,
+ * não traço permanente -- mouth_open<=0 (quem decide isso é o gating de
+ * intensidade do emotion_core) precisa dar ZERO pixel, sem piso de
+ * meia-altura mínima. */
+static void test_mouth_column_is_absent_when_open_is_zero(void)
 {
     nb_face_mouth_column_t col;
 
-    nb_face_core_mouth_column(0.0f, -0.7f, NB_FACE_MOUTH_HALF_WIDTH, 190.0f, 0,
-                              &col);
-    /* Mesmo fechada e bem franzida, a faixa nunca fica vazia -- a
-     * curvatura precisa aparecer com a boca fechada (ANGRY). */
+    nb_face_core_mouth_column(0.0f, -0.7f, NB_FACE_MOUTH_HALF_WIDTH, 190.0f, 0, &col);
+    CHECK(col.mouth_absent);
+
+    /* curvatura sozinha (sem abertura) não basta pra aparecer -- mesmo um
+     * franzido forte fica de fora quando mouth_open é 0. */
+    nb_face_core_mouth_column(0.0f, 1.0f, NB_FACE_MOUTH_HALF_WIDTH, 190.0f,
+                              NB_FACE_MOUTH_HALF_WIDTH, &col);
+    CHECK(col.mouth_absent);
+}
+
+static void test_mouth_column_present_when_open_is_positive(void)
+{
+    nb_face_mouth_column_t col;
+
+    nb_face_core_mouth_column(0.5f, 0.0f, NB_FACE_MOUTH_HALF_WIDTH, 190.0f, 0, &col);
+    CHECK(!col.mouth_absent);
     CHECK(col.bottom_full >= col.top_full);
 }
 
@@ -203,7 +219,8 @@ int main(void)
     test_eye_column_open_neutral_is_symmetric_and_centered();
     test_eye_column_squint_can_close_locally();
     test_mouth_only_four_hubs_are_non_neutral();
-    test_mouth_column_never_vanishes_even_when_closed();
+    test_mouth_column_is_absent_when_open_is_zero();
+    test_mouth_column_present_when_open_is_positive();
     test_mouth_column_smile_curves_up_at_edges();
     test_mouth_lerp_interpolates();
 

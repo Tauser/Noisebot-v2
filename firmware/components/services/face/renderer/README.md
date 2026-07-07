@@ -34,29 +34,35 @@ catálogo de motifs de `VISUAL.md` §3).
 os demais 18 campos, e uma nova geometria por coluna
 (`nb_face_core_mouth_column()`): mais simples
 que o olho (sem squint/canto/arredondamento), a faixa toda curva nas
-pontas via parábola (mesma técnica de `curve_top`/`curve_bottom`) e
-**nunca desaparece** mesmo com `mouth_open=0` — a curvatura (micro-sorriso
-do `NEUTRAL`, franzido de `SAD`/`ANGRY`) precisa aparecer com a boca
-fechada.
+pontas via parábola (mesma técnica de `curve_top`/`curve_bottom`).
 
 Só os 4 hubs (`NEUTRAL/HAPPY/SAD/ANGRY`) ganharam boca não-neutra na
 tabela de âncoras; as outras 6 continuam "boca neutra" (`0,0`),
-intocadas — RFC decidiu isso explicitamente pra esta fase. Estático: sem
-campo contínuo/variantes ainda (item 6), sem visemas de fala (S4 voz).
+intocadas — RFC decidiu isso explicitamente pra esta fase.
 
-Casca (`nb_face_renderer_shell.cpp`): posição fixa (`kMouthCenterX`,
-`kMouthBaseY`), não segue gaze/tilt/x_off nesta fase. `draw_mouth()`
-mesmo padrão de `draw_eye()` (banda coluna-a-coluna com AA). O retângulo
-de flush (`face_dirty_rect`) agora une olho esquerdo + direito + boca —
-`mouth_dirty_rect()` com padding cobrindo o desvio máximo de curvatura
-(14px) + meia-altura máxima (20px). Zero mudança em `main.c`: a boca já
-chega interpolada dentro de `current` (o `nb_face_state_t` que o loop já
-passa pro desenho), sem precisar de parâmetro novo em
-`draw()`/`draw_dirty()`.
+**Emenda §3.1a (2026-07-07, decisão em bancada):** a primeira versão
+deixava a boca sempre visível nos 4 hubs (inclusive parada em NEUTRAL) e
+em posição fixa no painel — bancada confirmou os dois defeitos. Correção:
 
-Host-tests: só os 4 hubs têm boca não-neutra (as outras 6 seguem
-`0,0`); coluna nunca fica vazia mesmo fechada; sorriso curva as pontas
-pra cima em relação ao centro; lerp interpola os 2 campos novos. Sem
+- **Boca é canal de intensidade, não traço permanente.** `nb_face_core_mouth_column()`
+  perdeu o piso de meia-altura mínima — `mouth_open<=0` agora dá **zero
+  pixel** (`col.mouth_absent`), sem depender de arredondamento de
+  ceil/floor coincidir. Quem decide o valor de `mouth_open`/`mouth_curve`
+  é o gating de intensidade em `emotion_core` (histerese 0.30/0.40,
+  escala contínua até o pico ~0.70) — o renderer só honra zero como zero.
+- **Posição ancorada à face, não ao painel:** `mouth_x` soma
+  `x_offset`/`gaze_shift` (idêntico aos olhos); `mouth_y` soma
+  `gaze_y·kYTravel·0.6` (paralaxe 0.6 — acompanha o olhar um pouco menos
+  que os olhos). Tilt não desloca a boca. `face_dirty_rect()` recebe
+  `mouth_x`/`mouth_y` calculados por frame em vez das constantes fixas.
+
+Zero mudança em `main.c`: a boca já chega interpolada e temperada pelo
+gating dentro de `current` (o `nb_face_state_t` que o loop já passa pro
+desenho), sem parâmetro novo em `draw()`/`draw_dirty()`.
+
+Host-tests: `mouth_open<=0` sempre ausente (mesmo com curvatura forte);
+`mouth_open>0` sempre presente; sorriso curva as pontas pra cima em
+relação ao centro; lerp interpola os 2 campos novos. Sem
 host-test de "parece bom" — isso é bancada (boca estática nos 4 hubs).
 
 ## S3.7 completo — item 6: blend N-way

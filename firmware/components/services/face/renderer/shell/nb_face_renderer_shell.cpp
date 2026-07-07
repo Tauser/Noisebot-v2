@@ -26,13 +26,16 @@ constexpr float kGazeYLimit = .55f;
  * assimetria ±0.10 de VISUAL.md §3) -- ponto de partida, mesma lição do
  * gaze (kGazeXTravel/kYTravel): valor a confirmar/ajustar em bancada. */
 constexpr float kTiltTravel = 80.0f;
-/* Boca (S3.7 completo, item 5): posição fixa, não segue gaze/x_off/tilt
- * nesta fase (estático -- campo contínuo/acoplamentos ficam pro item 6).
- * Centralizada entre os dois olhos, abaixo da linha kEyeBaseY com folga
- * suficiente pro olho aberto (NB_FACE_EYE_HALF_HEIGHT=46) não se
- * sobrepor à boca fechada. */
+/* Boca (S3.7 completo, item 5 + emenda §3.1a): centralizada entre os
+ * dois olhos, abaixo da linha kEyeBaseY com folga suficiente pro olho
+ * aberto (NB_FACE_EYE_HALF_HEIGHT=46) não se sobrepor à boca fechada.
+ * Ancorada à face (§3.1a item 4): soma x_offset/gaze_shift (idêntico aos
+ * olhos) e gaze_y×kYTravel×kMouthGazeYParallax -- acompanha o olhar um
+ * pouco menos que os olhos (volume de cabeça, não adesivo deslizando).
+ * Tilt não desloca a boca (ela está no eixo do roll). */
 constexpr int16_t kMouthCenterX = (kBaseLeftX + kBaseRightX) / 2;
 constexpr float kMouthBaseY = kEyeBaseY + 66.0f;
+constexpr float kMouthGazeYParallax = 0.6f;
 
 const char *TAG = "face_renderer";
 
@@ -84,6 +87,15 @@ void draw_mouth(int16_t cx, float cy, float mouth_open, float mouth_curve, int16
                uint32_t color)
 {
     nb_face_mouth_column_t col;
+
+    /* RFC-VIDA-V2.md §3.1a item 1: "boca é canal de intensidade, não traço
+     * permanente" -- mouth_absent independe de x_rel (só depende de
+     * mouth_open), então uma checagem na primeira coluna já decide pro
+     * desenho inteiro (mesmo padrão de draw_eye() com eye_closed). */
+    nb_face_core_mouth_column(mouth_open, mouth_curve, half_width, cy, 0, &col);
+    if (col.mouth_absent) {
+        return;
+    }
 
     for (int16_t x_rel = 0; x_rel <= half_width * 2; ++x_rel) {
         nb_face_core_mouth_column(mouth_open, mouth_curve, half_width, cy, x_rel, &col);
@@ -156,11 +168,12 @@ nb_display_hal_rect_t mouth_dirty_rect(int16_t cx, float cy)
 }
 
 nb_display_hal_rect_t face_dirty_rect(int16_t left_x, float left_y, int16_t half_width_l,
-                                      int16_t right_x, float right_y, int16_t half_width_r)
+                                      int16_t right_x, float right_y, int16_t half_width_r,
+                                      int16_t mouth_x, float mouth_y)
 {
     const nb_display_hal_rect_t left = eye_dirty_rect(left_x, left_y, half_width_l);
     const nb_display_hal_rect_t right = eye_dirty_rect(right_x, right_y, half_width_r);
-    const nb_display_hal_rect_t mouth = mouth_dirty_rect(kMouthCenterX, kMouthBaseY);
+    const nb_display_hal_rect_t mouth = mouth_dirty_rect(mouth_x, mouth_y);
     return nb_display_hal_rect_union(nb_display_hal_rect_union(left, right), mouth);
 }
 
@@ -217,8 +230,16 @@ nb_display_hal_rect_t nb_face_renderer_shell_draw_dirty(const nb_face_state_t *f
         static_cast<int16_t>(NB_FACE_EYE_HALF_WIDTH * nb_face_core_clampf(width_l, 0.5f, 1.5f));
     const int16_t half_width_r =
         static_cast<int16_t>(NB_FACE_EYE_HALF_WIDTH * nb_face_core_clampf(width_r, 0.5f, 1.5f));
+    /* RFC-VIDA-V2.md §3.1a item 4: boca ancorada à face, não ao painel --
+     * mesmo deslocamento horizontal dos olhos (x_offset/gaze_shift);
+     * verticalmente segue o gaze com paralaxe 0.6 (menos que os olhos --
+     * volume de cabeça, não adesivo deslizando). Tilt não desloca a boca
+     * (ela fica no eixo do roll). */
+    const int16_t mouth_x = static_cast<int16_t>(kMouthCenterX + x_offset + gaze_shift);
+    const float mouth_y = kMouthBaseY + clamped_gaze_y * kYTravel * kMouthGazeYParallax;
     const nb_display_hal_rect_t current_dirty =
-        face_dirty_rect(left_x, left_y, half_width_l, right_x, right_y, half_width_r);
+        face_dirty_rect(left_x, left_y, half_width_l, right_x, right_y, half_width_r, mouth_x,
+                        mouth_y);
     const nb_display_hal_rect_t dirty =
         s_has_last_dirty ? nb_display_hal_rect_union(s_last_dirty, current_dirty)
                          : nb_display_hal_rect_t{
@@ -233,8 +254,8 @@ nb_display_hal_rect_t nb_face_renderer_shell_draw_dirty(const nb_face_state_t *f
     draw_eye(right_x, right_y, face->open_r, face->tl_r, face->tr_r, face->bl_r, face->br_r,
              face->squint_r, face->round_top, face->round_bottom, face->curve_top,
              face->curve_bottom, half_width_r, color);
-    draw_mouth(kMouthCenterX, kMouthBaseY, face->mouth_open, face->mouth_curve,
-              NB_FACE_MOUTH_HALF_WIDTH, color);
+    draw_mouth(mouth_x, mouth_y, face->mouth_open, face->mouth_curve, NB_FACE_MOUTH_HALF_WIDTH,
+              color);
     s_sprite.endWrite();
 
     s_last_dirty = current_dirty;
