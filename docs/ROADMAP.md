@@ -1965,6 +1965,25 @@ doc — o RFC assume coisas que não são verdade hoje):
    decisão do usuário 2026-07-07)**; side-by-side v1 registrando o novo
    baseline de persona.
 
+   **Progresso dos host-tests 1-6 (2026-07-07):**
+   - (1) Regra da Causa: `test_regra_da_causa_no_stimulus_only_decays_to_temperament`
+     (novo, `emotion_core`) — 10⁶ ticks sem `apply_stimulus()`, vetor só
+     decai rumo ao temperamento, nunca diverge/"inventa" estímulo. `FEITO`.
+   - (2) gramática/aborto limpo em 100% dos arcos: **N/A nesta subfase** —
+     nenhum "arco" multi-passo (tipo `RECONCILE`) existe ainda no escopo
+     do S3.7 (fica pra S3.8, RFC §11); vacuamente satisfeito.
+   - (3) postura nunca idêntica, envelope: coberto por `test_nb_posture.c`. `FEITO`.
+   - (4) campo exato nas âncoras + contínuo: coberto por
+     `test_resolve_face_matches_each_hub_exactly` /
+     `test_resolve_face_is_continuous_between_hubs` (`emotion_core`). `FEITO`.
+   - (5) variante nunca sai do envelope: coberto pelos clamps de
+     `apply_variant()` + testes de item 7. `FEITO`.
+   - (6) trajetória de decay, alvo = temperamento: coberto pelos 3 testes
+     de decay (`emotion_core`). `FEITO`.
+
+   **Falta:** bancada 60s, Turing de mesa, soak 8h, side-by-side v1 —
+   trabalho de observação do usuário, não de código.
+
 Verificação por item: host-test do núcleo primeiro; suíte inteira
 (`tools/run_host_tests.py`) verde, não só o componente tocado; build
 limpo (`idf.py build`, prova compilação, não comportamento); itens com

@@ -113,6 +113,36 @@ static void test_decay_from_negative_converges_toward_temperament(void)
     }
 }
 
+/* RFC-VIDA-V2.md §9, host-test (1) "Regra da Causa": 10^6 ticks de IDLE
+ * sem estímulo -> zero ação intencional. Fisiologia (respiração, tremor
+ * do motor de atenção, blink, gestos) é automanutenção -- exempt da
+ * regra por definição (RFC §2) e mora em idle_engine, não aqui. Do lado
+ * de emotion_core, "ação intencional" seria qualquer coisa que mova o
+ * vetor sem uma chamada explícita a apply_stimulus() -- este teste
+ * confirma que tick() sozinho, por mais ticks que passem, só decai rumo
+ * ao temperamento (nunca diverge, nunca "inventa" um estímulo). */
+static void test_regra_da_causa_no_stimulus_only_decays_to_temperament(void)
+{
+    nb_emotion_state_t state;
+    nb_emotion_core_init(&state, 1u);
+    nb_emotion_core_apply_stimulus(&state, 0.9f, -0.7f);
+
+    for (uint32_t i = 0; i < 1000000u; ++i) {
+        nb_emotion_core_tick(&state, 20u);
+        /* Nunca sai do envelope entre o pico inicial e o temperamento --
+         * "zero ação intencional" == nada empurra o vetor pra fora dessa
+         * faixa sem um apply_stimulus() explícito, que não é chamado
+         * aqui dentro do laço. */
+        CHECK(state.valence >= 0.10f - 0.0001f && state.valence <= 0.9f + 0.0001f);
+        CHECK(state.arousal >= -0.7f - 0.0001f && state.arousal <= 0.05f + 0.0001f);
+    }
+
+    /* Depois de 10^6 ticks (20s cada = ~5.5h simulados), convergiu de
+     * vez pro temperamento -- não ficou "preso" em nenhum outro ponto. */
+    CHECK(float_eq(state.valence, 0.10f, 0.001f));
+    CHECK(float_eq(state.arousal, 0.05f, 0.001f));
+}
+
 static void test_nearest_expression_matches_each_anchor_exactly(void)
 {
     /* Âncoras de VISUAL.md §2, na ordem do enum nb_face_expr_t. */
@@ -331,6 +361,7 @@ int main(void)
     test_decay_reaches_5_percent_of_gap_to_temperament_by_60s();
     test_decay_converges_monotonically_toward_temperament();
     test_decay_from_negative_converges_toward_temperament();
+    test_regra_da_causa_no_stimulus_only_decays_to_temperament();
     test_nearest_expression_matches_each_anchor_exactly();
     test_nearest_expression_null_is_neutral();
     test_clampf();
