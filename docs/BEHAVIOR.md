@@ -57,9 +57,21 @@ ativação  ∈ [-1, +1]   calmo/sonolento    →  excitado/alerta
 ```
 
 **Dinâmica:** estímulos somam deltas (clamp em ±1); decaimento exponencial
-para (0,0) com constante ~60 s até <5% do pico; o vetor mapeia por
-nearest-neighbor às âncoras das 10 expressões (§3 de `VISUAL.md`); mudança de
-expressão mapeada → `face_service` com transição suave (~220 ms).
+(constante ~60 s até <5% do pico) rumo ao **temperamento** `(+0.10, +0.05)`
+— não mais `(0,0)` — desde a S3.7 completo (RFC-VIDA-V2.md §7: "em paz, o
+Noise é sutilmente caloroso e desperto"), somado a um offset circadiano de
+ativação (NIGHT/DAWN, gancho exposto, ainda não ligado por nenhuma casca).
+
+O vetor resolve a face por **campo contínuo** (`nb_emotion_core_resolve_face()`,
+S3.7 completo item 6) só entre os 4 hubs `NEUTRAL/HAPPY/SAD/ANGRY` — blend
+por distância inversa ao quadrado (Shepard), nunca um salto discreto de
+âncora. As outras 6 âncoras das 10 expressões (§2 de `VISUAL.md`) saem de
+uso (decisão de produto, 2026-07-06); `nb_emotion_core_nearest_expression()`
+(nearest-neighbor sobre as 10) continua existindo por compatibilidade, sem
+uso ativo. Duas variantes episódicas por hub (item 7) temperam o resultado,
+sorteadas ao trocar de hub dominante. Boca (item 5) é canal de intensidade
+(RFC §3.1a): só aparece acima de um limiar de histerese na norma do vetor
+— NEUTRAL/IDLE nunca mostra boca.
 
 **Fontes de estímulo:**
 

@@ -56,26 +56,23 @@ núcleos novos, também C17 puros e host-testáveis isoladamente
   — só exposto e testado neste spike, o acoplamento real fica pro "Plano
   S3.7 completo" pós-go).
 
-O blink independente (Poisson) **não muda** nas duas configs. `main.c`
+O blink independente (Poisson) **não mudou** com o spike. `main.c`
 continua chamando `nb_idle_engine_tick()` sem nenhuma alteração — a troca
-de comportamento é inteira interna ao núcleo (`idle_engine.c` decide via
-`#if NB_IDLE_V2_SPIKE` o que alimenta `drift_x`/`drift_y` e se aplica
-`nb_breath_scale()`), preservando "zero mudança fora do idle_engine" do
-escopo do spike.
-
-Rodar a suíte de host-tests nas duas configs (`tools/run_host_tests.py`):
-
-```
-python tools/run_host_tests.py                                    # spike ligado (padrão do header)
-NB_HOST_TEST_CFLAGS="-DNB_IDLE_V2_SPIKE=0" python tools/run_host_tests.py  # motifs longos de S2.4
-```
+de comportamento foi inteira interna ao núcleo, preservando "zero
+mudança fora do idle_engine" do escopo do spike. **Nota (item 8,
+2026-07-07):** a flag `NB_IDLE_V2_SPIKE` e o catálogo antigo que ela
+alternava foram removidos por completo depois que o spike fechou `GO` e
+os itens 1-7 do "Plano S3.7 completo" ficaram prontos — a suíte roda
+numa config só agora (`python tools/run_host_tests.py`), sem o par de
+configs descrito abaixo (mantido como registro histórico do processo do
+spike).
 
 `tools/run_host_tests.py` foi generalizado para compilar todos os `.c` de
 um componente (não só `<componente>.c>`) e aceitar `NB_HOST_TEST_CFLAGS`
 como defines extras — necessário pra `nb_breath.c`/`nb_attention.c`
-conviverem com `idle_engine.c` no mesmo componente e pra rodar a suíte
-inteira (incluindo o invariante X→IDLE do `tiny_fsm`) nas duas configs de
-flag sem duplicar scripts.
+conviverem com `idle_engine.c` no mesmo componente; durante o spike isso
+também rodou a suíte inteira (incluindo o invariante X→IDLE do
+`tiny_fsm`) nas duas configs de flag sem duplicar scripts.
 
 **Turing de mesa confirmado pelo usuário (2026-07-06) — `GO`.** Passo 0
 fechado; ver `docs/ROADMAP.md` "Plano S3.7 completo (pós-go)" pra a
@@ -90,10 +87,9 @@ literais do RFC, mesmo espírito de `NB_IDLE_DRIFT_AMPLITUDE`) que vira o
 novo repouso — nunca retorna à pose exata. Mesmo padrão de núcleo puro do
 `nb_attention.c` (xorshift32, alvo re-sorteado + suavização exponencial).
 
-Soma-se em `compute_output()` sob `NB_IDLE_V2_SPIKE`: `roll` → `tilt`,
-`gaze_x/y` → `gaze_x/y`, `asymmetry` → `width_l`/`width_r` (diferencial,
-campo ocioso sob o spike já que `CURIOUS_TILT` fica atrás de
-`!NB_IDLE_V2_SPIKE`). Tickada incondicionalmente junto da atenção.
+Soma-se em `compute_output()`: `roll` → `tilt`, `gaze_x/y` → `gaze_x/y`,
+`asymmetry` → `width_l`/`width_r` (diferencial). Tickada
+incondicionalmente junto da atenção.
 
 `nb_idle_engine_reset_transient()` (novo, público) zera a postura de
 volta ao centro (invariante H7) — gancho exposto, **ainda não chamado por
@@ -118,8 +114,7 @@ Efeito em `compute_output()`/`sample_next_blink_ms()`: pálpebra de
 descanso multiplicada por `1 - level*0.25` (nunca fecha de vez — isso é
 visual de `SLEEPING`, outro estado); intervalo médio/piso do blink
 independente multiplicado por `1 + level*1.0` (até 2× mais espaçado no
-teto). Em `!NB_IDLE_V2_SPIKE`, `level` nunca sai de 0 (nunca tickado) —
-zero mudança de comportamento na config legada.
+teto).
 
 `nb_idle_engine_set_energy_inputs(engine, boredom_ms, arousal)` (novo,
 público) alimenta os dois sinais que o núcleo não pode calcular sozinho
@@ -154,17 +149,15 @@ itens 1-2:
   postura (invariante H7).
 - **Respiração em fase com o LED idle.** Único ponto que sai do
   `idle_engine`: `nb_idle_output_t` ganha `breath_scale` (o mesmo fator
-  que já modula `open_l`/`open_r`, sempre 1.0 em `!NB_IDLE_V2_SPIKE`);
-  `main.c` multiplica o brilho do LED por esse valor, mesmo clock, sem
-  estado duplicado — LED e respiração literalmente compartilham o sinal,
-  não só o período.
+  que já modula `open_l`/`open_r`); `main.c` multiplica o brilho do LED
+  por esse valor, mesmo clock, sem estado duplicado — LED e respiração
+  literalmente compartilham o sinal, não só o período.
 
 Host-tests: maioria das transições `FIXATE→SACCADE` do motor de atenção
 dispara um blink (tolerância pra quando o slot já está ocupado); o filtro
 de roll nunca sai do envelope do gaze e nunca copia o valor instantâneo
-(prova que é atraso, não passagem direta). Suíte inteira verde nas duas
-configs de flag; build limpo — confirmação visual da fase (LED×respiração)
-fica pra bancada.
+(prova que é atraso, não passagem direta). Suíte inteira verde; build
+limpo — confirmação visual da fase (LED×respiração) fica pra bancada.
 
 **Achado de bancada (2026-07-06, não corrigido ainda):** com o blink×sacada
 disparando bem mais que o blink Poisson sozinho, ficou visível um artefato
@@ -178,9 +171,9 @@ raiz por leitura estática -- fica registrado pra investigação futura
 ## S3.7 completo — item 4: gestos nomeados
 
 Três gestos (RFC §7), reaproveitando o mesmo mecanismo de slot exclusivo
-(`active_motif`) dos motifs -- sem núcleo novo, só 3 casos a mais no
+(`active_motif`) do blink -- sem núcleo novo, só 3 casos a mais no
 `switch` de `compute_output()` e 3 agendadores independentes (mesmo
-padrão do blink Poisson), todos só sob `NB_IDLE_V2_SPIKE`:
+padrão do blink Poisson):
 
 - **`CHECK_IN`** ("gaze à frente + micro-abertura + blink", ~1×/1-3min,
   frequência literal do RFC): puxa o gaze pro centro no pico do gesto,
@@ -193,9 +186,48 @@ padrão do blink Poisson), todos só sob `NB_IDLE_V2_SPIKE`:
   hold).
 
 `SLOW_BLINK`/`SIGH` não têm frequência no RFC — intervalos práticos
-(30-90s / 45-120s), mesma classe de retune-em-bancada de
-`NB_IDLE_DRIFT_AMPLITUDE`. `quiet_mode` dobra os três intervalos, mesma
-regra do blink/motifs. Host-tests: os três disparam dentro da janela
-simulada; `quiet_mode` reduz a contagem total. Suíte inteira verde nas
-duas configs de flag; build limpo — confirmação visual (a "textura" de
-cada gesto) fica pra bancada.
+(30-90s / 45-120s), mesma classe de retune-em-bancada já usada nas
+amplitudes do motor de atenção. `quiet_mode` dobra os três intervalos,
+mesma regra do blink. Host-tests: os três disparam dentro da janela
+simulada; `quiet_mode` reduz a contagem total. Suíte inteira verde;
+build limpo — confirmação visual (a "textura" de cada gesto) fica pra
+bancada.
+
+## S3.7 completo — item 8: aposentar o catálogo antigo (S2.4)
+
+Com os itens 1-7 fechados, o modelo de 3 motores deixou de ser um spike
+opcional e virou o único comportamento com sentido em produção — a flag
+`NB_IDLE_V2_SPIKE` (que alternava entre ele e o catálogo de motifs
+sorteados de S2.4) foi removida por completo do código, não só desligada
+por padrão.
+
+Removido de `idle_engine.h`: o `#define NB_IDLE_V2_SPIKE`, os motifs
+`CURIOUS_TILT`/`HEAD_TILT_HOLD`/`LOOK_DOWN_BLINK`/`LINE_BLINK`/
+`SIDE_PEEK`/`VERTICAL_SCAN`/`CROSS_SCAN` do enum `nb_idle_motif_t`, os
+campos de métrica que só eles incrementavam (`sustained_count`,
+`look_down_count`, `side_peek_count`, `scan_count`, `line_blink_count`),
+e os campos de estado do `SOFT_DRIFT` legado (`next_motif_at_ms`,
+`drift_target_x/y`, `drift_next_target_at_ms`).
+
+Removido de `idle_engine.c`: `pick_long_motif()` (distribuição ponderada
+dos motifs longos), `start_long_motif()`, `sample_next_motif_ms()`, os
+`case` de `compute_output()` que desenhavam esses motifs, o ramo `#else`
+de `nb_idle_engine_tick()` que rodava o `SOFT_DRIFT` por passeio
+aleatório, e as constantes de amplitude (`NB_IDLE_DRIFT_AMPLITUDE` e
+similares) que só esses motifs usavam.
+
+Removido de `test_idle_engine.c`: os três testes que só faziam sentido
+no catálogo antigo (agendamento mais frequente em `ATTENTIVE`, critério
+de aceite de `VISUAL.md` §3 original, `CURIOUS_TILT` alargando um olho
+só) — os demais testes perderam o `#if`/`#endif` de config alternativa
+(viraram incondicionais, já que só existe um caminho agora).
+
+`nb_posture.h`'s `NB_POSTURE_ASYMMETRY_AMPLITUDE` deixou de ser "campo
+ocioso sob o spike": `width_l`/`width_r` sempre recebem a contribuição da
+postura agora, já que não existe mais nenhuma config onde ela fica sem
+consumidor.
+
+Suíte inteira verde numa config só (23 componentes -- não há mais uma
+"config antiga" separada pra rodar); build limpo. `docs/VISUAL.md` §3/§7
+e `docs/BEHAVIOR.md` §2 atualizados (ver `docs/ROADMAP.md` item 8 do
+"Plano S3.7 completo" pra evidência completa).

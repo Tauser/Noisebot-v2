@@ -26,15 +26,12 @@ extern "C" {
 #define NB_POSTURE_HOLD_MIN_MS 30000u
 #define NB_POSTURE_HOLD_MAX_MS 90000u
 #define NB_POSTURE_TRANSITION_MS 400u
-/* Mesma escala do campo "tilt" de nb_idle_output_t (HEAD_TILT_HOLD usa
- * 0.10 pra uma assimetria sustentada e visível de motif -- a deriva
- * contínua de postura deve ser mais sutil que isso). */
+/* Mesma escala do campo "tilt" de nb_idle_output_t -- a deriva contínua
+ * de postura deve ser sutil, bem menor que um gesto sustentado. */
 #define NB_POSTURE_ROLL_AMPLITUDE 0.03f
 #define NB_POSTURE_GAZE_OFFSET_AMPLITUDE 0.05f
 /* Diferencial aplicado a width_l/width_r (width_l = 1+asymmetry, width_r
- * = 1-asymmetry) -- campo ocioso sob NB_IDLE_V2_SPIKE hoje, já que
- * CURIOUS_TILT (único motif que o usava) fica atrás de
- * !NB_IDLE_V2_SPIKE. */
+ * = 1-asymmetry) em idle_engine.c compute_output(). */
 #define NB_POSTURE_ASYMMETRY_AMPLITUDE 0.03f
 
 typedef enum {

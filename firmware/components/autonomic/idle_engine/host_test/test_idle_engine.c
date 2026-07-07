@@ -65,9 +65,7 @@ static void test_drift_never_exceeds_amplitude(void)
 {
     nb_idle_engine_t e;
 
-    /* Amplitude retunada em bancada (idle_engine.c,
-     * NB_IDLE_DRIFT_AMPLITUDE) -- 0.04 literal de VISUAL.md §3 lia como
-     * imperceptível na escala de pixels do renderer. */
+    /* Envelope do motor de atenção (nb_attention.h, NB_ATTENTION_ENVELOPE). */
     const float amplitude = 0.35f;
 
     nb_idle_engine_init(&e, 123);
@@ -88,21 +86,14 @@ static void test_quiet_mode_roughly_halves_event_frequency(void)
     nb_idle_engine_init(&quiet, 99);
     nb_idle_engine_set_mode(&quiet, true, NB_IDLE_ATTENTION_IDLE);
 
-    uint32_t normal_events = 0;
-    uint32_t quiet_events = 0;
-
     for (uint32_t ms = 0; ms < duration_ms; ms += TICK_MS) {
         nb_idle_engine_tick(&normal, TICK_MS, NULL);
         nb_idle_engine_tick(&quiet, TICK_MS, NULL);
     }
-    normal_events = normal.metrics.blink_bar_count + normal.metrics.double_blink_count +
-                   normal.metrics.sustained_count + normal.metrics.look_down_count +
-                   normal.metrics.line_blink_count + normal.metrics.side_peek_count +
-                   normal.metrics.scan_count;
-    quiet_events = quiet.metrics.blink_bar_count + quiet.metrics.double_blink_count +
-                  quiet.metrics.sustained_count + quiet.metrics.look_down_count +
-                  quiet.metrics.line_blink_count + quiet.metrics.side_peek_count +
-                  quiet.metrics.scan_count;
+    const uint32_t normal_events =
+        normal.metrics.blink_bar_count + normal.metrics.double_blink_count;
+    const uint32_t quiet_events =
+        quiet.metrics.blink_bar_count + quiet.metrics.double_blink_count;
 
     CHECK(normal_events > 0);
     CHECK(quiet_events > 0);
@@ -111,77 +102,10 @@ static void test_quiet_mode_roughly_halves_event_frequency(void)
     CHECK(quiet_events < normal_events);
 }
 
-/* Os três testes a seguir cobrem o catálogo de motifs longos de S2.4
- * (VISUAL.md §3) -- só existem sob NB_IDLE_V2_SPIKE=0, já que o spike
- * (docs/ROADMAP.md "Plano S3.7 -- passo 0") desliga o sorteio desses
- * motifs. Rodar este arquivo com NB_IDLE_V2_SPIKE=0 (via
- * NB_HOST_TEST_CFLAGS) é o jeito de manter essa cobertura viva sem
- * duplicar o arquivo. */
-#if !NB_IDLE_V2_SPIKE
-static void test_attentive_schedules_long_motifs_more_often_than_idle(void)
-{
-    nb_idle_engine_t idle_engine;
-    nb_idle_engine_t attentive_engine;
-    const uint32_t duration_ms = 120000u; /* 2 min simulados */
-
-    nb_idle_engine_init(&idle_engine, 55);
-    nb_idle_engine_init(&attentive_engine, 55);
-    nb_idle_engine_set_mode(&attentive_engine, false, NB_IDLE_ATTENTION_ATTENTIVE);
-
-    for (uint32_t ms = 0; ms < duration_ms; ms += TICK_MS) {
-        nb_idle_engine_tick(&idle_engine, TICK_MS, NULL);
-        nb_idle_engine_tick(&attentive_engine, TICK_MS, NULL);
-    }
-
-    const nb_idle_metrics_t *idle_m = nb_idle_engine_get_metrics(&idle_engine);
-    const nb_idle_metrics_t *att_m = nb_idle_engine_get_metrics(&attentive_engine);
-    const uint32_t idle_long = idle_m->sustained_count + idle_m->look_down_count +
-                               idle_m->line_blink_count + idle_m->side_peek_count +
-                               idle_m->scan_count;
-    const uint32_t att_long = att_m->sustained_count + att_m->look_down_count +
-                              att_m->line_blink_count + att_m->side_peek_count +
-                              att_m->scan_count;
-
-    CHECK(att_long > idle_long);
-}
-
-/* Simula uma sessão em IDLE e verifica o critério de aceite de
- * VISUAL.md §3 (gate S2.4), sobre uma janela mais longa que os 60s do
- * ensaio de bancada e múltiplas sementes -- pra não depender de sorte de
- * uma semente só. A confirmação visual real continua sendo o ensaio de
- * bancada (fora do escopo deste host-test). */
-static void test_acceptance_criteria_over_multiple_seeds(void)
-{
-    const uint32_t seeds[] = {1, 2, 3, 4, 5, 17, 99, 4242};
-    /* 10 min por semente: com o intervalo médio de motif longo em IDLE
-     * (15-40s), isso dá ~20 motifs longos por semente -- estatisticamente
-     * robusto o bastante pra não depender de sorte de uma janela de 60s
-     * isolada (a confirmação real da janela de 60s é o ensaio de bancada,
-     * fora do escopo deste host-test). */
-    const uint32_t duration_ms = 600000u;
-
-    for (size_t s = 0; s < sizeof(seeds) / sizeof(seeds[0]); ++s) {
-        nb_idle_engine_t e;
-
-        nb_idle_engine_init(&e, seeds[s]);
-        for (uint32_t ms = TICK_MS; ms <= duration_ms; ms += TICK_MS) {
-            nb_idle_engine_tick(&e, TICK_MS, NULL);
-        }
-
-        const nb_idle_metrics_t *m = nb_idle_engine_get_metrics(&e);
-
-        CHECK(m->sustained_count >= 1);
-        CHECK(m->look_down_count + m->double_blink_count >= 1);
-        CHECK(m->blink_bar_count >= 2);
-    }
-}
-#endif /* !NB_IDLE_V2_SPIKE */
-
-/* "nenhum intervalo de 15s com os olhos idênticos" (VISUAL.md §3) é
- * garantido por construção pelo SOFT_DRIFT contínuo, não por sorte no
- * agendamento de blink/motif: o passeio aleatório do drift muda a cada
- * tick, então os olhos nunca ficam bit-a-bit parados por muito tempo. */
-static void test_soft_drift_keeps_changing_every_tick(void)
+/* Gaze do motor de atenção muda continuamente -- garante por construção
+ * que "nenhum intervalo de 15s com os olhos idênticos" (critério
+ * herdado de VISUAL.md §3, histórico S2.4). */
+static void test_attention_gaze_keeps_changing(void)
 {
     nb_idle_engine_t e;
     nb_idle_engine_init(&e, 7);
@@ -198,40 +122,14 @@ static void test_soft_drift_keeps_changing_every_tick(void)
         prev_x = e.drift_x;
         prev_y = e.drift_y;
     }
-    /* Praticamente todo tick muda o drift (passeio aleatório contínuo);
+    /* Praticamente todo tick muda o drift (fixação+sacada contínuas);
      * uma tolerância pequena cobre o caso raro de amostra ~0 do RNG. */
     CHECK(changed_count >= 90);
 }
 
-#if !NB_IDLE_V2_SPIKE
-static void test_curious_tilt_widens_exactly_one_eye(void)
-{
-    nb_idle_engine_t e;
-
-    nb_idle_engine_init(&e, 321);
-    /* Roda até pegar um CURIOUS_TILT (bounded: motifs longos disparam
-     * dentro de 40s em IDLE; 5 min de folga é generoso). */
-    bool saw_curious_tilt = false;
-    for (uint32_t ms = 0; ms < 300000u && !saw_curious_tilt; ms += TICK_MS) {
-        nb_idle_output_t out;
-        nb_idle_engine_tick(&e, TICK_MS, &out);
-        if (out.active_motif == NB_IDLE_MOTIF_CURIOUS_TILT) {
-            saw_curious_tilt = true;
-            const int widened_l = out.width_l > 1.0f;
-            const int widened_r = out.width_r > 1.0f;
-            CHECK(widened_l != widened_r); /* exatamente um olho */
-        }
-    }
-    CHECK(saw_curious_tilt);
-}
-#endif /* !NB_IDLE_V2_SPIKE */
-
-/* Testes do spike (S3.7 passo 0, docs/RFC-VIDA-V2.md §7): só fazem sentido
- * com NB_IDLE_V2_SPIKE ligado (config padrão do header). */
-#if NB_IDLE_V2_SPIKE
 /* Sorteio de motifs longos desligado -- só o blink independente (Poisson)
- * continua ativo, como exige o "Plano S3.7 -- passo 0" (item 1). */
-static void test_spike_disables_long_motif_scheduling(void)
+ * e os gestos nomeados (item 4) continuam ativos. */
+static void test_no_long_motif_scheduling(void)
 {
     nb_idle_engine_t e;
 
@@ -242,17 +140,12 @@ static void test_spike_disables_long_motif_scheduling(void)
 
     const nb_idle_metrics_t *m = nb_idle_engine_get_metrics(&e);
 
-    CHECK(m->sustained_count == 0u);
-    CHECK(m->look_down_count == 0u);
-    CHECK(m->line_blink_count == 0u);
-    CHECK(m->side_peek_count == 0u);
-    CHECK(m->scan_count == 0u);
     CHECK(m->blink_bar_count + m->double_blink_count > 0u); /* blink continua vivo */
 }
 
 /* Respiração (RFC §7): open_l/open_r oscilam continuamente dentro de
  * 1 +- 2% quando os olhos não estão em blink (motif == NONE). */
-static void test_spike_breath_modulates_eye_openness(void)
+static void test_breath_modulates_eye_openness(void)
 {
     nb_idle_engine_t e;
     float min_open = 2.0f;
@@ -279,37 +172,11 @@ static void test_spike_breath_modulates_eye_openness(void)
     CHECK(max_open - min_open > 0.02f);
 }
 
-/* Callback de sacada (RFC §7, "acoplamentos: blink×sacada") exposto até a
- * casca -- aqui só confirmamos que o motor de atenção embutido no
- * idle_engine dispara o gancho durante uma sessão normal de tick(). */
-static void test_spike_attention_gaze_moves_over_time(void)
-{
-    nb_idle_engine_t e;
-    int changed_count = 0;
-    float prev_x;
-    float prev_y;
-
-    nb_idle_engine_init(&e, 8);
-    nb_idle_engine_tick(&e, TICK_MS, NULL);
-    prev_x = e.drift_x;
-    prev_y = e.drift_y;
-
-    for (int i = 0; i < 500; ++i) {
-        nb_idle_engine_tick(&e, TICK_MS, NULL);
-        if (e.drift_x != prev_x || e.drift_y != prev_y) {
-            ++changed_count;
-        }
-        prev_x = e.drift_x;
-        prev_y = e.drift_y;
-    }
-    CHECK(changed_count > 0);
-}
-
 /* Postura (RFC §7, motor 2, "Plano S3.7 completo" item 1) contribui pro
  * gaze/tilt/width -- confere que a saída se move ao longo do tempo (a
  * cobertura fina de envelope/não-repetição já mora em test_nb_posture.c;
  * aqui só a integração com o idle_engine). */
-static void test_spike_posture_contributes_to_output(void)
+static void test_posture_contributes_to_output(void)
 {
     nb_idle_engine_t e;
     nb_idle_output_t first;
@@ -337,7 +204,7 @@ static void test_spike_posture_contributes_to_output(void)
 /* Invariante H7: nb_idle_engine_reset_transient() zera a contribuição da
  * postura de volta ao centro (RFC §7: "entrada em IDLE reseta ao
  * centro"). */
-static void test_spike_reset_transient_zeroes_posture(void)
+static void test_reset_transient_zeroes_posture(void)
 {
     nb_idle_engine_t e;
 
@@ -370,7 +237,7 @@ static void test_spike_reset_transient_zeroes_posture(void)
  * crescente sem estímulo (via nb_idle_engine_set_energy_inputs)
  * desacelera o blink e faz a pálpebra descansar mais fechada, comparado
  * a um motor "alerta" (sem entradas de energia, defaults 0/0.0). */
-static void test_spike_energy_droops_eyelid_and_slows_blink(void)
+static void test_energy_droops_eyelid_and_slows_blink(void)
 {
     nb_idle_engine_t alert;
     nb_idle_engine_t bored;
@@ -416,7 +283,7 @@ static void test_spike_energy_droops_eyelid_and_slows_blink(void)
  * transições FIXATE->SACCADE do motor de atenção dispara um blink de
  * fato (slot livre) -- não é 100% porque, raramente, um blink
  * independente já está em curso quando a sacada começa. */
-static void test_spike_saccade_triggers_blink(void)
+static void test_saccade_triggers_blink(void)
 {
     nb_idle_engine_t e;
     uint32_t saccades = 0;
@@ -447,7 +314,7 @@ static void test_spike_saccade_triggers_blink(void)
 /* Roll segue gaze com atraso (RFC §7, "acoplamentos", item 3): o filtro
  * passa-baixa nunca sai do envelope do gaze e nunca copia o valor
  * instantâneo (prova que é atraso, não passagem direta). */
-static void test_spike_roll_follows_gaze_with_lag(void)
+static void test_roll_follows_gaze_with_lag(void)
 {
     nb_idle_engine_t e;
     int lag_differs_from_instantaneous_gaze = 0;
@@ -467,8 +334,8 @@ static void test_spike_roll_follows_gaze_with_lag(void)
 /* Gestos nomeados (RFC §7, "Plano S3.7 completo" item 4): cada um
  * dispara dentro do próprio intervalo, nunca dois ao mesmo tempo (mesmo
  * slot exclusivo de active_motif), e quiet_mode dobra os intervalos --
- * mesma verificação estatística já usada pro blink/motifs antigos. */
-static void test_spike_named_gestures_fire(void)
+ * mesma verificação estatística já usada pro blink. */
+static void test_named_gestures_fire(void)
 {
     nb_idle_engine_t e;
     const uint32_t duration_ms = 3600000u; /* 60 min simulados */
@@ -483,10 +350,6 @@ static void test_spike_named_gestures_fire(void)
      * testar em runtime além disso. O que vale conferir é que os três
      * gestos de fato disparam dentro da janela. */
     const nb_idle_metrics_t *m = nb_idle_engine_get_metrics(&e);
-    /* Em 60 min, CHECK_IN (1-3min) deve disparar bastante mais vezes que
-     * SLOW_BLINK/SIGH (30-90s/45-120s teriam mais chances, mas todos
-     * disputam o mesmo slot com blink -- só confere presença, não conta
-     * exata). */
     CHECK(m->check_in_count >= 1u);
     CHECK(m->slow_blink_count >= 1u);
     CHECK(m->sigh_count >= 1u);
@@ -495,7 +358,7 @@ static void test_spike_named_gestures_fire(void)
 /* quiet_mode dobra os intervalos dos três gestos -- menos disparos na
  * mesma janela, mesmo critério estatístico de
  * test_quiet_mode_roughly_halves_event_frequency(). */
-static void test_spike_quiet_mode_slows_named_gestures(void)
+static void test_quiet_mode_slows_named_gestures(void)
 {
     nb_idle_engine_t normal;
     nb_idle_engine_t quiet;
@@ -520,7 +383,6 @@ static void test_spike_quiet_mode_slows_named_gestures(void)
     CHECK(gestures_normal > 0u);
     CHECK(gestures_quiet < gestures_normal);
 }
-#endif /* NB_IDLE_V2_SPIKE */
 
 int main(void)
 {
@@ -529,26 +391,16 @@ int main(void)
     test_null_is_safe();
     test_drift_never_exceeds_amplitude();
     test_quiet_mode_roughly_halves_event_frequency();
-    test_soft_drift_keeps_changing_every_tick();
-
-#if !NB_IDLE_V2_SPIKE
-    test_attentive_schedules_long_motifs_more_often_than_idle();
-    test_acceptance_criteria_over_multiple_seeds();
-    test_curious_tilt_widens_exactly_one_eye();
-#endif
-
-#if NB_IDLE_V2_SPIKE
-    test_spike_disables_long_motif_scheduling();
-    test_spike_breath_modulates_eye_openness();
-    test_spike_attention_gaze_moves_over_time();
-    test_spike_posture_contributes_to_output();
-    test_spike_reset_transient_zeroes_posture();
-    test_spike_energy_droops_eyelid_and_slows_blink();
-    test_spike_saccade_triggers_blink();
-    test_spike_roll_follows_gaze_with_lag();
-    test_spike_named_gestures_fire();
-    test_spike_quiet_mode_slows_named_gestures();
-#endif
+    test_attention_gaze_keeps_changing();
+    test_no_long_motif_scheduling();
+    test_breath_modulates_eye_openness();
+    test_posture_contributes_to_output();
+    test_reset_transient_zeroes_posture();
+    test_energy_droops_eyelid_and_slows_blink();
+    test_saccade_triggers_blink();
+    test_roll_follows_gaze_with_lag();
+    test_named_gestures_fire();
+    test_quiet_mode_slows_named_gestures();
 
     if (failures == 0) {
         printf("idle_engine host_test: ok\n");

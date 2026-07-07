@@ -86,18 +86,16 @@ envelope da região (clamp).
 
 ## 3. Vida em IDLE (idle_engine)
 
-O baseline não é estático — é **movimento mínimo vivo**. Desde a S3.7
-(`NB_IDLE_V2_SPIKE` ligada por padrão, `GO` confirmado em 2026-07-06,
-`docs/RFC-VIDA-V2.md` §7), o modelo em produção é o abaixo; o catálogo de
-motifs de S2.4 (segunda tabela) só roda na config legada
-`NB_IDLE_V2_SPIKE=0`, mantida por enquanto pra regressão de host-test.
-
-**Modelo atual (`NB_IDLE_V2_SPIKE=1`, padrão):**
+O baseline não é estático — é **movimento mínimo vivo**. Modelo de 3
+motores + respiração + blink + gestos nomeados (S3.7 completo,
+`docs/RFC-VIDA-V2.md` §7), único caminho desde o item 8 (aposentadoria
+do catálogo de motifs de S2.4, `NB_IDLE_V2_SPIKE` removida — deixou de
+ser flag opcional).
 
 | Motor | Núcleo | Descrição |
 | --- | --- | --- |
 | Respiração | `nb_breath.c` | Fator 1±2% (período ~6 s) sobre `open_l`/`open_r`, aplicado depois do blink. |
-| Atenção | `nb_attention.c` | FSM `FIXATE⇄SACCADE`: fixação 0.5–3 s com micro-tremor (amplitude 0.06, suavizado, retunado em bancada), sacada 80 ms ease-out pra alvo em `[-0.35,0.35]²`, ~40% de viés de retorno ao centro. Substitui `SOFT_DRIFT`. |
+| Atenção | `nb_attention.c` | FSM `FIXATE⇄SACCADE`: fixação 0.5–3 s com micro-tremor (amplitude 0.06, suavizado, retunado em bancada), sacada 80 ms ease-out pra alvo em `[-0.35,0.35]²`, ~40% de viés de retorno ao centro. |
 | Postura | `nb_posture.c` | FSM `HOLD⇄TRANSITION`: a cada 30–90 s, deriva ~400 ms pra uma nova micro-pose (roll/gaze offset/assimetria pequenos) que vira o novo repouso — nunca repete a pose exata. Soma-se a `tilt`/`gaze`/`width_l`-`width_r`. |
 | Energia | `nb_energy.c` | Nível contínuo de sonolência [0,1] a partir de tédio + ativação + `quiet_mode`; descansa a pálpebra (até 25% mais fechada) e espaça o blink (até 2×). Entradas reais (tédio/ativação) ainda não ligadas por nenhuma casca — só o núcleo existe. |
 
@@ -105,10 +103,9 @@ motifs de S2.4 (segunda tabela) só roda na config legada
 respeitando exclusividade de slot); roll segue gaze com ~100ms de atraso
 (filtro passa-baixa, ganho sutil); respiração em fase com o LED idle
 (`main.c` multiplica o brilho pelo mesmo fator que modula os olhos).
-Blink independente (Poisson, mesmos parâmetros da tabela legada abaixo)
-continua ativo nas duas configs.
+Blink independente segue Poisson (média 5s, mínimo 1.8s, ~30% duplos).
 
-**Gestos nomeados** (mesmo slot exclusivo dos motifs, sem núcleo novo):
+**Gestos nomeados** (mesmo slot exclusivo do blink, sem núcleo novo):
 `CHECK_IN` (~1×/1-3min — gaze ao centro + micro-abertura + blink),
 `SLOW_BLINK` (fecha/reabre devagar, ~650ms, contentamento), `SIGH` (gaze
 desce e volta suave, ~1.8s, acomodação). `quiet_mode` dobra os três.
@@ -122,28 +119,17 @@ item 4 do "Plano S3.7 completo".
 Ainda falta a fiação real de tédio/ativação pro motor de energia — ver
 "Plano S3.7 completo" em `docs/ROADMAP.md` pro estado de cada item.
 
-**Catálogo legado (`NB_IDLE_V2_SPIKE=0`, S2.4)** — calibrado contra o EMO
-(v1 `IDLE_REFERENCE.md`, análise por olho de vídeo real):
-
-| Motif | Descrição | Duração | Distribuição IDLE |
-| --- | --- | --- | --- |
-| `SOFT_DRIFT` | micro-jitter de gaze, amplitude ≤ 0.04 | contínuo | sempre |
-| `BLINK_BAR` | blink rápido 80–120 ms (barra) | ~100 ms | Poisson, média 5 s (min 1.8 s) |
-| `DOUBLE_BLINK` | dois blinks com gap 400–1000 ms | ~1.5 s | ~30% dos blinks |
-| `CURIOUS_TILT` | um olho +30% largura sustentado, blink preserva forma | 3–5 s | 30% dos motifs |
-| `HEAD_TILT_HOLD` | assimetria vertical ±0.10 sustentada (roll visual) | 5–15 s | 20% |
-| `LOOK_DOWN_BLINK` | gaze +0.4 ↓ → blink → hold 700 ms → blink → retorno | ~2 s | 15% |
-| `LINE_BLINK` | blink simples isolado | ~100 ms | 15% |
-| `SIDE_PEEK` | olhada lateral com retorno | ~1.5 s | 10% |
-| `VERTICAL_SCAN` / `CROSS_SCAN` | varredura vertical/diagonal | ~2 s | 5% + 5% |
-
-Motifs longos a cada 15–40 s em IDLE; em ATTENTIVE, 5–13 s com peeks/scans
-mais frequentes. Modo `quiet`/NIGHT: frequências ÷2, brilho reduzido.
-
-**Critério de aceite (gate S2.4, sessão de 60 s, só se aplica à config
-legada):** ≥1 expressão sustentada (CURIOUS_TILT ou HEAD_TILT_HOLD); ≥1
-LOOK_DOWN_BLINK ou double blink; ≥2 blink bars; drift ≤ 0.04; nenhum
-intervalo de 15 s com os olhos idênticos.
+**Histórico (S2.4, aposentado 2026-07-07):** o modelo anterior sorteava
+motifs discretos (`SOFT_DRIFT` contínuo + `BLINK_BAR`/`DOUBLE_BLINK` via
+Poisson + um catálogo de motifs longos — `CURIOUS_TILT`,
+`HEAD_TILT_HOLD`, `LOOK_DOWN_BLINK`, `LINE_BLINK`, `SIDE_PEEK`,
+`VERTICAL_SCAN`/`CROSS_SCAN` — a cada 15–40s em IDLE, 5–13s em
+ATTENTIVE). O gate de aceite original (sessão de 60s: ≥1 expressão
+sustentada, ≥1 look-down/double-blink, ≥2 blink bars, drift ≤0.04, sem
+intervalo de 15s idêntico) foi superado pelo gate final da S3.7 (item 9)
+sobre o modelo novo. Código e host-tests removidos; ver git history
+(commits da S3.7 completo, item 8) se precisar consultar os números
+originais.
 
 ## 4. Sequências compostas
 
@@ -198,5 +184,7 @@ a face.
 - `tiny_fsm` decide estado; `face_service` apresenta; `reflex_engine` arbitra.
 - Invariante de IDLE (`BEHAVIOR.md` §1.1) vale para tudo deste documento:
   entrada em IDLE limpa expressão, gaze, overlays transitórios e LED.
-- Paridade v1: o gate S2.2 compara lado a lado com o robô v1 rodando — a
-  personalidade visual é um ativo do produto e não regride.
+- **Paridade v1 (gate S2.2) aposentada de propósito** (RFC-VIDA-V2.md §12,
+  decisão de produto): persona v2 diverge intencionalmente do v1 — o
+  side-by-side registrado no gate final da S3.7 (item 9) é o novo
+  baseline, não mais uma comparação de regressão contra o v1.

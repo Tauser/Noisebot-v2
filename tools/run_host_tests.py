@@ -74,11 +74,11 @@ def main() -> int:
     cc = compiler()
     BUILD.mkdir(parents=True, exist_ok=True)
 
-    # Flags extras (ex.: NB_HOST_TEST_CFLAGS="-DNB_IDLE_V2_SPIKE=0") -- usado
-    # pra rodar a mesma suíte em configs alternativas de flag de compilação
-    # (S3.7 spike: idle_engine tem comportamento sob NB_IDLE_V2_SPIKE, ligado
-    # por padrão no header; passar =0 aqui roda a suíte inteira com o motif
-    # antigo, sem precisar de um segundo script).
+    # Flags extras (ex.: NB_HOST_TEST_CFLAGS="-DALGUMA_FLAG=1") -- usado pra
+    # rodar a mesma suíte em configs alternativas de flag de compilação, sem
+    # precisar de um segundo script. Histórico: usado pela flag
+    # NB_IDLE_V2_SPIKE (S3.7 spike) até ela virar caminho único e ser
+    # aposentada (S3.7 completo, item 8).
     extra_cflags = os.environ.get("NB_HOST_TEST_CFLAGS", "").split()
 
     tests = sorted(FIRMWARE.glob("components/**/host_test/test_*.c"))

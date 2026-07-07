@@ -1934,13 +1934,30 @@ doc — o RFC assume coisas que não são verdade hoje):
    hub dominante não muda; troca de hub dispara novo sorteio. Suíte
    inteira verde nas duas configs de flag; build limpo. **Falta:**
    confirmação em bancada (perceptível sem confundir a emoção-base).
-8. **Aposentar o catálogo antigo (S2.4) + docs:** `NB_IDLE_V2_SPIKE` vira
-   único caminho — remove `pick_long_motif`/`start_long_motif`/
-   `sample_next_motif_ms` (hoje atrás de `#if !NB_IDLE_V2_SPIKE`) e os
-   testes que dependiam deles. Atualiza `docs/VISUAL.md` §1-4 (RFC já
-   declara esse escopo) e `docs/BEHAVIOR.md` §2/5. Registra que S2.2
-   deixa de ser critério de paridade. Gate: host-tests verdes numa config
-   só, build limpo, docs revisados.
+8. **Aposentar o catálogo antigo (S2.4) + docs** — **`FEITO`
+   (2026-07-07).** `NB_IDLE_V2_SPIKE` removida por completo (não é mais
+   `#define`/`#if` em lugar nenhum) -- o modelo de 3 motores é o único
+   caminho. Removidos de `idle_engine.c/.h`: `pick_long_motif`,
+   `start_long_motif`, `sample_next_motif_ms`, os motifs
+   `CURIOUS_TILT`/`HEAD_TILT_HOLD`/`LOOK_DOWN_BLINK`/`LINE_BLINK`/
+   `SIDE_PEEK`/`VERTICAL_SCAN`/`CROSS_SCAN` do enum `nb_idle_motif_t`, os
+   campos de métrica associados (`sustained_count`, `look_down_count`,
+   `side_peek_count`, `scan_count`, `line_blink_count`), os campos de
+   estado do SOFT_DRIFT legado (`next_motif_at_ms`, `drift_target_x/y`,
+   `drift_next_target_at_ms`) e as constantes de amplitude só usadas por
+   eles. Removidos de `test_idle_engine.c`: os 3 testes que só faziam
+   sentido no catálogo antigo
+   (`test_attentive_schedules_long_motifs_more_often_than_idle`,
+   `test_acceptance_criteria_over_multiple_seeds`,
+   `test_curious_tilt_widens_exactly_one_eye`); os `#if`/`#endif` de
+   config alternativa viraram incondicionais. `docs/VISUAL.md` §3
+   reescrito (modelo de 3 motores como único, catálogo antigo virou nota
+   histórica) e §7 (paridade v1/gate S2.2 explicitamente aposentada,
+   RFC §12); `docs/BEHAVIOR.md` §2 atualizado (temperamento como alvo do
+   decay, campo contínuo nos 4 hubs, boca/variantes, em vez do
+   nearest-neighbor puro/decay-pra-zero desatualizados). Suíte inteira
+   verde (23 componentes -- a "config antiga" não existe mais pra testar
+   separadamente); build limpo.
 9. **Gate final da S3.7:** host-tests 1-6 do RFC §9 verdes; bancada 60s
    (§9 — ≥2 blinks, ≥2 fixações >2s, respiração mensurável em vídeo,
    postura final ≠ inicial, zero ação intencional sem causa, nenhum
