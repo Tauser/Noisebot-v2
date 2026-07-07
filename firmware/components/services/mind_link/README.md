@@ -28,6 +28,14 @@ estática protegida por critical section. O socket continua sendo propriedade
 exclusiva da task `mind_link`; produtores externos só enfileiram intent de
 envio, nunca fazem `send()` direto.
 
-**Ainda pendente:** recepção de `SAY_*`, backpressure/queda no meio do
-stream, métricas de queue/drop para `STATUS`, e soak completo do fluxo contra
-um server fake ou a mente real.
+**Avanço S4.3 (2026-07-08, parcial):** a mesma casca agora também decodifica
+o downlink `SAY_BEGIN/SAY_AUDIO/SAY_END/SAY_CANCEL`. Por enquanto o áudio
+recebido ainda não disputa o speaker local de bring-up; ele entra como
+telemetria/hint de turno (`NB_EVENT_TYPE_MIND_HINT`) para o corpo reagir ao
+início/fim/cancelamento da fala e limpar `RESPONDING` se o link cair no meio
+da resposta.
+
+**Ainda pendente:** playback real do `SAY_AUDIO` sem disputar o bring-up
+local do speaker, backpressure/fade quando o link cair no meio do stream,
+métricas de queue/drop para `STATUS`, e soak completo do fluxo contra um
+server fake ou a mente real.

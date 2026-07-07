@@ -64,6 +64,11 @@ def main() -> int:
         help="hex do token esperado; HELLO com token diferente e recusado (conexao encerrada "
         "sem HELLO_ACK), como o servidor real faria (PROTOCOL.md S3)",
     )
+    parser.add_argument(
+        "--send-say-after-listen-end",
+        action="store_true",
+        help="envia um turno SAY_* sintetico apos o primeiro LISTEN_END recebido",
+    )
     args = parser.parse_args()
     required_token = bytes.fromhex(args.require_token) if args.require_token else None
 
@@ -80,7 +85,9 @@ def main() -> int:
             conn, addr = listener.accept()
             cycles_total += 1
             print(f"nbp2-fake-server: conexao de {addr} (ciclo {cycles_total})")
-            got_hello_ack = handle_connection(conn, args.drop_after, required_token)
+            got_hello_ack = handle_connection(
+                conn, args.drop_after, required_token, args.send_say_after_listen_end
+            )
             if got_hello_ack:
                 cycles_ok += 1
             print(
@@ -97,13 +104,17 @@ def main() -> int:
 
 
 def handle_connection(
-    conn: socket.socket, drop_after: float | None, required_token: bytes | None
+    conn: socket.socket,
+    drop_after: float | None,
+    required_token: bytes | None,
+    send_say_after_listen_end: bool,
 ) -> bool:
     buf = bytearray()
     conn.settimeout(0.5)
     started_at = time.monotonic()
     boot_id = None
     got_hello_ack = False
+    sent_say = False
 
     with conn:
         while True:
@@ -174,8 +185,49 @@ def handle_connection(
             elif view.msg_type == nbp2.MSG_LISTEN_END:
                 listen = nbp2.decode_listen_end(view.payload)
                 print(f"nbp2-fake-server: LISTEN_END session_id={listen.session_id}")
+                if send_say_after_listen_end and not sent_say:
+                    send_demo_say(conn, turn_id=1, sample_rate=16000)
+                    sent_say = True
             else:
                 print(f"nbp2-fake-server: frame tipo 0x{view.msg_type:04x} ignorado")
+
+
+def send_demo_say(conn: socket.socket, turn_id: int, sample_rate: int) -> None:
+    chunk_a = bytes([0x00, 0x10] * 64)
+    chunk_b = bytes([0x00, 0xF0] * 64)
+
+    print(
+        "nbp2-fake-server: enviando turno SAY sintetico "
+        f"turn_id={turn_id} sample_rate={sample_rate}"
+    )
+    conn.sendall(
+        nbp2.encode_frame(
+            nbp2.MSG_SAY_BEGIN,
+            100,
+            nbp2.encode_say_begin(nbp2.SayBegin(turn_id=turn_id, sample_rate=sample_rate)),
+        )
+    )
+    conn.sendall(
+        nbp2.encode_frame(
+            nbp2.MSG_SAY_AUDIO,
+            101,
+            nbp2.encode_say_audio(nbp2.SayAudio(turn_id=turn_id, pcm=chunk_a)),
+        )
+    )
+    conn.sendall(
+        nbp2.encode_frame(
+            nbp2.MSG_SAY_AUDIO,
+            102,
+            nbp2.encode_say_audio(nbp2.SayAudio(turn_id=turn_id, pcm=chunk_b)),
+        )
+    )
+    conn.sendall(
+        nbp2.encode_frame(
+            nbp2.MSG_SAY_END,
+            103,
+            nbp2.encode_say_end(nbp2.SayEnd(turn_id=turn_id)),
+        )
+    )
 
 
 if __name__ == "__main__":

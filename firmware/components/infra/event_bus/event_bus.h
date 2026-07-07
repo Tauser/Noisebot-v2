@@ -73,6 +73,27 @@ typedef struct {
     uint16_t reserved;
 } nb_voice_event_payload_t;
 
+/* Payload de NB_EVENT_TYPE_MIND_HINT -- hints de turno vindos da mente
+ * entram pelo mind_link (L3) e são consumidos por reflex_engine/tiny_fsm
+ * (L4), então o contrato neutro mora no event_bus (L1) pelo mesmo motivo
+ * de VOICE/TIME_SYNC/TIMER. Cabe exatamente nos 16 bytes do payload. */
+typedef enum {
+    NB_MIND_HINT_SAY_BEGIN = 0,
+    NB_MIND_HINT_SAY_AUDIO = 1,
+    NB_MIND_HINT_SAY_END = 2,
+    NB_MIND_HINT_SAY_CANCEL = 3,
+    NB_MIND_HINT_SERVER_DROPPED = 4,
+} nb_mind_hint_kind_t;
+
+typedef struct {
+    uint32_t turn_id;
+    uint32_t sample_rate; /* SAY_BEGIN; 0 nos demais */
+    uint32_t samples;     /* amostras/chunk em SAY_AUDIO; 0 nos demais */
+    uint8_t kind;
+    uint8_t detail;
+    uint16_t reserved;
+} nb_mind_hint_payload_t;
+
 /* Payload de NB_EVENT_TYPE_TIMER -- cabe nos 16 bytes de nb_event_t.payload
  * (8+4+4). Definido aqui (L1 infra, não em schedule_core/L4) porque quem
  * publica (mind_link_shell, L3) não pode incluir um header de camada

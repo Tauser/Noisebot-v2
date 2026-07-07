@@ -59,6 +59,24 @@ static nb_reflex_stimulus_t map_voice_event(const nb_voice_event_payload_t *payl
     }
 }
 
+static nb_fsm_event_t map_mind_hint_event(const nb_mind_hint_payload_t *payload) {
+    if (payload == NULL) {
+        return NB_FSM_EVENT_COUNT;
+    }
+
+    switch ((nb_mind_hint_kind_t)payload->kind) {
+    case NB_MIND_HINT_SAY_BEGIN:
+        return NB_FSM_EVENT_SAY_START;
+    case NB_MIND_HINT_SAY_END:
+    case NB_MIND_HINT_SAY_CANCEL:
+        return NB_FSM_EVENT_SAY_END;
+    case NB_MIND_HINT_SERVER_DROPPED:
+        return NB_FSM_EVENT_SERVER_DROPPED;
+    default:
+        return NB_FSM_EVENT_COUNT;
+    }
+}
+
 static void apply_reaction(const nb_reflex_reaction_t *reaction, nb_emotion_state_t *emotion,
                            nb_tiny_fsm_t *fsm) {
     if (reaction->has_affect_delta && emotion != NULL) {
@@ -142,6 +160,29 @@ nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb
             ESP_LOGI(TAG, "voice kind=%u session=%u fsm_event=%d latency_ms=%u",
                      (unsigned)payload.kind, (unsigned)payload.session_id,
                      (int)reaction.fsm_event, (unsigned)latency_ms);
+            continue;
+        }
+
+        if (event.type == NB_EVENT_TYPE_MIND_HINT &&
+            event.payload_len == sizeof(nb_mind_hint_payload_t)) {
+            nb_mind_hint_payload_t payload;
+            memcpy(&payload, event.payload, sizeof(payload));
+            const nb_fsm_event_t fsm_event = map_mind_hint_event(&payload);
+            if (fsm_event == NB_FSM_EVENT_COUNT) {
+                if ((nb_mind_hint_kind_t)payload.kind == NB_MIND_HINT_SAY_AUDIO) {
+                    ESP_LOGI(TAG, "mind_hint kind=%u turn=%u samples=%u latency_ms=%u",
+                             (unsigned)payload.kind, (unsigned)payload.turn_id,
+                             (unsigned)payload.samples, (unsigned)(now_ms - event.timestamp_ms));
+                }
+                continue;
+            }
+            nb_tiny_fsm_apply_event(fsm, fsm_event);
+            if (nb_tiny_fsm_get_state(fsm) == NB_FSM_STATE_IDLE) {
+                nb_reflex_engine_force_clear(&s_engine);
+            }
+            ESP_LOGI(TAG, "mind_hint kind=%u turn=%u fsm_event=%d latency_ms=%u",
+                     (unsigned)payload.kind, (unsigned)payload.turn_id, (int)fsm_event,
+                     (unsigned)(now_ms - event.timestamp_ms));
             continue;
         }
 

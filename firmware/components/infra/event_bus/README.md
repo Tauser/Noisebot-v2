@@ -24,3 +24,10 @@ protegida por critical section) — `touch_service_shell` publica
 `nb_voice_event_payload_t.kind` distingue wake/listen/feedback e
 `detail` carrega metadado coarse específico por evento (nível de áudio,
 motivo de end, feedback honesto) sem estourar os 16 bytes do payload.
+
+**S4.3:** `mind_link_shell` usa `NB_EVENT_TYPE_MIND_HINT` para levar
+`SAY_BEGIN/SAY_AUDIO/SAY_END/SAY_CANCEL` e queda de link do downlink ao
+resto do corpo sem chamar `tiny_fsm`/`reflex_engine` direto. O payload
+`nb_mind_hint_payload_t` carrega `turn_id`, `sample_rate` e tamanho
+coarse do chunk quando houver, preservando a regra "camada chama só para
+baixo; cross-layer sobe pelo bus".

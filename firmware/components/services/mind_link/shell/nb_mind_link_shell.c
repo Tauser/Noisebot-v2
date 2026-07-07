@@ -30,6 +30,11 @@ static const char *TAG = "mind_link";
 static nb_mind_link_session_t s_session;
 static TaskHandle_t s_task_handle;
 static portMUX_TYPE s_voice_mux = portMUX_INITIALIZER_UNLOCKED;
+static bool s_downlink_say_active;
+static uint32_t s_downlink_say_turn_id;
+static uint32_t s_downlink_say_sample_rate;
+static uint32_t s_downlink_say_audio_chunks;
+static uint32_t s_downlink_say_audio_samples;
 
 /* S3.5: disparo de timer pedido de fora da task (main.c/schedule_core_shell)
  * -- flag simples em vez de socket compartilhado entre tasks (só a task de
@@ -320,6 +325,46 @@ static bool nb_mind_link_shell_voice_queue_pop(nb_mind_link_voice_item_t *out)
     return ok;
 }
 
+static void nb_mind_link_shell_publish_mind_hint(nb_mind_hint_kind_t kind, uint32_t turn_id,
+                                                 uint32_t sample_rate, uint32_t samples,
+                                                 uint32_t now_ms)
+{
+    nb_event_t bus_event = {
+        .type = NB_EVENT_TYPE_MIND_HINT,
+        .priority = NB_EVENT_PRIORITY_NORMAL,
+        .timestamp_ms = now_ms,
+        .payload_len = (uint8_t)sizeof(nb_mind_hint_payload_t),
+    };
+    nb_mind_hint_payload_t payload = {
+        .turn_id = turn_id,
+        .sample_rate = sample_rate,
+        .samples = samples,
+        .kind = (uint8_t)kind,
+        .detail = 0u,
+        .reserved = 0u,
+    };
+
+    memcpy(bus_event.payload, &payload, sizeof(payload));
+    if (nb_event_bus_shell_publish(&bus_event) != NB_EVENT_BUS_OK) {
+        ESP_LOGW(TAG, "falha ao publicar mind_hint kind=%u turn=%u",
+                 (unsigned)kind, (unsigned)turn_id);
+    }
+}
+
+static void nb_mind_link_shell_reset_downlink_say(bool publish_drop, uint32_t now_ms)
+{
+    if (publish_drop && s_downlink_say_active) {
+        nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SERVER_DROPPED, s_downlink_say_turn_id,
+                                             s_downlink_say_sample_rate,
+                                             s_downlink_say_audio_samples, now_ms);
+    }
+    s_downlink_say_active = false;
+    s_downlink_say_turn_id = 0u;
+    s_downlink_say_sample_rate = 0u;
+    s_downlink_say_audio_chunks = 0u;
+    s_downlink_say_audio_samples = 0u;
+}
+
 /* Extrai um frame completo do acumulador, se houver. Descarta byte a byte
  * até achar um SOF válido (resync) e descarta o frame inteiro em caso de
  * CRC ruim ou tamanho absurdo, para nunca travar em lixo de socket. */
@@ -448,6 +493,69 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
         }
         break;
     }
+    case NBP2_MSG_SAY_BEGIN: {
+        nbp2_msg_say_begin_t say_begin;
+
+        if (nbp2_decode_say_begin(frame->payload, frame->payload_len, &say_begin) == NBP2_OK) {
+            s_downlink_say_active = true;
+            s_downlink_say_turn_id = say_begin.turn_id;
+            s_downlink_say_sample_rate = say_begin.sample_rate;
+            s_downlink_say_audio_chunks = 0u;
+            s_downlink_say_audio_samples = 0u;
+            nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_BEGIN, say_begin.turn_id,
+                                                 say_begin.sample_rate, 0u, now_ms);
+            ESP_LOGI(TAG, "SAY_BEGIN turn=%u sample_rate=%u",
+                     (unsigned)say_begin.turn_id, (unsigned)say_begin.sample_rate);
+        }
+        break;
+    }
+    case NBP2_MSG_SAY_AUDIO: {
+        nbp2_msg_say_audio_t say_audio;
+
+        if (nbp2_decode_say_audio(frame->payload, frame->payload_len, &say_audio) == NBP2_OK) {
+            const uint32_t samples = (uint32_t)(say_audio.pcm_len / sizeof(int16_t));
+            s_downlink_say_active = true;
+            s_downlink_say_turn_id = say_audio.turn_id;
+            ++s_downlink_say_audio_chunks;
+            s_downlink_say_audio_samples += samples;
+            nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_AUDIO, say_audio.turn_id,
+                                                 s_downlink_say_sample_rate, samples, now_ms);
+            if (s_downlink_say_audio_chunks == 1u || (s_downlink_say_audio_chunks % 16u) == 0u) {
+                ESP_LOGI(TAG, "SAY_AUDIO turn=%u chunks=%u samples_total=%u",
+                         (unsigned)say_audio.turn_id, (unsigned)s_downlink_say_audio_chunks,
+                         (unsigned)s_downlink_say_audio_samples);
+            }
+        }
+        break;
+    }
+    case NBP2_MSG_SAY_END: {
+        nbp2_msg_say_end_t say_end;
+
+        if (nbp2_decode_say_end(frame->payload, frame->payload_len, &say_end) == NBP2_OK) {
+            nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_END, say_end.turn_id,
+                                                 s_downlink_say_sample_rate,
+                                                 s_downlink_say_audio_samples, now_ms);
+            ESP_LOGI(TAG, "SAY_END turn=%u chunks=%u samples_total=%u",
+                     (unsigned)say_end.turn_id, (unsigned)s_downlink_say_audio_chunks,
+                     (unsigned)s_downlink_say_audio_samples);
+            nb_mind_link_shell_reset_downlink_say(false, now_ms);
+        }
+        break;
+    }
+    case NBP2_MSG_SAY_CANCEL: {
+        nbp2_msg_say_cancel_t say_cancel;
+
+        if (nbp2_decode_say_cancel(frame->payload, frame->payload_len, &say_cancel) == NBP2_OK) {
+            nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_CANCEL, say_cancel.turn_id,
+                                                 s_downlink_say_sample_rate,
+                                                 s_downlink_say_audio_samples, now_ms);
+            ESP_LOGW(TAG, "SAY_CANCEL turn=%u chunks=%u samples_total=%u",
+                     (unsigned)say_cancel.turn_id, (unsigned)s_downlink_say_audio_chunks,
+                     (unsigned)s_downlink_say_audio_samples);
+            nb_mind_link_shell_reset_downlink_say(false, now_ms);
+        }
+        break;
+    }
     default:
         ESP_LOGD(TAG, "frame tipo 0x%04x ignorado", (unsigned)frame->type);
         break;
@@ -536,6 +644,7 @@ static void nb_mind_link_shell_task(void *arg)
         heartbeat_counter = 0u;
         tx_seq = NB_MIND_LINK_HELLO_SEQ + 1u;
         buf.len = 0u;
+        nb_mind_link_shell_reset_downlink_say(false, 0u);
 
         nb_mind_link_session_on_connected(&s_session, nb_mind_link_shell_now_ms(), boot_id);
 
@@ -640,6 +749,7 @@ static void nb_mind_link_shell_task(void *arg)
             }
         }
 
+        nb_mind_link_shell_reset_downlink_say(true, nb_mind_link_shell_now_ms());
         close(sock);
         ESP_LOGW(TAG, "sessao morta, reconectando em %u ms",
                  (unsigned)nb_mind_link_backoff_delay_ms(
@@ -662,6 +772,7 @@ esp_err_t nb_mind_link_shell_init(void)
     s_voice_queue_tail = 0u;
     s_voice_queue_count = 0u;
     s_voice_queue_dropped = 0u;
+    nb_mind_link_shell_reset_downlink_say(false, 0u);
 
     if (xTaskCreate(nb_mind_link_shell_task, "mind_link", NB_MIND_LINK_TASK_STACK, NULL,
                     NB_MIND_LINK_TASK_PRIO, &s_task_handle) != pdPASS) {
