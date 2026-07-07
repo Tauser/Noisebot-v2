@@ -2087,7 +2087,9 @@ algo a remover por "DMA direto de PSRAM".
   temporária `audio_bringup` usa RMS do microfone para emular wake/VAD e
   exercitar a sessão do `wake_service` sem WakeNet/ESP-SR reais. Registro
   importante: é opção de bancada declarada, não fallback silencioso de
-  produção, preservando V-5 de `VOICE.md`.
+  produção, preservando V-5 de `VOICE.md`. Para repetibilidade, o repositório
+  agora traz também `firmware/sdkconfig.s4_2_wake_bench.defaults` com os
+  thresholds padrão de bancada dessa fase.
 - Gate local de compilação fechado: `idf.py build` verde após corrigir a
   descoberta do componente em `firmware/CMakeLists.txt` e as dependências
   `esp_timer`/`log` do `wake_service`.

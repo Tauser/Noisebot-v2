@@ -1,0 +1,14 @@
+# NoiseBot 2 — perfil de bancada S4.2 para wake_service.
+#
+# Uso:
+#   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.s4_2_wake_bench.defaults" build
+#   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.s4_2_wake_bench.defaults" -p COM5 flash monitor
+#
+# Este perfil existe para exercitar a sessao de wake/listen com o harness
+# heuristico por RMS descrito em main/Kconfig.projbuild. NUNCA e fallback de
+# producao e nao substitui WakeNet/ESP-SR reais nem os budgets finais de S4.2.
+
+CONFIG_NB_WAKE_BENCH_HARNESS=y
+CONFIG_NB_WAKE_BENCH_WAKE_RMS=1800
+CONFIG_NB_WAKE_BENCH_VAD_RMS=700
+CONFIG_NB_WAKE_BENCH_COOLDOWN_MS=3000
