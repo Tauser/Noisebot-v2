@@ -1961,8 +1961,9 @@ doc — o RFC assume coisas que não são verdade hoje):
 9. **Gate final da S3.7:** host-tests 1-6 do RFC §9 verdes; bancada 60s
    (§9 — ≥2 blinks, ≥2 fixações >2s, respiração mensurável em vídeo,
    postura final ≠ inicial, zero ação intencional sem causa, nenhum
-   intervalo de 15s idêntico); soak 48h modo pet; side-by-side v1
-   registrando o novo baseline de persona.
+   intervalo de 15s idêntico); **soak 8h modo pet (reduzido de 48h,
+   decisão do usuário 2026-07-07)**; side-by-side v1 registrando o novo
+   baseline de persona.
 
 Verificação por item: host-test do núcleo primeiro; suíte inteira
 (`tools/run_host_tests.py`) verde, não só o componente tocado; build
