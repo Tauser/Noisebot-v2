@@ -1984,6 +1984,15 @@ doc — o RFC assume coisas que não são verdade hoje):
    **Falta:** bancada 60s, Turing de mesa, soak 8h, side-by-side v1 —
    trabalho de observação do usuário, não de código.
 
+   **Soak 8h adiado (2026-07-07):** três quedas de energia na bancada no
+   mesmo dia impediram qualquer tentativa de chegar perto das 8h contínuas
+   (maior uptime obtido: ~80min, sem nenhum crash/panic nas tentativas —
+   sempre `rst:0x1 (POWERON)`, causa de infraestrutura, não de firmware).
+   Decisão do usuário: adiar o soak e seguir com o resto do gate; retomar
+   quando a energia da bancada estiver estável. Logs arquivados em
+   `scratch/soak_s3_7/` (`soak_log_attempt1_interrupted_20260707.txt` e
+   `soak_log.txt`, tentativa em andamento intermitente).
+
 Verificação por item: host-test do núcleo primeiro; suíte inteira
 (`tools/run_host_tests.py`) verde, não só o componente tocado; build
 limpo (`idf.py build`, prova compilação, não comportamento); itens com
@@ -2149,6 +2158,30 @@ algo a remover por "DMA direto de PSRAM".
   imagem atual: `idf.py -p COM5 flash` verde; MAC lido `90:e5:b1:cc:3d:58`;
   placa confirmada **funcional** pelo usuário após o flash. Evidência
   registrada em `docs/bringup/s4_2_wake_service_flash_smoke_20260706.md`.
+- Avanço incremental de S4.2 em 2026-07-07: `NB_EVENT_TYPE_VOICE` ganhou
+  metadado coarse de intensidade (`SOFT`/`LOUD`) por frame de sessão sem
+  mudar o tamanho do payload; `reflex_engine_shell` passou a traduzir
+  `LISTEN_AUDIO` em `NB_REFLEX_STIMULUS_VOICE_SOFT/LOUD`, e a casca do
+  `wake_service` agora mede e loga a latência local `WAKE`→`LISTEN_START`
+  contra o budget de 250 ms de `VOICE.md`. Isso ainda não fecha o gate de
+  overlay nem substitui WakeNet/ESP-SR reais, mas reduz a lacuna entre a
+  captura de bancada e a arbitragem visual/comportamental do corpo.
+- Avanço incremental de S4.3 em 2026-07-07: `main.c` passou a ligar a saída
+  validada do `wake_service` a um `voice_sink` explícito, e o
+  `mind_link_shell` ganhou fila estática para `EVENT_WAKE` e
+  `LISTEN_START/LISTEN_AUDIO/LISTEN_END` — a task de socket continua dona
+  exclusiva do transporte, mas já existe caminho local para o áudio de
+  sessão sair do corpo pelo NBP/2 sem `send()` concorrente entre tasks. O
+  `tools/nbp2_fake_server.py` também passou a decodificar/logar esses frames
+  para a próxima bancada.
+- Bug real achado em bancada de S4.3 (2026-07-07, fake server em `8765`):
+  `EVENT_WAKE` e `LISTEN_START` saíam, mas a sessão caía antes do primeiro
+  `LISTEN_AUDIO`. Causa raiz: o payload `LISTEN_AUDIO` era codificado em um
+  buffer local grande o bastante, mas o frame final ainda passava por
+  `nb_mind_link_shell_send_frame()` com `NB_MIND_LINK_SEND_BUF_CAP=256`,
+  insuficiente para o frame CBOR+CRC do chunk de áudio. Correção: elevar o
+  buffer estático de envio ao mesmo teto do framing local e adicionar log
+  explícito de falha em `encode_frame/send`.
 - **Gates ainda pendentes para fechar S4.2:** produtor real de wake/VAD
   (WakeNet/ESP-SR ou harness de bancada equivalente), medição de wake em
   ambiente real (`>= 9/10`), falso wake `< 1/h`, overlay listening

@@ -25,22 +25,27 @@ Caminhos fixos da máquina de desenvolvimento — não buscar, usar diretamente:
 
 ```
 IDF_PATH            = C:\esp\v5.5.4\esp-idf
-IDF_PYTHON          = %USERPROFILE%\.espressif\python_env\idf5.5_py3.14_env\Scripts\python.exe
+IDF_PYTHON          = C:\Espressif\tools\python\v5.5.4\venv\Scripts\python.exe
 IDF_CMAKE           = C:\Espressif\tools\cmake\3.30.2\bin
 IDF_NINJA           = C:\Espressif\tools\ninja\1.12.1
-IDF_PYTHON_ENV_PATH = %USERPROFILE%\.espressif\python_env\idf5.5_py3.14_env
+IDF_PYTHON_ENV_PATH = C:\Espressif\tools\python\v5.5.4\venv
 IDF_XTENSA          = C:\Espressif\tools\xtensa-esp-elf\esp-14.2.0_20260121\xtensa-esp-elf\bin
 ```
 
 **Atenção:** IDF v5.5.4 requer exatamente `esp-14.2.0_20260121`. Sempre incluir
-`IDF_XTENSA` no PATH (versões próximas quebram fullclean + build).
+`IDF_XTENSA` no PATH (versões próximas quebram fullclean + build). Desde a
+migração do ambiente para o EIM (ESP-IDF Environment Manager), o venv Python
+vive em `C:\Espressif\tools\python\<versão-idf>\venv` (chaveado pela versão do
+IDF, não mais pela versão do Python) — o manifesto gerado pelo EIM fica em
+`C:\Espressif\tools\eim_idf.json`, referenciado pela config `idf.eimIdfJsonPath`
+no `settings.json` global do VSCode.
 
 Invocação padrão (PowerShell):
 
 ```powershell
-$venv = "$env:USERPROFILE\.espressif\python_env\idf5.5_py3.14_env\Scripts\python.exe"
+$venv = "C:\Espressif\tools\python\v5.5.4\venv\Scripts\python.exe"
 $env:IDF_PATH            = "C:\esp\v5.5.4\esp-idf"
-$env:IDF_PYTHON_ENV_PATH = "$env:USERPROFILE\.espressif\python_env\idf5.5_py3.14_env"
+$env:IDF_PYTHON_ENV_PATH = "C:\Espressif\tools\python\v5.5.4\venv"
 $xtensaBin = "C:\Espressif\tools\xtensa-esp-elf\esp-14.2.0_20260121\xtensa-esp-elf\bin"
 $env:PATH  = "C:\Espressif\tools\cmake\3.30.2\bin;C:\Espressif\tools\ninja\1.12.1;$xtensaBin;$env:PATH"
 Set-Location "D:\Projetos\Noisebot2\firmware"
