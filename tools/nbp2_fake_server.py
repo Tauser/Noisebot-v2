@@ -9,6 +9,7 @@ Usage:
     python protocol/codegen/generate_nbp2.py   # se ainda nao gerou
     python tools/nbp2_fake_server.py [--port 9100] [--drop-after SECONDS]
                                      [--max-cycles N] [--require-token HEX]
+                                     [--say-mode end|cancel|drop]
 """
 
 from __future__ import annotations
@@ -69,6 +70,12 @@ def main() -> int:
         action="store_true",
         help="envia um turno SAY_* sintetico apos o primeiro LISTEN_END recebido",
     )
+    parser.add_argument(
+        "--say-mode",
+        choices=("end", "cancel", "drop"),
+        default="end",
+        help="como o turno SAY sintetico termina: SAY_END, SAY_CANCEL ou queda de link no meio",
+    )
     args = parser.parse_args()
     required_token = bytes.fromhex(args.require_token) if args.require_token else None
 
@@ -86,7 +93,11 @@ def main() -> int:
             cycles_total += 1
             print(f"nbp2-fake-server: conexao de {addr} (ciclo {cycles_total})")
             got_hello_ack = handle_connection(
-                conn, args.drop_after, required_token, args.send_say_after_listen_end
+                conn,
+                args.drop_after,
+                required_token,
+                args.send_say_after_listen_end,
+                args.say_mode,
             )
             if got_hello_ack:
                 cycles_ok += 1
@@ -108,6 +119,7 @@ def handle_connection(
     drop_after: float | None,
     required_token: bytes | None,
     send_say_after_listen_end: bool,
+    say_mode: str,
 ) -> bool:
     buf = bytearray()
     conn.settimeout(0.5)
@@ -186,19 +198,20 @@ def handle_connection(
                 listen = nbp2.decode_listen_end(view.payload)
                 print(f"nbp2-fake-server: LISTEN_END session_id={listen.session_id}")
                 if send_say_after_listen_end and not sent_say:
-                    send_demo_say(conn, turn_id=1, sample_rate=16000)
+                    if not send_demo_say(conn, turn_id=1, sample_rate=16000, mode=say_mode):
+                        return got_hello_ack
                     sent_say = True
             else:
                 print(f"nbp2-fake-server: frame tipo 0x{view.msg_type:04x} ignorado")
 
 
-def send_demo_say(conn: socket.socket, turn_id: int, sample_rate: int) -> None:
+def send_demo_say(conn: socket.socket, turn_id: int, sample_rate: int, mode: str) -> bool:
     chunk_a = bytes([0x00, 0x10] * 64)
     chunk_b = bytes([0x00, 0xF0] * 64)
 
     print(
         "nbp2-fake-server: enviando turno SAY sintetico "
-        f"turn_id={turn_id} sample_rate={sample_rate}"
+        f"turn_id={turn_id} sample_rate={sample_rate} mode={mode}"
     )
     conn.sendall(
         nbp2.encode_frame(
@@ -221,13 +234,27 @@ def send_demo_say(conn: socket.socket, turn_id: int, sample_rate: int) -> None:
             nbp2.encode_say_audio(nbp2.SayAudio(turn_id=turn_id, pcm=chunk_b)),
         )
     )
-    conn.sendall(
-        nbp2.encode_frame(
-            nbp2.MSG_SAY_END,
-            103,
-            nbp2.encode_say_end(nbp2.SayEnd(turn_id=turn_id)),
+    if mode == "end":
+        conn.sendall(
+            nbp2.encode_frame(
+                nbp2.MSG_SAY_END,
+                103,
+                nbp2.encode_say_end(nbp2.SayEnd(turn_id=turn_id)),
+            )
         )
-    )
+        return True
+    if mode == "cancel":
+        conn.sendall(
+            nbp2.encode_frame(
+                nbp2.MSG_SAY_CANCEL,
+                103,
+                nbp2.encode_say_cancel(nbp2.SayCancel(turn_id=turn_id)),
+            )
+        )
+        return True
+
+    print("nbp2-fake-server: derrubando conexao no meio do SAY de proposito")
+    return False
 
 
 if __name__ == "__main__":
