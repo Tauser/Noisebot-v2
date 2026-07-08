@@ -63,8 +63,27 @@
  * GRUMPY_FORGIVE liga a nb_reflex_engine_shell_set_touch_sink() (novo
  * observador do bus, sem abrir um segundo leitor) pra contar TAP; o beat
  * ativo sobrepõe `current` (blend pra ANGRY/HAPPY, blink+gaze desviado)
- * depois da supressão de idle já existente. Aborta em toda entrada de
- * IDLE (H7).
+ * depois da supressão de idle já existente. Sem abort ligado a IDLE
+ * (bug real de bancada, 2026-07-08 -- TOUCH_REACTING volta a IDLE quase
+ * instantâneo ao soltar o dedo, matava o arco cedo demais); termina só
+ * pelo próprio ciclo + cooldown.
+ * S3.8, item 5: RECONCILE liga direto em nb_touch_service_shell_is_
+ * pressed()/get_duration_ms() (mesma consulta que reflex_engine_shell já
+ * faz, não é bus) pro gatilho de carinho sustentado -- gatilho por
+ * condição de nível, decidido a cada frame, sem hook de IDLE (mesma
+ * lição do item 4: o próprio gate de carinho já limpa sozinho quando o
+ * toque solta).
+ * S3.8, item 6: SEARCH liga só o gatilho de tédio (decisão do usuário,
+ * 2026-07-08 -- sem gatilho de toque direto ainda, RFC não especifica
+ * qual). O touch_sink agora também rearma um contador de "ms desde o
+ * último toque" a cada estímulo (não só TAP) -- fecha de verdade o
+ * gancho de nb_idle_engine_set_energy_inputs() exposto desde o S3.7
+ * (item 2, nunca chamado por nenhuma casca) e alimenta
+ * nb_search_trigger_boredom() no mesmo teto de ~5min sem estímulo já
+ * documentado em nb_energy.c. Beat SEARCHING não tem overlay próprio
+ * ainda (calcular os padrões LATERAL/DIAGONAL/ORBIT é extensão do motor
+ * de atenção, fora de escopo deste item -- deixado pro idle_engine
+ * existente continuar).
  */
 
 #include <stdbool.h>
@@ -99,6 +118,8 @@
 #include "emotion_core.h"
 #include "tiny_fsm.h"
 #include "grumpy_forgive.h"
+#include "reconcile.h"
+#include "search.h"
 #include <math.h>
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
@@ -136,6 +157,20 @@
 #define NB_APP_MAIN_GRUMPY_ANGRY_BLEND 0.60f
 #define NB_APP_MAIN_GRUMPY_HAPPY_BLEND 0.30f
 #define NB_APP_MAIN_GRUMPY_GAZE_AWAY_OFFSET 0.15f
+
+/* S3.8, item 5: espelha NB_REFLEX_TOUCH_CARESS_MS (reflex_engine.c,
+ * #define privado) -- não importado, núcleos autonômicos irmãos não se
+ * acoplam (ARCHITECTURE.md §2); mesmo valor prático, "carinho" = toque
+ * sustentado por >=15s. */
+#define NB_APP_MAIN_RECONCILE_CARESS_MIN_MS 15000u
+
+/* S3.8, item 6: mesmo teto de "~5 min sem estímulo" já documentado em
+ * nb_energy.c (motor de energia, S3.7 item 2) -- reaproveitado como
+ * limiar de tédio pro SEARCH, não um valor novo inventado. */
+#define NB_APP_MAIN_SEARCH_BOREDOM_THRESHOLD_MS 300000u
+#define NB_APP_MAIN_SEARCH_FOUND_HAPPY_BLEND 0.40f
+#define NB_APP_MAIN_SEARCH_ORIENT_WIDEN 1.05f
+#define NB_APP_MAIN_SEARCH_SIGH_DROOP 0.20f
 
 static const char *TAG = "nb2";
 
@@ -193,17 +228,26 @@ static float nb_app_main_clamp01(float x)
 }
 #endif
 
-/* S3.8, item 4: observador do touch_sink de reflex_engine_shell -- só
- * conta TAP (RFC: "≥3 TAP em 10s"), ignora os demais estímulos de toque.
- * ctx é o próprio nb_grumpy_forgive_state_t da face_demo_task (chamado
- * de dentro dela, síncrono, sem concorrência entre tasks). */
-static void nb_app_main_grumpy_touch_sink(nb_reflex_stimulus_t stimulus, uint32_t timestamp_ms,
-                                          void *ctx)
+/* S3.8, itens 4 e 6: único observador do touch_sink de reflex_engine_shell
+ * (só um callback cabe por vez -- nb_reflex_engine_shell_set_touch_sink()
+ * substitui, não empilha). Conta TAP pro GRUMPY_FORGIVE (RFC: "≥3 TAP em
+ * 10s") e rearma o "ms desde o último toque" pro motor de tédio (qualquer
+ * estímulo de toque conta, não só TAP -- "tédio" é ausência de qualquer
+ * contato). ctx aponta pros dois campos, ambos donos da face_demo_task
+ * (chamado de dentro dela, síncrono, sem concorrência entre tasks). */
+typedef struct {
+    nb_grumpy_forgive_state_t *grumpy;
+    uint32_t *last_touch_ms;
+} nb_app_main_touch_sink_ctx_t;
+
+static void nb_app_main_touch_sink(nb_reflex_stimulus_t stimulus, uint32_t timestamp_ms,
+                                   void *ctx)
 {
-    if (stimulus != NB_REFLEX_STIMULUS_TOUCH_TAP) {
-        return;
+    nb_app_main_touch_sink_ctx_t *sink_ctx = (nb_app_main_touch_sink_ctx_t *)ctx;
+    *sink_ctx->last_touch_ms = timestamp_ms;
+    if (stimulus == NB_REFLEX_STIMULUS_TOUCH_TAP) {
+        (void)nb_grumpy_forgive_on_tap(sink_ctx->grumpy, (uint64_t)timestamp_ms);
     }
-    (void)nb_grumpy_forgive_on_tap((nb_grumpy_forgive_state_t *)ctx, (uint64_t)timestamp_ms);
 }
 
 /* idle_engine (S2.4) sobrepõe motifs de VISUAL.md §3 à expressão-âncora
@@ -218,6 +262,10 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_emotion_state_t emotion;
     nb_tiny_fsm_t fsm;
     nb_grumpy_forgive_state_t grumpy;
+    nb_reconcile_state_t reconcile;
+    nb_search_state_t search;
+    uint32_t last_touch_ms = 0;
+    nb_app_main_touch_sink_ctx_t touch_sink_ctx;
     uint32_t fps_frame_count = 0;
     int64_t fps_window_start_us = esp_timer_get_time();
     int64_t logic_us_sum = 0;
@@ -238,7 +286,12 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_tiny_fsm_init(&fsm);
     nb_tiny_fsm_apply_event(&fsm, NB_FSM_EVENT_BOOT_OK);
     nb_grumpy_forgive_init(&grumpy);
-    nb_reflex_engine_shell_set_touch_sink(nb_app_main_grumpy_touch_sink, &grumpy);
+    nb_reconcile_init(&reconcile);
+    nb_search_init(&search, esp_random());
+    last_touch_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    touch_sink_ctx.grumpy = &grumpy;
+    touch_sink_ctx.last_touch_ms = &last_touch_ms;
+    nb_reflex_engine_shell_set_touch_sink(nb_app_main_touch_sink, &touch_sink_ctx);
 
     for (;;) {
         nb_idle_output_t idle_out;
@@ -277,6 +330,29 @@ static void nb_app_main_face_demo_task(void *arg)
          * chamado por nenhuma casca desde o S3.7) -- o arco por enquanto
          * só termina pelo próprio ciclo natural (~2.4s) + cooldown. */
         nb_grumpy_forgive_tick(&grumpy, NB_APP_MAIN_FACE_DEMO_TICK_MS);
+
+        /* S3.8, item 5: gatilho por condição de nível (vetor negativo +
+         * carinho sustentado) -- mesma consulta direta a touch_service
+         * que reflex_engine_shell já faz internamente (não é o bus, sem
+         * risco de leitor duplicado). */
+        const bool reconcile_valence_negative = emotion.valence < 0.0f;
+        const bool reconcile_caress_active =
+            nb_touch_service_shell_is_pressed() &&
+            nb_touch_service_shell_get_duration_ms() >= NB_APP_MAIN_RECONCILE_CARESS_MIN_MS;
+        nb_reconcile_tick(&reconcile, NB_APP_MAIN_FACE_DEMO_TICK_MS, reconcile_valence_negative,
+                          reconcile_caress_active);
+
+        /* S3.8, item 6: "ms desde o último toque" -- fecha de vez o
+         * gancho de energia exposto desde o S3.7 item 2 (nunca chamado
+         * até aqui) e alimenta o gatilho de tédio do SEARCH no mesmo
+         * teto de ~5min já documentado em nb_energy.c. */
+        const uint32_t now_ms = (uint32_t)(esp_timer_get_time() / 1000);
+        const uint32_t boredom_ms = now_ms - last_touch_ms;
+        nb_idle_engine_set_energy_inputs(&idle, boredom_ms, emotion.arousal);
+        nb_search_tick(&search, NB_APP_MAIN_FACE_DEMO_TICK_MS);
+        if (boredom_ms >= NB_APP_MAIN_SEARCH_BOREDOM_THRESHOLD_MS) {
+            (void)nb_search_trigger_boredom(&search, (uint64_t)now_ms);
+        }
 
         /* S3.5: cada timer disparado aplica o reflexo local (emoção +
          * overlay de LED, dentro de apply_stimulus) e pede o envio de
@@ -334,6 +410,88 @@ static void nb_app_main_face_demo_task(void *arg)
             break;
         }
         case NB_GRUMPY_FORGIVE_BEAT_NONE:
+        default:
+            break;
+        }
+
+        /* S3.8, item 5: beat de RECONCILE sobrepõe `current` por cima do
+         * de GRUMPY_FORGIVE (mesmo espírito de overlay temporário -- os
+         * dois arcos não disparam ao mesmo tempo na prática, já que um
+         * pede vetor negativo+carinho e o outro TAP, mas não há exclusão
+         * explícita entre eles ainda; se algum dia colidirem, o último
+         * overlay aplicado vence). Glifo `♥` do item 7 (peak_core) ainda
+         * não está ligado -- BEAT_..._HEART fica visualmente igual ao
+         * beat sem coração por enquanto. */
+        switch (nb_reconcile_current_beat(&reconcile)) {
+        case NB_RECONCILE_BEAT_GAZE_FRONT: {
+            const uint64_t elapsed_ms = reconcile.arc.now_ms - reconcile.arc.phase_started_ms;
+            const float t = nb_face_core_clampf((float)elapsed_ms / (float)NB_RECONCILE_ORIENT_MS,
+                                                0.0f, 1.0f);
+            current.x_off = current.x_off * (1.0f - t); /* "gaze busca a frente" */
+            break;
+        }
+        case NB_RECONCILE_BEAT_SMOOTHING: {
+            const uint64_t elapsed_ms = reconcile.arc.now_ms - reconcile.arc.phase_started_ms;
+            const float t = nb_face_core_clampf((float)elapsed_ms / (float)NB_RECONCILE_EXECUTE_MS,
+                                                0.0f, 1.0f);
+            const nb_face_state_t *content = nb_face_core_get_expression(NB_FACE_EXPR_CONTENT);
+            nb_face_core_lerp(&current, content, t, &current);
+            break;
+        }
+        case NB_RECONCILE_BEAT_CONTENT_SLOW_BLINK:
+        case NB_RECONCILE_BEAT_CONTENT_SLOW_BLINK_HEART: {
+            const nb_face_state_t *content = nb_face_core_get_expression(NB_FACE_EXPR_CONTENT);
+            nb_face_core_lerp(&current, content, 1.0f, &current);
+            const uint64_t elapsed_ms = reconcile.arc.now_ms - reconcile.arc.phase_started_ms;
+            const float t = (float)elapsed_ms / (float)NB_RECONCILE_OUTCOME_MS;
+            const float blink_close = (t < 0.5f) ? (t / 0.5f) : (1.0f - (t - 0.5f) / 0.5f);
+            current.open_l *= (1.0f - blink_close);
+            current.open_r *= (1.0f - blink_close);
+            break;
+        }
+        case NB_RECONCILE_BEAT_NONE:
+        default:
+            break;
+        }
+
+        /* S3.8, item 6: overlay do SEARCH -- SEARCHING não tem overlay
+         * próprio (padrões de vistada ficam pro idle_engine existente,
+         * fora de escopo aqui, ver nota no topo do arquivo). */
+        switch (nb_search_current_beat(&search)) {
+        case NB_SEARCH_BEAT_ORIENT: {
+            /* "perk" -- leve abertura extra, RFC não dá número. */
+            current.open_l =
+                nb_face_core_clampf(current.open_l * NB_APP_MAIN_SEARCH_ORIENT_WIDEN, 0.0f, 1.0f);
+            current.open_r =
+                nb_face_core_clampf(current.open_r * NB_APP_MAIN_SEARCH_ORIENT_WIDEN, 0.0f, 1.0f);
+            break;
+        }
+        case NB_SEARCH_BEAT_FOUND: {
+            const nb_face_state_t *happy = nb_face_core_get_expression(NB_FACE_EXPR_HAPPY);
+            nb_face_core_lerp(&current, happy, NB_APP_MAIN_SEARCH_FOUND_HAPPY_BLEND, &current);
+            break;
+        }
+        case NB_SEARCH_BEAT_NOT_FOUND_BLINK: {
+            const uint64_t elapsed_ms = search.arc.now_ms - search.arc.phase_started_ms;
+            const float t = (float)elapsed_ms / (float)NB_SEARCH_NOT_FOUND_BLINK_MS;
+            const float blink_close = (t < 0.5f) ? (t / 0.5f) : (1.0f - (t - 0.5f) / 0.5f);
+            current.open_l *= (1.0f - blink_close);
+            current.open_r *= (1.0f - blink_close);
+            break;
+        }
+        case NB_SEARCH_BEAT_NOT_FOUND_SIGH: {
+            /* "gaze desce" -- mesma ideia do motif SIGH do idle_engine
+             * (S3.7), aproximada aqui via y_l/y_r (offset vertical). */
+            const uint64_t elapsed_ms = search.arc.now_ms - search.arc.phase_started_ms;
+            const float t = nb_face_core_clampf(
+                (float)elapsed_ms / (float)NB_SEARCH_NOT_FOUND_SIGH_MS, 0.0f, 1.0f);
+            const float droop = (t < 0.5f) ? (t / 0.5f) : (1.0f - (t - 0.5f) / 0.5f);
+            current.y_l += NB_APP_MAIN_SEARCH_SIGH_DROOP * droop;
+            current.y_r += NB_APP_MAIN_SEARCH_SIGH_DROOP * droop;
+            break;
+        }
+        case NB_SEARCH_BEAT_SEARCHING:
+        case NB_SEARCH_BEAT_NONE:
         default:
             break;
         }

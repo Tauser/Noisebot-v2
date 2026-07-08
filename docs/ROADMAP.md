@@ -2166,8 +2166,24 @@ doc):
    dispara com vetor negativo + carinho simultâneos; aborta limpo se o
    carinho parar em `ORIENT`/`EXECUTE`; vetor virar positivo no meio não
    aborta (só o carinho aborta). Suíte inteira verde; build limpo.
-   **Falta:** confirmação em bancada (magoar → consolar → observar
-   `CONTENT`/`♥`) — depende de casca ainda não escrita.
+
+   **Casca (`main.c`, 2026-07-08):** gatilho por condição de nível — lê
+   `emotion.valence`/`nb_touch_service_shell_is_pressed()`+
+   `get_duration_ms()` (mesma consulta que `reflex_engine_shell` já faz,
+   não é o bus) a cada frame, sem hook de IDLE (lição do item 4: o
+   próprio gate de carinho já limpa sozinho ao soltar o toque). Beat
+   `GAZE_FRONT` centraliza `x_off`; `SMOOTHING` faz blend progressivo pra
+   `CONTENT` ao longo dos 1.5s; `CONTENT_SLOW_BLINK[_HEART]` blend total +
+   piscar lento. Glifo coração (item 7) ainda não ligado -- os dois beats
+   ficam visualmente iguais por enquanto.
+
+   **Falta:** confirmação em bancada (magoar -> consolar -> observar
+   `CONTENT`) -- bloqueado: não existe hoje nenhum estímulo físico que
+   empurre o vetor pra região negativa (mesma lacuna do item 2 do roteiro
+   de bancada do S3.7, `docs/bringup/s3_7_bancada_roteiro_20260708.md` --
+   toda a tabela de toque em `reflex_engine.c` é positiva; `TOUCH_HIT`
+   negativo depende de IMU). Só testável quando existir um gatilho
+   negativo de verdade (S4 voz, ou IMU).
 6. **`SEARCH`** (usa `arc_core`) — **`FEITO` (2026-07-08).** Orientação
    (300ms) → procura (2-4 vistadas, padrão `LATERAL/DIAGONAL/ORBIT` nunca
    repete o anterior) → desfecho (achou 500ms; não achou: blink 650ms +
@@ -2177,8 +2193,23 @@ doc):
    também o estímulo). Host-tests: exatamente um desfecho por corrida;
    padrão nunca repete consecutivo; taxa de tédio respeitada; estímulo
    não compartilha esse limite. Suíte inteira verde; build limpo.
-   **Falta:** confirmação em bancada — depende de casca e da extensão do
-   motor de atenção (fora de escopo deste núcleo).
+
+   **Casca (`main.c`, 2026-07-08, decisão do usuário):** só o gatilho de
+   tédio ligado -- sem gatilho de toque direto (RFC não especifica qual
+   estímulo conta, não inventado). `touch_sink` de `reflex_engine_shell`
+   (item 4) generalizado pra também rearmar um contador de "ms desde o
+   último toque" a cada estímulo (não só TAP); esse contador fecha de vez
+   o gancho de `nb_idle_engine_set_energy_inputs()` exposto desde o S3.7
+   item 2 (nunca chamado até aqui) e alimenta `nb_search_trigger_
+   boredom()` no teto de ~5min já documentado em `nb_energy.c` (valor
+   reaproveitado, não novo). Beat `SEARCHING` sem overlay próprio -- os
+   padrões `LATERAL/DIAGONAL/ORBIT` continuam fora de escopo (extensão do
+   motor de atenção do `idle_engine`); `ORIENT`/`FOUND`/`NOT_FOUND_*`
+   sobrepõem `current` (leve abertura, blend `HAPPY`, piscar lento, gaze
+   baixo tipo `SIGH`).
+
+   **Falta:** confirmação em bancada -- só dispara sozinho depois de
+   ~5min sem nenhum toque (espera longa pra testar; não forçado ainda).
 7. **Glifos e adornos de pico** (`peak_core`, novo núcleo) — **`FEITO`
    (2026-07-08).** Glifos de olho (`HEART`/`TEARS`/`LAUGH`) e adornos
    (`STARS`/`BLUSH`/`SWEAT_DROP`/`QUESTION`/`EXCLAMATION`/`ZZZ`); `@@`
