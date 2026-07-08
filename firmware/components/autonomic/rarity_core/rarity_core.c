@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-void nb_rarity_init(nb_rarity_state_t *state)
+void nb_rarity_core_init(nb_rarity_state_t *state)
 {
     if (state == NULL) {
         return;
@@ -10,7 +10,7 @@ void nb_rarity_init(nb_rarity_state_t *state)
     memset(state, 0, sizeof(*state));
 }
 
-bool nb_rarity_trigger_sneeze(nb_rarity_state_t *state, uint64_t now_ms)
+bool nb_rarity_core_trigger_sneeze(nb_rarity_state_t *state, uint64_t now_ms)
 {
     if (state == NULL) {
         return false;
@@ -25,7 +25,7 @@ bool nb_rarity_trigger_sneeze(nb_rarity_state_t *state, uint64_t now_ms)
     return true;
 }
 
-bool nb_rarity_trigger_dream(nb_rarity_state_t *state, bool is_sleeping)
+bool nb_rarity_core_trigger_dream(nb_rarity_state_t *state, bool is_sleeping)
 {
     if (state == NULL) {
         return false;
@@ -48,7 +48,7 @@ bool nb_rarity_trigger_dream(nb_rarity_state_t *state, bool is_sleeping)
     return true;
 }
 
-bool nb_rarity_trigger_stargaze(nb_rarity_state_t *state, bool is_night)
+bool nb_rarity_core_trigger_stargaze(nb_rarity_state_t *state, bool is_night)
 {
     if (state == NULL) {
         return false;
@@ -71,7 +71,7 @@ bool nb_rarity_trigger_stargaze(nb_rarity_state_t *state, bool is_night)
     return true;
 }
 
-uint16_t nb_rarity_count(const nb_rarity_state_t *state, nb_rarity_kind_t kind)
+uint16_t nb_rarity_core_count(const nb_rarity_state_t *state, nb_rarity_kind_t kind)
 {
     if (state == NULL || kind >= NB_RARITY_COUNT) {
         return 0u;

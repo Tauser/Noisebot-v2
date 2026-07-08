@@ -2017,6 +2017,15 @@ doc — o RFC assume coisas que não são verdade hoje):
    dado como atendido; faltam bancada 60s, Turing de mesa e side-by-side
    v1 pra fechar o S3.7 por completo.
 
+   **Roteiro de bancada registrado (2026-07-08):**
+   `docs/bringup/s3_7_bancada_roteiro_20260708.md` — checklist dos 4
+   blocos do RFC §9. **Item "fala sorrindo/murcho" adiado pro S4**
+   (decisão do usuário): bloqueado por duas dependências reais —
+   pipeline de voz inexistente e nenhum estímulo físico hoje empurra o
+   vetor pra região negativa (toda a tabela de toque em
+   `reflex_engine.c` é positiva; `TOUCH_HIT` negativo depende de IMU,
+   fora de escopo). Revisitar quando S4 tiver voz.
+
 Verificação por item: host-test do núcleo primeiro; suíte inteira
 (`tools/run_host_tests.py`) verde, não só o componente tocado; build
 limpo (`idf.py build`, prova compilação, não comportamento); itens com

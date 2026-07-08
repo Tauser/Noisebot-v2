@@ -54,24 +54,24 @@ typedef struct {
     uint16_t counts[NB_RARITY_COUNT]; /* desde o boot -- nunca resetam sozinhos */
 } nb_rarity_state_t;
 
-void nb_rarity_init(nb_rarity_state_t *state);
+void nb_rarity_core_init(nb_rarity_state_t *state);
 
 /* Tenta disparar SNEEZE agora (now_ms = clock absoluto do chamador).
  * Falha se ainda dentro de NB_RARITY_SNEEZE_MIN_INTERVAL_MS do último
  * disparo bem-sucedido. Incrementa o contador só em sucesso. */
-bool nb_rarity_trigger_sneeze(nb_rarity_state_t *state, uint64_t now_ms);
+bool nb_rarity_core_trigger_sneeze(nb_rarity_state_t *state, uint64_t now_ms);
 
 /* Tenta disparar DREAM. is_sleeping é o estado atual (mesmo valor a cada
  * chamada, mesmo se não for tentar disparar agora -- necessário pra
  * detectar a transição de sessão). Falha se !is_sleeping, ou se já
  * disparou nesta sessão contínua de SLEEPING (rearma quando sai e volta a
  * entrar em SLEEPING). */
-bool nb_rarity_trigger_dream(nb_rarity_state_t *state, bool is_sleeping);
+bool nb_rarity_core_trigger_dream(nb_rarity_state_t *state, bool is_sleeping);
 
-/* Mesma regra de nb_rarity_trigger_dream, mas pra STARGAZE/NIGHT. */
-bool nb_rarity_trigger_stargaze(nb_rarity_state_t *state, bool is_night);
+/* Mesma regra de nb_rarity_core_trigger_dream, mas pra STARGAZE/NIGHT. */
+bool nb_rarity_core_trigger_stargaze(nb_rarity_state_t *state, bool is_night);
 
-uint16_t nb_rarity_count(const nb_rarity_state_t *state, nb_rarity_kind_t kind);
+uint16_t nb_rarity_core_count(const nb_rarity_state_t *state, nb_rarity_kind_t kind);
 
 #ifdef __cplusplus
 }
