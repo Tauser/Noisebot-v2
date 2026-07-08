@@ -136,6 +136,9 @@ int main(void)
         status.fps_x10 = 300u;
         status.bus_dropped = 0u;
         status.rssi = -42;
+        status.rarity_sneeze_count = 1u;
+        status.rarity_dream_count = 2u;
+        status.rarity_stargaze_count = 3u;
         if (nbp2_encode_status(&status, buf, sizeof(buf), &len) != NBP2_OK) { return 12; }
         printf("status_cbor=");
         print_hex(buf, len);
@@ -179,10 +182,11 @@ int main(void)
         + r'''};
         nbp2_msg_status_t out = {0};
         if (nbp2_decode_status(py_status, sizeof(py_status), &out) != NBP2_OK) { return 21; }
-        printf("status_from_py=%d,%.3f,%.3f,%u,%u,%u,%u,%d\n", (int)out.state,
+        printf("status_from_py=%d,%.3f,%.3f,%u,%u,%u,%u,%d,%u,%u,%u\n", (int)out.state,
                (double)out.valence, (double)out.arousal, (unsigned)out.heap_free,
                (unsigned)out.psram_free, (unsigned)out.fps_x10, (unsigned)out.bus_dropped,
-               (int)out.rssi);
+               (int)out.rssi, (unsigned)out.rarity_sneeze_count, (unsigned)out.rarity_dream_count,
+               (unsigned)out.rarity_stargaze_count);
     }
     {
         static const uint8_t py_timer_set[] = {'''
@@ -275,6 +279,9 @@ def main() -> int:
         fps_x10=300,
         bus_dropped=0,
         rssi=-42,
+        rarity_sneeze_count=1,
+        rarity_dream_count=2,
+        rarity_stargaze_count=3,
     )
     py_timer_set = nbp2.TimerSet(timer_id=1, fire_at_unix_ms=1700000000000, label="lembrete")
     py_event_state = nbp2.EventState(from_=nbp2.FsmState.IDLE, to=nbp2.FsmState.SLEEPING)
@@ -333,7 +340,7 @@ def main() -> int:
         "timer_set_cbor": py_encoded["timer_set"].hex(),
         "event_state_cbor": py_encoded["event_state"].hex(),
         "hello_from_py": f"0,1,{0x11223344},7,4:61626364",
-        "status_from_py": "1,0.500,-0.250,1000,2000,300,0,-42",
+        "status_from_py": "1,0.500,-0.250,1000,2000,300,0,-42,1,2,3",
         "timer_set_from_py": "1,1700000000000,lembrete",
         "hello_auth_correct": "1" if nbp2.timing_safe_equal(hello_correct.token, expected_token) else "0",
         "hello_auth_wrong": "1" if nbp2.timing_safe_equal(hello_wrong.token, expected_token) else "0",

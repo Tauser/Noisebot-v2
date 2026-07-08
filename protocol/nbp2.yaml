@@ -3,7 +3,7 @@
 
 protocol:
   name: nbp2
-  version: { major: 0, minor: 1 }   # v0 draft; vira 1.0 no gate S1.7
+  version: { major: 0, minor: 2 }   # v0 draft; vira 1.0 no gate S1.7 -- bump 0.1->0.2: STATUS ganhou os 3 contadores de raridade (S3.8, item 8)
   transport: tcp
   port: 9100
   framing:
@@ -174,6 +174,13 @@ messages:
       - { name: fps_x10,      type: u16 }
       - { name: bus_dropped,  type: u32 }
       - { name: rssi,         type: i8 }
+      # Raridades (S3.8, item 8, RFC-VIDA-V2.md §10): contadores desde o
+      # boot, nunca resetam sozinhos (persistência de raridade fica pra
+      # quando o produto pedir -- por enquanto é só visibilidade em
+      # dashboard/STATUS).
+      - { name: rarity_sneeze_count,   type: u16 }
+      - { name: rarity_dream_count,    type: u16 }
+      - { name: rarity_stargaze_count, type: u16 }
 
   # ── OTA (S1.8) ────────────────────────────────────────────────────────────
   - name: OTA_BEGIN
