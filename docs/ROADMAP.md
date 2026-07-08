@@ -1226,7 +1226,7 @@ _Dependências:_ S2.6 (S3.1 pode começar após S2.3).
 | S3.5 | `schedule_core` (timers/alarmes/lembretes locais, persistência NVS, disparo→reflexo+face+led)      | criar/cancelar/disparar OK; reboot não perde nem duplica; disparo com server offline funciona   | `FEITO` |
 | S3.6 | Gate do piso offline                                                                               | soak 48 h em modo pet (sem server): vivo, responsivo, estável                                   | `FEITO` |
 | S3.7 | **Vida v2 — o básico** (`docs/RFC-VIDA-V2.md` §3.1/§7): campo emocional contínuo nos 4 hubs (NEUTRAL/HAPPY/SAD/ANGRY) com boca + 2 variantes episódicas por hub; `idle_engine` reescrito como 3 motores (atenção/postura/energia) + respiração + blink unificado + acoplamentos + gestos; temperamento e circadiano no vetor | **passo 0 (spike go/no-go): `GO`** — respiração + motor de atenção atrás de flag, Turing de mesa confirmado pelo usuário (2026-07-06); depois: host-tests 1–6 do RFC verdes; bancada 60 s (§9); soak 48 h modo pet; side-by-side v1 registrando novo baseline de persona (S2.2 deixa de ser paridade) | `PENDENTE` |
-| S3.8 | **Vida v2 — expansão medida** (RFC §3.2/§4/§5/§10): âncora `CONTENT` + arco `RECONCILE` + decay assimétrico; campo/boca/variantes nas âncoras restantes; glifos e adornos de pico; `GRUMPY_FORGIVE`; `SEARCH`; raridades — cada item só entra com evidência da S3.7 | host-tests 7 do RFC; loop completo em bancada (magoar → consolar → `♥`); contadores de raridade no dashboard; soak com ≥1 ocorrência de cada raridade | `PENDENTE` |
+| S3.8 | **Vida v2 — expansão medida** (RFC §3.2/§4/§5/§10): 5º hub contínuo `CONTENT` (campo/boca/variantes) + decay assimétrico + arco `RECONCILE`; glifos e adornos de pico; `GRUMPY_FORGIVE`; `SEARCH`; raridades — cada item só entra com evidência da S3.7 (**correção de escopo 2026-07-07:** o RFC previa estender campo/boca/variantes às 6 âncoras fora dos hubs também, mas o item 6 do S3.7 já as aposentou do caminho da emoção — só `CONTENT` entra como âncora contínua nova) | host-tests 7 do RFC; loop completo em bancada (magoar → consolar → `♥`); contadores de raridade no dashboard; soak com ≥1 ocorrência de cada raridade | `PENDENTE` |
 
 _Nota (2026-07-05):_ S3.7/S3.8 registradas após o gate S3.6 — fase reaberta
 com escopo fechado por decisão de produto (persona v2). Motivo, dependências
@@ -1990,14 +1990,192 @@ doc — o RFC assume coisas que não são verdade hoje):
    sempre `rst:0x1 (POWERON)`, causa de infraestrutura, não de firmware).
    Decisão do usuário: adiar o soak e seguir com o resto do gate; retomar
    quando a energia da bancada estiver estável. Logs arquivados em
-   `scratch/soak_s3_7/` (`soak_log_attempt1_interrupted_20260707.txt` e
-   `soak_log.txt`, tentativa em andamento intermitente).
+   `scratch/soak_s3_7/` (`soak_log_attempt1_interrupted_20260707.txt`,
+   `soak_log_attempt2_interrupted_20260707.txt` — 2ª tentativa, capturou
+   ~19min antes do processo de captura cair silenciosamente, sem crash da
+   placa). **Tentativa 3 iniciada 2026-07-07T18:05:54** (`soak_log.txt`,
+   script `capture.py` blindado com reconexão automática de porta serial e
+   rodando como processo desanexado via `Start-Process`) sobre o binário
+   final, sem mais flash previsto até fechar — trabalho em paralelo segue
+   só em código/host-test (S3.8), sem tocar a placa.
+
+   **Interrupção 2026-07-07T19:17:07** (dentro da tentativa 3): `rst:0x15
+   (USB_UART_CHIP_RESET)` — não foi flash nem crash, foi interferência
+   física ao mexer na COM12 (outro projeto, provável hub USB
+   compartilhado) durante trabalho em paralelo no VS Code/IDF. Binário
+   confirmado inalterado (sem novo flash); boot limpo em seguida
+   (`19:17:12`), `capture.py` reconectou sozinho sem intervenção. Contagem
+   de uptime contínuo reiniciou dali — evitar tocar COM12 enquanto este
+   soak roda.
+
+   **Soak 8h fechado (2026-07-08).** Boot limpo `2026-07-07T19:17:12`,
+   uptime final ≥8h11min (`29444176ms`) sem nenhum `rst:`/panic/Guru
+   Meditation desde então. Heap estável o tempo todo
+   (`heap_livre≈156.7KB`, `heap_min≈149.6KB`); PSRAM sem variação
+   (`16.461MB` livre = mínimo, nunca pressionada). Evidência em
+   `scratch/soak_s3_7/soak_log.txt`. Item "soak 8h" do gate final (item 9)
+   dado como atendido; faltam bancada 60s, Turing de mesa e side-by-side
+   v1 pra fechar o S3.7 por completo.
 
 Verificação por item: host-test do núcleo primeiro; suíte inteira
 (`tools/run_host_tests.py`) verde, não só o componente tocado; build
 limpo (`idf.py build`, prova compilação, não comportamento); itens com
 saída visual (5, 6, 7, fase do LED no item 3) exigem confirmação em
 bancada antes de fechar — nunca declarar `FEITO` só com build limpo.
+
+**Plano S3.8 completo (pós-correção de escopo, antes de implementar):**
+
+Mesmo ID `S3.8` (governança do roadmap proíbe sub-IDs novos); sequência de
+passos do menor pro maior risco — mesmo padrão do S3.7 (núcleo puro +
+host-test + gate por item, commits pequenos, um ID).
+
+**Correções de escopo vs. o RFC** (fatos verificados no código, não no
+doc):
+
+1. As 6 âncoras fora dos hubs (`CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/
+   SURPRISED/ALARMED`) já não participam do caminho da emoção desde o item
+   6 do S3.7 (`nb_emotion_core_nearest_expression()` ficou vestigial, só
+   `main.c`→`resolve_face()` dirige a face). `CONTENT` é a única âncora
+   nova de verdade — decisão do usuário (2026-07-07): não revivê-las,
+   ficam mortas (limpeza delas é item opcional, não obrigatório, no fim
+   deste plano).
+2. `s_hub_exprs[4]` (`emotion_core.c:154-159`) e o array de pesos/blend em
+   `nb_emotion_core_resolve_face()` são todos dimensionados por literal `4`
+   (`float dist_sq[4]`, `hub_faces[4]`, `weights[4]`, loops `< 4u`) — virar
+   5 hubs é mudar a dimensão em um lugar só (`#define
+   NB_EMOTION_HUB_COUNT 5u`), não um redesenho.
+3. `nb_face_expr_t`/`NB_FACE_EXPR_COUNT` (`renderer.h:22,40-50`) e a tabela
+   canônica em `renderer.c` precisam da 11ª entrada (`CONTENT`) com a
+   geometria descrita no RFC §3.2 (meia-lua relaxada + sorriso fechado) —
+   mesmo padrão das outras 10, sem struct nova.
+4. Arcos (`GRUMPY_FORGIVE`/`RECONCILE`/`SEARCH`) não têm núcleo próprio
+   ainda — "zero âncora nova" (RFC §5.2) confirma que eles só orquestram
+   mecanismos existentes (estímulo→`emotion_core`, motif→`idle_engine`,
+   toque→`touch_service`/`reflex_engine`), mas a *sequência com tempo*
+   (orientação→execução→desfecho, cooldown) não existe em lugar nenhum —
+   precisa de núcleo novo (`arc_core`, camada autonômica, par de
+   `reflex_engine`/`schedule_core`: clock injetado, sem FreeRTOS).
+5. `touch_service.h` já expõe `NB_TOUCH_EVENT_TAP`/`LONG_PRESS`/`SUSTAINED`
+   e `reflex_engine.h` já tem `NB_REFLEX_STIMULUS_TOUCH_TAP/CARESS` — a
+   contagem "≥3 TAP em 10s" (`GRUMPY_FORGIVE`) e o gatilho de carinho
+   sustentado (`RECONCILE`) usam sinal que já existe, só falta a janela
+   deslizante/detecção de sequência (vai dentro do `arc_core` novo, não em
+   `touch_service`, que não conhece tempo de janela nenhum hoje).
+6. Glifos/adornos de pico dependem do pipeline SVG→PBM 1-bit tingido já
+   existente (VISUAL.md §5) — mecanismo de asset reaproveitado, não
+   inventado; o trabalho novo é a régua "só 1 pico por vez, só
+   `|vetor|>0.7`, some limpo em IDLE" (mais um consumidor de
+   `nb_idle_engine_reset_transient()`, H7).
+7. Raridades tocam protocolo (contadores em `STATUS`) — únicos itens deste
+   plano que exigem RFC de `protocol/nbp2.yaml` + codegen (P4: "contrato é
+   artefato", proibido hardcodar campo novo).
+
+1. **11ª âncora `CONTENT`** (`emotion_core.c`, `renderer.c`/`.h`) —
+   **`FEITO` (2026-07-08).** Anchor (+0.6, −0.5) na tabela `s_anchors`;
+   `s_hub_exprs` vira 5 (`NEUTRAL/HAPPY/SAD/ANGRY/CONTENT`);
+   `NB_EMOTION_HUB_COUNT` substitui o literal `4` nos arrays/loops de
+   `resolve_face()`; geometria nova em `renderer.c` (meia-lua relaxada +
+   sorriso fechado); 2 variantes de `CONTENT` em `apply_variant()` (RFC
+   não dá números — retunar em bancada, mesma nota das variantes do S3.7).
+   Host-tests: campo passa exatamente por `CONTENT`; contínuo entre
+   `CONTENT` e os 4 hubs vizinhos; variante nunca sai do envelope. Suíte
+   inteira verde; build limpo (ESP32 real). **Falta:** confirmação em
+   bancada.
+2. **Decay assimétrico** (`emotion_core.c:nb_emotion_core_tick`) —
+   **`FEITO` (2026-07-08).** Só o eixo de valência é assimétrico (é o
+   eixo de "mágoa"/vínculo — decisão registrada no código, ativação
+   continua com o tau simétrico original): tau ~2× maior enquanto
+   `valence<0` (RFC §5.1: "mágoa que evapora sozinha banaliza o
+   consolo"). Host-tests: razão de tempo-até-metade-do-caminho
+   negativo/positivo entre 1.8×-2.2× (mede a assimetria de verdade); lado
+   positivo bate exatamente a fórmula original (prova que não regrediu).
+   Suíte inteira verde; build limpo.
+3. **`arc_core`** (novo núcleo, camada autonômica) — **`FEITO`
+   (2026-07-08).** Máquina de sequência genérica: `ORIENT`→`EXECUTE`→
+   `OUTCOME`→`IDLE`, cooldown armado só na transição natural
+   `OUTCOME→IDLE`, `abort()` limpo sem cooldown (H7 estendida, RFC §5.2
+   "gramática geral"). **Achado real durante o dev** (pego pelo próprio
+   host-test): a primeira versão de `tick()` só avançava uma fase por
+   chamada mesmo com `dt_ms` grande — corrigido com um loop que cascateia
+   consumindo a duração exata de cada fase. Host-tests: nunca fica
+   "pendurado" sem desfecho (passos de tick de 1 a 999ms); aborta em
+   qualquer fase; cooldown bloqueia/libera reinício. Suíte inteira verde;
+   build limpo (ESP32 real, registrado em `REQUIRES` do `main` mesmo sem
+   nenhuma casca chamar ainda). Este item não implementa nenhum arco
+   específico — só o esqueleto reaproveitado pelos itens 4-6.
+4. **`GRUMPY_FORGIVE`** (usa `arc_core` do item 3) — **`FEITO`
+   (2026-07-08).** Janela deslizante de TAP (≥3 em 10s, anel de 3
+   timestamps) dispara ANGRY ~60% 1.2s → blink lento + gaze desviado
+   800ms → NEUTRAL + micro-HAPPY 400ms; cooldown 60s;
+   `orient_ms=0` (RFC não descreve orientação pra este arco). Host-tests:
+   sequência completa nos tempos certos; cooldown bloqueia retrigger;
+   nunca dispara com menos de 3 TAP na janela (nem espalhados por >10s).
+   Suíte inteira verde; build limpo. **Falta:** confirmação em bancada (3
+   TAP reais → sequência visível) — depende de casca ainda não escrita.
+5. **`RECONCILE`** (usa `arc_core` + depende de `CONTENT` do item 1) —
+   **`FEITO` (2026-07-08).** Vetor em região negativa + carinho
+   sustentado → gaze busca a frente (300ms) → suavização (1.5s, explícito
+   no RFC) → `CONTENT` + `SLOW_BLINK` (+ glifo `♥` se o carinho continuar
+   até o outcome). Sem cooldown — o próprio gatilho se autolimita.
+   **Achado real durante o dev:** a checagem de aborto precisava olhar a
+   fase depois de avançar o tick, não antes, senão um `dt` grande que já
+   completaria a suavização era abortado por engano. Host-tests: só
+   dispara com vetor negativo + carinho simultâneos; aborta limpo se o
+   carinho parar em `ORIENT`/`EXECUTE`; vetor virar positivo no meio não
+   aborta (só o carinho aborta). Suíte inteira verde; build limpo.
+   **Falta:** confirmação em bancada (magoar → consolar → observar
+   `CONTENT`/`♥`) — depende de casca ainda não escrita.
+6. **`SEARCH`** (usa `arc_core`) — **`FEITO` (2026-07-08).** Orientação
+   (300ms) → procura (2-4 vistadas, padrão `LATERAL/DIAGONAL/ORBIT` nunca
+   repete o anterior) → desfecho (achou 500ms; não achou: blink 650ms +
+   `SIGH` 1800ms). Dois gatilhos com regras diferentes: estímulo direto
+   sem limite de taxa; tédio limitado a ≤1/h, rastreado no próprio
+   núcleo (não no `cooldown_ms` genérico de `arc_core`, que bloquearia
+   também o estímulo). Host-tests: exatamente um desfecho por corrida;
+   padrão nunca repete consecutivo; taxa de tédio respeitada; estímulo
+   não compartilha esse limite. Suíte inteira verde; build limpo.
+   **Falta:** confirmação em bancada — depende de casca e da extensão do
+   motor de atenção (fora de escopo deste núcleo).
+7. **Glifos e adornos de pico** (`peak_core`, novo núcleo) — **`FEITO`
+   (2026-07-08).** Glifos de olho (`HEART`/`TEARS`/`LAUGH`) e adornos
+   (`STARS`/`BLUSH`/`SWEAT_DROP`/`QUESTION`/`EXCLAMATION`/`ZZZ`); `@@`
+   espiral **bloqueado por IMU**, fora de escopo. Slot único de
+   exclusividade; expira em 1.5s com fade de 300ms de entrada/saída,
+   exceto `ZZZ` (persiste sem timeout); `blink_should_pause()` distingue
+   glifo de olho (pausa) de adorno (não pausa). Host-tests: nunca 2 picos
+   simultâneos; nada fora do pedido; expira no hold; envelope de fade
+   correto; `ZZZ` sem timeout; `reset_transient` limpa qualquer
+   mecanismo. Suíte inteira verde; build limpo. **Falta:** desenho real
+   (pipeline SVG→PBM) e confirmação visual em bancada de cada
+   glifo/adorno — depende de casca ainda não escrita.
+8. **Raridades** (`rarity_core`, novo núcleo) — **`FEITO` (2026-07-08).**
+   `SNEEZE` (~1/dia, intervalo mínimo), `DREAM` (≤1/noite em `SLEEPING`),
+   `STARGAZE` (≤1/noite em `NIGHT`) — `DREAM`/`STARGAZE` são "por sessão"
+   (elegíveis de novo só ao reentrar no estado), não por relógio de 24h
+   (o clock do `circadian_core` roda acelerado 240× em bancada, S3.4).
+   `STATUS` ganhou `rarity_sneeze_count`/`rarity_dream_count`/
+   `rarity_stargaze_count` (`protocol/nbp2.yaml`, bump 0.1→0.2) — único
+   item do plano que toca protocolo; golden test C↔Python atualizado e
+   verde. Host-tests: taxa nunca excede o teto em nenhuma das 3;
+   contador incrementa exatamente 1x por sucesso; `DREAM`/`STARGAZE`
+   independentes entre si. Suíte inteira verde; build limpo; server
+   tests OK. **Falta:** contador visível no dashboard e confirmação em
+   bancada — depende de casca/server ainda não escritos.
+9. **Limpeza das 6 âncoras mortas** — **`FEITO` (2026-07-08), confirmado
+   pelo usuário antes de remover.** `CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/
+   SURPRISED/ALARMED` e `nb_emotion_core_nearest_expression()` (vestigial,
+   zero chamador de produção confirmado por grep) removidos de vez.
+   `nb_face_expr_t`/`NB_FACE_EXPR_COUNT` renumerados (5 no lugar de
+   10/11); `docs/VISUAL.md` §2 reescrito. Suíte inteira verde (host-tests
+   do renderer/emotion_core ajustados — `test_mouth_only_four_hubs_are_
+   non_neutral` virou `test_mouth_per_anchor`); build limpo (binário
+   ligeiramente menor). **Binário flasheado na placa** (2026-07-08,
+   `idf.py -p COM5 flash`, sucesso).
+10. **Gate final da S3.8:** host-test 7 do RFC §9 verde (picos nunca
+    simultâneos, só `|vetor|>0.7`, limpos em IDLE; decay assimétrico;
+    orçamento de raridades); loop completo em bancada (magoar → consolar →
+    `♥`); contadores de raridade visíveis no dashboard; soak com ≥1
+    ocorrência observada de cada raridade.
 
 ### S4 — Voz (o robô conversa)
 
