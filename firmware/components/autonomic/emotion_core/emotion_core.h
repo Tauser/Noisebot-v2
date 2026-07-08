@@ -10,14 +10,18 @@ extern "C" {
 #endif
 
 /*
- * Núcleo C17 puro do modelo emocional v0 (S2.5, BEHAVIOR.md §2).
+ * Núcleo C17 puro do modelo emocional (S2.5 original, BEHAVIOR.md §2;
+ * campo contínuo desde S3.7 completo item 6).
  *
  * Vetor contínuo 2D (valência × ativação), clamp em ±1. Estímulos somam
- * deltas (clampados); decaimento exponencial para (0,0) com constante tal
- * que o pico cai a <5% em ~60s (BEHAVIOR.md §2). O vetor mapeia por
- * nearest-neighbor às âncoras das 10 expressões-base (VISUAL.md §2, mesmo
- * enum `nb_face_expr_t` do renderer -- S2.5 é L4, chama L3 adjacente,
- * `ARCHITECTURE.md` §2, sem duplicar a tabela de expressões).
+ * deltas (clampados); decaimento exponencial rumo ao temperamento (S3.7
+ * completo item 6) com constante tal que o pico cai a <5% em ~60s
+ * (BEHAVIOR.md §2), assimétrico do lado negativo (S3.8 item 2). O vetor
+ * resolve pra face via nb_emotion_core_resolve_face() -- blend contínuo
+ * entre os 5 hubs (VISUAL.md §2 histórico tinha 10 âncoras; S3.8 item 9
+ * aposentou as 6 fora dos hubs), mesmo enum `nb_face_expr_t` do renderer
+ * -- L4 chama L3 adjacente, `ARCHITECTURE.md` §2, sem duplicar a tabela
+ * de expressões.
  *
  * Sem FreeRTOS/ESP-IDF/NVS: clock injetado via nb_emotion_core_tick(dt_ms).
  * Persistência da última expressão (BEHAVIOR.md §2 "Persistência") fica
@@ -92,23 +96,19 @@ void nb_emotion_core_set_mouth_forced(nb_emotion_state_t *state, bool forced);
 /* Avança dt_ms com decaimento exponencial rumo ao temperamento
  * (+0.10, +0.05 -- RFC §7: "em paz, o Noise é sutilmente caloroso e
  * desperto") somado ao offset circadiano no eixo de ativação, em vez de
- * decair pra (0,0). */
+ * decair pra (0,0). Decay assimétrico (S3.8, item 2, RFC §5.1): enquanto
+ * valence < 0, o eixo de valência decai com tau 2x maior (mágoa evapora
+ * mais devagar) -- ativação sempre usa o tau simétrico original. */
 void nb_emotion_core_tick(nb_emotion_state_t *state, uint32_t dt_ms);
 
-/* Expressão-âncora mais próxima do vetor atual (distância euclidiana no
- * plano valência×ativação, VISUAL.md §2). Nunca falha -- sempre retorna
- * uma das NB_FACE_EXPR_COUNT expressões. Mantida por compatibilidade;
- * S3.7 completo (item 6) resolve a face via nb_emotion_core_resolve_face()
- * em vez de nearest-neighbor + transição de 220ms. */
-nb_face_expr_t nb_emotion_core_nearest_expression(const nb_emotion_state_t *state);
-
-/* Campo contínuo (S3.7 completo, item 6, RFC-VIDA-V2.md §3): resolve o
- * vetor (v,a) diretamente num nb_face_state_t, por blend contínuo entre
- * os 4 hubs (NEUTRAL/HAPPY/SAD/ANGRY -- únicos com boca/campo contínuo;
- * as outras 6 âncoras saem de uso nesta decisão de produto, 2026-07-06).
- * Pesos por distância inversa ao quadrado (Shepard), normalizados; se o
- * vetor coincide exatamente com uma âncora, retorna aquela âncora +
- * variante (sem divisão por zero). Nunca falha -- out sempre escrito.
+/* Campo contínuo (S3.7 completo, item 6, RFC-VIDA-V2.md §3; 5º hub
+ * CONTENT no S3.8, item 1): resolve o vetor (v,a) diretamente num
+ * nb_face_state_t, por blend contínuo entre os 5 hubs (NEUTRAL/HAPPY/
+ * SAD/ANGRY/CONTENT -- únicos com boca/campo contínuo; as outras 6
+ * âncoras saem de uso nesta decisão de produto, 2026-07-06). Pesos por
+ * distância inversa ao quadrado (Shepard), normalizados; se o vetor
+ * coincide exatamente com uma âncora, retorna aquela âncora + variante
+ * (sem divisão por zero). Nunca falha -- out sempre escrito.
  *
  * S3.7 completo, item 7 (variantes episódicas, RFC §3.1): detecta troca
  * de hub dominante (o de maior peso) e sorteia uma nova variante (A/B,

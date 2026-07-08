@@ -25,34 +25,31 @@ nb_face_state_t (por olho L/R):
 - Display lógico 320×240 landscape; olhos ocupam o terço central; margens
   inferiores reservadas a texto/boca; trilho de status no topo (§5).
 
-## 2. As 10 expressões-base
+## 2. As 5 expressões-base
 
-Herdadas do v1 (validadas em produto). Cada uma é um `nb_face_state_t`
-completo + âncora no plano emocional (valência, ativação).
+Histórico: 10 âncoras herdadas do v1. **Desde a S3.7 completa (item 6,
+2026-07-06)** só os 4 hubs (`NEUTRAL`/`HAPPY`/`SAD`/`ANGRY`) eram
+alcançáveis pelo vetor emocional — `nb_emotion_core_resolve_face()` faz
+blend contínuo só entre eles; as outras 6 (`CURIOUS/SLEEPY/FOCUSED/
+SUSPICIOUS/SURPRISED/ALARMED`) tinham saído de uso (decisão de produto,
+diverge do RFC original que previa mantê-las como fallback
+nearest-neighbor), mas ainda existiam na tabela/`renderer.c`.
 
-**Desde a S3.7 completa (item 6, 2026-07-06):** só os 4 hubs
-(`NEUTRAL`/`HAPPY`/`SAD`/`ANGRY`) são alcançáveis pelo vetor emocional —
-`nb_emotion_core_resolve_face()` faz blend contínuo só entre eles. As
-outras 6 âncoras (`CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/SURPRISED/ALARMED`)
-saem de uso (decisão de produto do usuário, diverge do RFC original que
-previa mantê-las como fallback nearest-neighbor) — continuam definidas na
-tabela abaixo e em `renderer.c` (histórico/referência), mas nada no
-firmware as invoca mais. `nb_emotion_core_nearest_expression()` (o
-mapeamento antigo, nearest-neighbor sobre as 10) continua existindo por
-compatibilidade, sem uso ativo em `main.c`.
+**S3.8, item 9 (2026-07-08):** essas 6 âncoras e
+`nb_emotion_core_nearest_expression()` (o mapeamento nearest-neighbor
+antigo, já vestigial) foram removidas de vez do código — confirmado sem
+nenhum chamador de produção. `nb_face_expr_t`/`NB_FACE_EXPR_COUNT`
+renumerados (5 no lugar de 10/11); `CONTENT` (S3.8, item 1) é a 5ª
+expressão. Cada uma é um `nb_face_state_t` completo + âncora no plano
+emocional (valência, ativação).
 
 | # | Expressão | Âncora (v, a) | Forma característica |
 | --- | --- | --- | --- |
 | 0 | `NEUTRAL` | (0, 0) | retângulos arredondados ~quadrados (ar≈1.0) |
 | 1 | `HAPPY` | (+0.7, +0.3) | curva côncava `⌒⌒` (smile-eyes), fill baixo |
-| 2 | `CURIOUS` | (+0.3, +0.4) | um olho ~30% mais largo + leve tilt |
-| 3 | `SLEEPY` | (0, −0.8) | barras horizontais finas `— —` |
-| 4 | `FOCUSED` | (+0.1, +0.6) | olhos estreitados, gaze fixo |
-| 5 | `SUSPICIOUS` | (−0.3, +0.2) | assimetria com squint unilateral |
-| 6 | `SURPRISED` | (0, +0.8) | olhos altos verticais `❘ ❘` (ar≈0.8) |
-| 7 | `SAD` | (−0.6, −0.4) | cantos externos caídos, gaze baixo |
-| 8 | `ALARMED` | (−0.5, +0.9) | olhos grandes + tremor sutil |
-| 9 | `ANGRY` | (−0.8, +0.6) | cantos internos baixos, squint agressivo |
+| 2 | `SAD` | (−0.6, −0.4) | cantos externos caídos, gaze baixo |
+| 3 | `ANGRY` | (−0.8, +0.6) | cantos internos baixos, squint agressivo |
+| 4 | `CONTENT` | (+0.6, −0.5) | meia-lua relaxada + sorriso fechado |
 
 Regra: boot nunca restaura expressão negativa (clamp em `emotion_core`).
 Expressões nunca substituem o baseline de IDLE — são estados transitórios ou

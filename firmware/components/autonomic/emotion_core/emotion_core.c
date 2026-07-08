@@ -25,6 +25,16 @@ static float rand01(uint32_t *state)
  * <5% do pico"): exp(-60/tau) = 0.05 => tau = 60/ln(20) ≈ 20.0285s. */
 #define NB_EMOTION_DECAY_TAU_S 20.0285f
 
+/* Decay assimétrico (S3.8, item 2, RFC-VIDA-V2.md §5.1): "regiões
+ * negativas decaem ~2x mais devagar -- mágoa que evapora sozinha
+ * banaliza o consolo". Só o eixo de valência é assimétrico (é o eixo de
+ * "mágoa"/vínculo, RFC §5.2 RECONCILE fala em "vetor em região
+ * negativa" no sentido de valência); ativação continua com o tau
+ * simétrico original. Enquanto valence < 0 usa este tau (2x maior);
+ * assim que cruza pra positivo, volta ao tau normal -- sem descontinuidade
+ * na fórmula, só troca de constante tick a tick. */
+#define NB_EMOTION_NEGATIVE_DECAY_TAU_S (NB_EMOTION_DECAY_TAU_S * 2.0f)
+
 /* Temperamento (S3.7 completo, item 6, RFC-VIDA-V2.md §7): "em paz, o
  * Noise é sutilmente caloroso e desperto" -- alvo do decay em vez de
  * (0,0). Consequência visível: o micro-sorriso do NEUTRAL (RFC §3.1). */
@@ -44,8 +54,9 @@ static float rand01(uint32_t *state)
 #define NB_EMOTION_MOUTH_EXIT_INTENSITY 0.30f
 #define NB_EMOTION_MOUTH_PEAK_INTENSITY 0.70f
 
-/* Âncoras (valência, ativação) das 10 expressões-base, VISUAL.md §2 --
- * mesmo `nb_face_expr_t` do renderer, sem duplicar a tabela. */
+/* Âncoras (valência, ativação) das 5 expressões-base -- mesmo
+ * `nb_face_expr_t` do renderer, sem duplicar a tabela. Histórico tinha 10
+ * (VISUAL.md §2); S3.8 item 9 aposentou as 6 fora dos hubs. */
 typedef struct {
     float valence;
     float arousal;
@@ -54,14 +65,9 @@ typedef struct {
 static const nb_emotion_anchor_t s_anchors[NB_FACE_EXPR_COUNT] = {
     {0.0f, 0.0f},   /* NEUTRAL */
     {0.7f, 0.3f},   /* HAPPY */
-    {0.3f, 0.4f},   /* CURIOUS */
-    {0.0f, -0.8f},  /* SLEEPY */
-    {0.1f, 0.6f},   /* FOCUSED */
-    {-0.3f, 0.2f},  /* SUSPICIOUS */
-    {0.0f, 0.8f},   /* SURPRISED */
     {-0.6f, -0.4f}, /* SAD */
-    {-0.5f, 0.9f},  /* ALARMED */
     {-0.8f, 0.6f},  /* ANGRY */
+    {0.6f, -0.5f},  /* CONTENT (S3.8, item 1) */
 };
 
 float nb_emotion_core_clampf(float v, float lo, float hi)
@@ -118,44 +124,29 @@ void nb_emotion_core_tick(nb_emotion_state_t *state, uint32_t dt_ms)
     if (state == NULL) {
         return;
     }
-    const float decay = expf(-((float)dt_ms / 1000.0f) / NB_EMOTION_DECAY_TAU_S);
+    const float dt_s = (float)dt_ms / 1000.0f;
+    const float valence_tau =
+        (state->valence < 0.0f) ? NB_EMOTION_NEGATIVE_DECAY_TAU_S : NB_EMOTION_DECAY_TAU_S;
+    const float valence_decay = expf(-dt_s / valence_tau);
+    const float arousal_decay = expf(-dt_s / NB_EMOTION_DECAY_TAU_S);
     const float target_arousal =
         NB_EMOTION_TEMPERAMENT_AROUSAL + state->circadian_arousal_offset;
 
     state->valence = NB_EMOTION_TEMPERAMENT_VALENCE +
-                     (state->valence - NB_EMOTION_TEMPERAMENT_VALENCE) * decay;
-    state->arousal = target_arousal + (state->arousal - target_arousal) * decay;
+                     (state->valence - NB_EMOTION_TEMPERAMENT_VALENCE) * valence_decay;
+    state->arousal = target_arousal + (state->arousal - target_arousal) * arousal_decay;
 }
 
-nb_face_expr_t nb_emotion_core_nearest_expression(const nb_emotion_state_t *state)
-{
-    if (state == NULL) {
-        return NB_FACE_EXPR_NEUTRAL;
-    }
-
-    uint32_t best_idx = 0;
-    float best_dist_sq = -1.0f;
-
-    for (uint32_t i = 0; i < NB_FACE_EXPR_COUNT; ++i) {
-        const float dv = state->valence - s_anchors[i].valence;
-        const float da = state->arousal - s_anchors[i].arousal;
-        const float dist_sq = dv * dv + da * da;
-
-        if (best_dist_sq < 0.0f || dist_sq < best_dist_sq) {
-            best_dist_sq = dist_sq;
-            best_idx = i;
-        }
-    }
-    return (nb_face_expr_t)best_idx;
-}
-
-/* Só os 4 hubs (RFC-VIDA-V2.md §3.1) participam do campo contínuo -- as
- * outras 6 âncoras saem de uso (decisão de produto, 2026-07-06). */
-static const nb_face_expr_t s_hub_exprs[4] = {
+/* 5 hubs (RFC-VIDA-V2.md §3.1 + §3.2 item 1, CONTENT) participam do campo
+ * contínuo -- as outras 6 âncoras saem de uso (decisão de produto,
+ * 2026-07-06, removidas de vez no item 9 do plano S3.8). */
+#define NB_EMOTION_HUB_COUNT 5u
+static const nb_face_expr_t s_hub_exprs[NB_EMOTION_HUB_COUNT] = {
     NB_FACE_EXPR_NEUTRAL,
     NB_FACE_EXPR_HAPPY,
     NB_FACE_EXPR_SAD,
     NB_FACE_EXPR_ANGRY,
+    NB_FACE_EXPR_CONTENT,
 };
 
 /* Variante episódica (S3.7 completo, item 7, RFC-VIDA-V2.md §3.1): tempera
@@ -209,6 +200,17 @@ static void apply_variant(nb_face_expr_t hub, nb_emotion_variant_t variant, floa
             /* "bravo": squint cheio (mais que o ANGRY base). */
             out->squint_l += 0.15f * weight;
             out->squint_r += 0.15f * weight;
+        }
+        break;
+
+    case NB_FACE_EXPR_CONTENT:
+        if (variant == NB_EMOTION_VARIANT_A) {
+            /* "sereno": pálpebra ainda mais relaxada. */
+            out->open_l -= 0.10f * weight;
+            out->open_r -= 0.10f * weight;
+        } else {
+            /* "caloroso": sorriso um traço mais aberto. */
+            out->mouth_open += 0.10f * weight;
         }
         break;
 
@@ -271,11 +273,11 @@ void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *ou
         return;
     }
 
-    float dist_sq[4];
-    const nb_face_state_t *hub_faces[4];
+    float dist_sq[NB_EMOTION_HUB_COUNT];
+    const nb_face_state_t *hub_faces[NB_EMOTION_HUB_COUNT];
     uint32_t dominant_idx = 0;
 
-    for (uint32_t i = 0; i < 4u; ++i) {
+    for (uint32_t i = 0; i < NB_EMOTION_HUB_COUNT; ++i) {
         const nb_emotion_anchor_t *anchor = &s_anchors[s_hub_exprs[i]];
         const float dv = state->valence - anchor->valence;
         const float da = state->arousal - anchor->arousal;
@@ -305,18 +307,18 @@ void nb_emotion_core_resolve_face(nb_emotion_state_t *state, nb_face_state_t *ou
         return;
     }
 
-    float weights[4];
+    float weights[NB_EMOTION_HUB_COUNT];
     float weight_sum = 0.0f;
 
-    for (uint32_t i = 0; i < 4u; ++i) {
+    for (uint32_t i = 0; i < NB_EMOTION_HUB_COUNT; ++i) {
         weights[i] = 1.0f / dist_sq[i]; /* Shepard, potência 2 */
         weight_sum += weights[i];
     }
-    for (uint32_t i = 0; i < 4u; ++i) {
+    for (uint32_t i = 0; i < NB_EMOTION_HUB_COUNT; ++i) {
         weights[i] /= weight_sum;
     }
 
-    nb_face_core_blend(hub_faces, weights, 4u, out);
+    nb_face_core_blend(hub_faces, weights, NB_EMOTION_HUB_COUNT, out);
     apply_variant(dominant_hub, state->active_variant, weights[dominant_idx], out);
     apply_mouth_gate(state, out);
 }

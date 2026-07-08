@@ -1,5 +1,6 @@
 #include "../emotion_core.h"
 
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -26,7 +27,6 @@ static void test_init_is_neutral(void)
     nb_emotion_core_init(&state, 1u);
     CHECK(float_eq(state.valence, 0.0f, 0.0001f));
     CHECK(float_eq(state.arousal, 0.0f, 0.0001f));
-    CHECK(nb_emotion_core_nearest_expression(&state) == NB_FACE_EXPR_NEUTRAL);
 }
 
 static void test_apply_stimulus_clamps_per_axis(void)
@@ -113,6 +113,53 @@ static void test_decay_from_negative_converges_toward_temperament(void)
     }
 }
 
+/* RFC §5.1 (S3.8, item 2): "regiões negativas decaem ~2x mais devagar".
+ * Mede o tempo (em ticks de 20ms) até valence cruzar a metade do caminho
+ * entre o pico e o temperamento (+0.10), partindo de picos simétricos
+ * (+0.9 vs -0.9) -- o lado negativo deve levar ~2x mais ticks. */
+static void test_decay_asymmetric_negative_valence_is_twice_as_slow(void)
+{
+    nb_emotion_state_t positive, negative;
+    uint32_t ticks_positive = 0, ticks_negative = 0;
+
+    nb_emotion_core_init(&positive, 1u);
+    nb_emotion_core_apply_stimulus(&positive, 0.9f, 0.0f); /* pico exato +0.9 */
+    const float positive_mid = 0.10f + (0.9f - 0.10f) * 0.5f;
+    while (positive.valence > positive_mid) {
+        nb_emotion_core_tick(&positive, 20u);
+        ++ticks_positive;
+    }
+
+    nb_emotion_core_init(&negative, 1u);
+    nb_emotion_core_apply_stimulus(&negative, -0.9f, 0.0f); /* pico exato -0.9 */
+    const float negative_mid = 0.10f + (-0.9f - 0.10f) * 0.5f;
+    while (negative.valence < negative_mid) {
+        nb_emotion_core_tick(&negative, 20u);
+        ++ticks_negative;
+    }
+
+    const float ratio = (float)ticks_negative / (float)ticks_positive;
+    CHECK(ratio > 1.8f && ratio < 2.2f); /* ~2x, folga pra discretização de 20ms */
+}
+
+/* Decay simétrico antigo não regride: com valence >= 0, o tau continua o
+ * mesmo original (~20.0285s) -- só o lado negativo ganhou o tau 2x. Compara
+ * contra o cálculo fechado exp(-dt/tau) em vez de só checar convergência
+ * aproximada (prova a fórmula certa, não só "chegou perto"). */
+static void test_decay_returns_to_symmetric_tau_once_positive(void)
+{
+    nb_emotion_state_t state;
+
+    nb_emotion_core_init(&state, 1u);
+    state.valence = 0.5f; /* claramente positivo */
+
+    nb_emotion_core_tick(&state, 1000u);
+
+    const float expected_decay = expf(-1.0f / 20.0285f);
+    const float expected_valence = 0.10f + (0.5f - 0.10f) * expected_decay;
+    CHECK(float_eq(state.valence, expected_valence, 0.0005f));
+}
+
 /* RFC-VIDA-V2.md §9, host-test (1) "Regra da Causa": 10^6 ticks de IDLE
  * sem estímulo -> zero ação intencional. Fisiologia (respiração, tremor
  * do motor de atenção, blink, gestos) é automanutenção -- exempt da
@@ -141,29 +188,6 @@ static void test_regra_da_causa_no_stimulus_only_decays_to_temperament(void)
      * vez pro temperamento -- não ficou "preso" em nenhum outro ponto. */
     CHECK(float_eq(state.valence, 0.10f, 0.001f));
     CHECK(float_eq(state.arousal, 0.05f, 0.001f));
-}
-
-static void test_nearest_expression_matches_each_anchor_exactly(void)
-{
-    /* Âncoras de VISUAL.md §2, na ordem do enum nb_face_expr_t. */
-    static const float anchors[NB_FACE_EXPR_COUNT][2] = {
-        {0.0f, 0.0f},   {0.7f, 0.3f},  {0.3f, 0.4f},  {0.0f, -0.8f}, {0.1f, 0.6f},
-        {-0.3f, 0.2f},  {0.0f, 0.8f},  {-0.6f, -0.4f}, {-0.5f, 0.9f}, {-0.8f, 0.6f},
-    };
-
-    for (uint32_t i = 0; i < NB_FACE_EXPR_COUNT; ++i) {
-        nb_emotion_state_t state;
-
-        nb_emotion_core_init(&state, 1u);
-        state.valence = anchors[i][0];
-        state.arousal = anchors[i][1];
-        CHECK(nb_emotion_core_nearest_expression(&state) == (nb_face_expr_t)i);
-    }
-}
-
-static void test_nearest_expression_null_is_neutral(void)
-{
-    CHECK(nb_emotion_core_nearest_expression(NULL) == NB_FACE_EXPR_NEUTRAL);
 }
 
 static void test_clampf(void)
@@ -197,10 +221,10 @@ static void test_null_is_safe(void)
 static void test_resolve_face_matches_each_hub_exactly(void)
 {
     const nb_face_expr_t hubs[] = {NB_FACE_EXPR_NEUTRAL, NB_FACE_EXPR_HAPPY, NB_FACE_EXPR_SAD,
-                                   NB_FACE_EXPR_ANGRY};
-    /* Mesmas âncoras de s_anchors (emotion_core.c), só pros 4 hubs. */
-    const float anchor_v[] = {0.0f, 0.7f, -0.6f, -0.8f};
-    const float anchor_a[] = {0.0f, 0.3f, -0.4f, 0.6f};
+                                   NB_FACE_EXPR_ANGRY, NB_FACE_EXPR_CONTENT};
+    /* Mesmas âncoras de s_anchors (emotion_core.c), pros 5 hubs. */
+    const float anchor_v[] = {0.0f, 0.7f, -0.6f, -0.8f, 0.6f};
+    const float anchor_a[] = {0.0f, 0.3f, -0.4f, 0.6f, -0.5f};
 
     for (size_t i = 0; i < sizeof(hubs) / sizeof(hubs[0]); ++i) {
         nb_emotion_state_t state;
@@ -249,6 +273,34 @@ static void test_resolve_face_is_continuous_between_hubs(void)
             const float diff =
                 (out.open_l > prev_open_l) ? out.open_l - prev_open_l : prev_open_l - out.open_l;
             CHECK(diff < 0.05f); /* passo pequeno, sem salto */
+        }
+        prev_open_l = out.open_l;
+        has_prev = 1;
+    }
+}
+
+/* Mesma prova (RFC §9(4)) na direção NEUTRAL->CONTENT (S3.8, item 1) --
+ * hub novo, precisa da própria caminhada de continuidade. */
+static void test_resolve_face_is_continuous_toward_content(void)
+{
+    const int steps = 200;
+    float prev_open_l = 0.0f;
+    int has_prev = 0;
+
+    for (int i = 0; i <= steps; ++i) {
+        const float t = (float)i / (float)steps;
+        nb_emotion_state_t state;
+        nb_face_state_t out;
+
+        nb_emotion_core_init(&state, 1u);
+        state.valence = 0.0f + t * 0.6f;
+        state.arousal = 0.0f + t * -0.5f;
+        nb_emotion_core_resolve_face(&state, &out);
+
+        if (has_prev) {
+            const float diff =
+                (out.open_l > prev_open_l) ? out.open_l - prev_open_l : prev_open_l - out.open_l;
+            CHECK(diff < 0.05f);
         }
         prev_open_l = out.open_l;
         has_prev = 1;
@@ -353,6 +405,27 @@ static void test_variant_resamples_when_dominant_hub_changes(void)
     CHECK(state.dominant_hub == NB_FACE_EXPR_ANGRY);
 }
 
+/* RFC §9(5): variante de CONTENT nunca sai do envelope (open_l/r em
+ * [0,1], mouth_open em [0,1]) mesmo no pico exato da âncora (peso 1.0,
+ * maior delta possível). */
+static void test_content_variant_never_leaves_envelope(void)
+{
+    for (uint32_t seed = 1u; seed <= 20u; ++seed) {
+        nb_emotion_state_t state;
+        nb_face_state_t out;
+
+        nb_emotion_core_init(&state, seed);
+        state.valence = 0.6f;
+        state.arousal = -0.5f; /* exatamente na âncora CONTENT */
+        nb_emotion_core_resolve_face(&state, &out);
+
+        CHECK(state.dominant_hub == NB_FACE_EXPR_CONTENT);
+        CHECK(out.open_l >= 0.0f && out.open_l <= 1.0f);
+        CHECK(out.open_r >= 0.0f && out.open_r <= 1.0f);
+        CHECK(out.mouth_open >= 0.0f && out.mouth_open <= 1.0f);
+    }
+}
+
 int main(void)
 {
     test_init_is_neutral();
@@ -361,15 +434,17 @@ int main(void)
     test_decay_reaches_5_percent_of_gap_to_temperament_by_60s();
     test_decay_converges_monotonically_toward_temperament();
     test_decay_from_negative_converges_toward_temperament();
+    test_decay_asymmetric_negative_valence_is_twice_as_slow();
+    test_decay_returns_to_symmetric_tau_once_positive();
     test_regra_da_causa_no_stimulus_only_decays_to_temperament();
-    test_nearest_expression_matches_each_anchor_exactly();
-    test_nearest_expression_null_is_neutral();
     test_clampf();
     test_null_is_safe();
     test_resolve_face_matches_each_hub_exactly();
     test_resolve_face_is_continuous_between_hubs();
+    test_resolve_face_is_continuous_toward_content();
     test_variant_persists_while_dominant_hub_unchanged();
     test_variant_resamples_when_dominant_hub_changes();
+    test_content_variant_never_leaves_envelope();
     test_mouth_gate_threshold_and_hysteresis();
     test_mouth_forced_ignores_threshold();
 

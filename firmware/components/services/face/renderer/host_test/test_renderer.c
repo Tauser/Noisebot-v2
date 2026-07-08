@@ -120,27 +120,16 @@ static void test_eye_column_squint_can_close_locally(void)
     CHECK(col.bottom_full < col.top_full);
 }
 
-/* Boca (S3.7 completo, item 5, RFC-VIDA-V2.md §3.1): só os 4 hubs têm
- * boca não-neutra; as outras 6 âncoras continuam "boca neutra" (0,0),
- * intocadas conforme o RFC decidiu pra esta fase. */
-static void test_mouth_only_four_hubs_are_non_neutral(void)
+/* Boca por âncora (S3.7 completo item 5 + S3.8 item 1, RFC-VIDA-V2.md
+ * §3.1/§3.2). As 6 âncoras fora dos hubs que ficavam "boca neutra" foram
+ * removidas de vez no item 9 do S3.8 -- só restam as 5 com boca própria. */
+static void test_mouth_per_anchor(void)
 {
-    const nb_face_expr_t hubs[] = {NB_FACE_EXPR_NEUTRAL, NB_FACE_EXPR_HAPPY, NB_FACE_EXPR_SAD,
-                                   NB_FACE_EXPR_ANGRY};
-    const nb_face_expr_t non_hubs[] = {NB_FACE_EXPR_CURIOUS,   NB_FACE_EXPR_SLEEPY,
-                                       NB_FACE_EXPR_FOCUSED,   NB_FACE_EXPR_SUSPICIOUS,
-                                       NB_FACE_EXPR_SURPRISED, NB_FACE_EXPR_ALARMED};
-
-    for (size_t i = 0; i < sizeof(non_hubs) / sizeof(non_hubs[0]); ++i) {
-        const nb_face_state_t *s = nb_face_core_get_expression(non_hubs[i]);
-        CHECK(float_eq(s->mouth_open, 0.0f));
-        CHECK(float_eq(s->mouth_curve, 0.0f));
-    }
-
     const nb_face_state_t *neutral = nb_face_core_get_expression(NB_FACE_EXPR_NEUTRAL);
     const nb_face_state_t *happy = nb_face_core_get_expression(NB_FACE_EXPR_HAPPY);
     const nb_face_state_t *sad = nb_face_core_get_expression(NB_FACE_EXPR_SAD);
     const nb_face_state_t *angry = nb_face_core_get_expression(NB_FACE_EXPR_ANGRY);
+    const nb_face_state_t *content = nb_face_core_get_expression(NB_FACE_EXPR_CONTENT);
 
     /* "fechada, micro-curva": NEUTRAL tem um sorriso bem sutil, não zero. */
     CHECK(neutral->mouth_curve > 0.0f && neutral->mouth_curve < 0.2f);
@@ -151,7 +140,10 @@ static void test_mouth_only_four_hubs_are_non_neutral(void)
      * ANGRY mais acentuado que SAD ("firme" vs "suave"). */
     CHECK(sad->mouth_curve < 0.0f);
     CHECK(angry->mouth_curve < sad->mouth_curve);
-    (void)hubs;
+    /* "sorriso fechado": CONTENT abre pouco (bem menos que HAPPY), curva
+     * positiva moderada. */
+    CHECK(content->mouth_curve > 0.0f);
+    CHECK(content->mouth_open > 0.0f && content->mouth_open < happy->mouth_open);
 }
 
 /* RFC-VIDA-V2.md §3.1a (emenda 2026-07-07): boca é canal de intensidade,
@@ -218,7 +210,7 @@ int main(void)
     test_eye_column_closed_when_open_near_zero();
     test_eye_column_open_neutral_is_symmetric_and_centered();
     test_eye_column_squint_can_close_locally();
-    test_mouth_only_four_hubs_are_non_neutral();
+    test_mouth_per_anchor();
     test_mouth_column_is_absent_when_open_is_zero();
     test_mouth_column_present_when_open_is_positive();
     test_mouth_column_smile_curves_up_at_edges();

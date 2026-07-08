@@ -12,14 +12,15 @@ extern "C" {
  * Núcleo C17 puro do renderer de face (S2.2).
  *
  * Sem LovyanGFX, sem FreeRTOS, sem ESP-IDF: só o estado paramétrico da face
- * (VISUAL.md §1), a tabela das 10 expressões-base (VISUAL.md §2, valores
- * herdados do renderer do v1 para paridade visual) e a matemática de
- * interpolação/geometria por coluna usada no anti-aliasing sub-pixel. A
- * casca (shell/, C++) só chama estas funções e escreve os pixels resultantes
- * no LGFX_Sprite.
+ * (VISUAL.md §1), a tabela das 5 expressões-base (VISUAL.md §2 histórico
+ * tinha 10; S3.8 item 9 aposentou as 6 fora dos hubs -- nunca mais
+ * alcançáveis desde que o campo contínuo virou o único caminho da emoção,
+ * item 6 do S3.7) e a matemática de interpolação/geometria por coluna
+ * usada no anti-aliasing sub-pixel. A casca (shell/, C++) só chama estas
+ * funções e escreve os pixels resultantes no LGFX_Sprite.
  */
 
-#define NB_FACE_EXPR_COUNT 10u
+#define NB_FACE_EXPR_COUNT 5u
 #define NB_FACE_EYE_HALF_WIDTH 46
 #define NB_FACE_EYE_HALF_HEIGHT 46.0f
 /* Boca (S3.7 completo, item 5, RFC-VIDA-V2.md §3): geometria estática por
@@ -39,14 +40,11 @@ extern "C" {
 typedef enum {
     NB_FACE_EXPR_NEUTRAL = 0,
     NB_FACE_EXPR_HAPPY = 1,
-    NB_FACE_EXPR_CURIOUS = 2,
-    NB_FACE_EXPR_SLEEPY = 3,
-    NB_FACE_EXPR_FOCUSED = 4,
-    NB_FACE_EXPR_SUSPICIOUS = 5,
-    NB_FACE_EXPR_SURPRISED = 6,
-    NB_FACE_EXPR_SAD = 7,
-    NB_FACE_EXPR_ALARMED = 8,
-    NB_FACE_EXPR_ANGRY = 9,
+    NB_FACE_EXPR_SAD = 2,
+    NB_FACE_EXPR_ANGRY = 3,
+    /* S3.8, item 1 (RFC-VIDA-V2.md §3.2): 5º hub contínuo, quadrante do
+     * vínculo (valência+/ativação-) -- alvo do arco RECONCILE. */
+    NB_FACE_EXPR_CONTENT = 4,
 } nb_face_expr_t;
 
 /* Estado paramétrico completo de uma face (VISUAL.md §1), por olho L/R. */
