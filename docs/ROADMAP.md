@@ -2113,14 +2113,48 @@ doc):
    nenhuma casca chamar ainda). Este item não implementa nenhum arco
    específico — só o esqueleto reaproveitado pelos itens 4-6.
 4. **`GRUMPY_FORGIVE`** (usa `arc_core` do item 3) — **`FEITO`
-   (2026-07-08).** Janela deslizante de TAP (≥3 em 10s, anel de 3
-   timestamps) dispara ANGRY ~60% 1.2s → blink lento + gaze desviado
-   800ms → NEUTRAL + micro-HAPPY 400ms; cooldown 60s;
-   `orient_ms=0` (RFC não descreve orientação pra este arco). Host-tests:
-   sequência completa nos tempos certos; cooldown bloqueia retrigger;
-   nunca dispara com menos de 3 TAP na janela (nem espalhados por >10s).
-   Suíte inteira verde; build limpo. **Falta:** confirmação em bancada (3
-   TAP reais → sequência visível) — depende de casca ainda não escrita.
+   (2026-07-08), casca ligada e confirmada em bancada.** Janela deslizante
+   de TAP (≥3 em 10s, anel de 3 timestamps) dispara ANGRY ~60% 1.2s →
+   blink lento + gaze desviado 800ms → NEUTRAL + micro-HAPPY 400ms;
+   cooldown 60s; `orient_ms=0` (RFC não descreve orientação pra este
+   arco). Host-tests: sequência completa nos tempos certos; cooldown
+   bloqueia retrigger; nunca dispara com menos de 3 TAP na janela (nem
+   espalhados por >10s). Suíte inteira verde; build limpo.
+
+   **Casca (`main.c`, 2026-07-08):** `nb_reflex_engine_shell_set_touch_sink()`
+   (novo observador do bus de `reflex_engine_shell`, sem abrir um segundo
+   leitor, ARCHITECTURE.md §4) alimenta o contador de TAP; beat ativo
+   sobrepõe `current` (blend 60% `ANGRY`, blink+gaze, blend 30% `HAPPY`)
+   por cima da supressão de idle já existente — overlay temporário, sem
+   escrever em `emotion_core`.
+
+   **Bug real achado em bancada (2026-07-08):** a primeira versão abortava
+   o arco a cada frame em que `FSM==IDLE` ("H7 estendida" — parecia
+   seguro, `abort()` em IDLE já é no-op no `arc_core`). Mas
+   `NB_FSM_STATE_TOUCH_REACTING` volta a `IDLE` via `NB_FSM_EVENT_TOUCH_END`
+   quase instantaneamente ao soltar o dedo — não é a "saída de verdade"
+   que H7 pressupõe. Isso matava o arco no frame seguinte ao 3º TAP,
+   antes de qualquer beat aparecer. Removido; o arco por enquanto só
+   termina pelo próprio ciclo natural (~2.4s) + cooldown — mesma lacuna
+   documentada de `nb_idle_engine_reset_transient()` (gancho exposto,
+   nunca chamado por nenhuma casca desde o S3.7); revisitar quando existir
+   um sinal de IDLE "estável" de verdade.
+
+   **Confirmação em bancada (2026-07-08, COM5):** 3 TAPs reais e rápidos
+   (~2.5s de span) dispararam a sequência completa — cara de raiva
+   visível, seguida de sorriso, confirmado pelo usuário observando a
+   placa. Cooldown de 60s confirmado bloqueando retrigger durante uma
+   rajada de dezenas de toques subsequentes. Tentativas anteriores no
+   mesmo dia falharam por dois motivos não-relacionados ao firmware:
+   toques mal executados (virando `LONG_PRESS`/`SUSTAINED` em vez de TAP
+   — precisa soltar o dedo rápido) e o bug de abort-on-IDLE acima
+   (primeira tentativa pós-fix mostrou a cara mudar, mas o usuário leu a
+   âncora `ANGRY` como "sad" — feedback de tuning, não bug: o blend de
+   60% pode estar fraco demais pra ler como raiva claramente; segunda
+   tentativa leu como raiva corretamente). Beat do meio (blink lento +
+   gaze desviado, 800ms) não foi mencionado explicitamente pelo usuário
+   em nenhuma tentativa — sutil demais ou não notado, não investigado
+   further.
 5. **`RECONCILE`** (usa `arc_core` + depende de `CONTENT` do item 1) —
    **`FEITO` (2026-07-08).** Vetor em região negativa + carinho
    sustentado → gaze busca a frente (300ms) → suavização (1.5s, explícito

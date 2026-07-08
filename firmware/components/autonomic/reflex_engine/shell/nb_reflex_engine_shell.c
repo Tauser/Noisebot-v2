@@ -16,11 +16,18 @@ static const char *TAG = "reflex_engine";
 static nb_reflex_engine_t s_engine;
 static bool s_initialized;
 static uint32_t s_last_now_ms;
+static nb_reflex_engine_touch_sink_t s_touch_sink;
+static void *s_touch_sink_ctx;
 
 void nb_reflex_engine_shell_init(void) {
     nb_reflex_engine_init(&s_engine);
     s_last_now_ms = (uint32_t)(esp_timer_get_time() / 1000);
     s_initialized = true;
+}
+
+void nb_reflex_engine_shell_set_touch_sink(nb_reflex_engine_touch_sink_t sink, void *ctx) {
+    s_touch_sink = sink;
+    s_touch_sink_ctx = ctx;
 }
 
 static nb_reflex_stimulus_t map_touch_event(nb_touch_event_t event) {
@@ -198,6 +205,9 @@ nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb
         }
         nb_reflex_engine_on_stimulus(&s_engine, stimulus, event.timestamp_ms, &reaction);
         apply_reaction(&reaction, emotion, fsm);
+        if (s_touch_sink != NULL) {
+            s_touch_sink(stimulus, event.timestamp_ms, s_touch_sink_ctx);
+        }
 
         /* Latência estímulo->reação (QUALITY.md: budget < 80ms p95) --
          * arrival no bus (touch_service_shell, esp_timer) até aplicação

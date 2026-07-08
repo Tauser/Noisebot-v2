@@ -59,6 +59,12 @@
  * (NEUTRAL/HAPPY/SAD/ANGRY; as outras 6 âncoras saem de uso, decisão de
  * produto 2026-07-06). S2.2 deixa de ser critério de paridade a partir
  * daqui (já previsto no ROADMAP).
+ * S3.8, item 4 (primeira casca de arco, RFC-VIDA-V2.md §5.2):
+ * GRUMPY_FORGIVE liga a nb_reflex_engine_shell_set_touch_sink() (novo
+ * observador do bus, sem abrir um segundo leitor) pra contar TAP; o beat
+ * ativo sobrepõe `current` (blend pra ANGRY/HAPPY, blink+gaze desviado)
+ * depois da supressão de idle já existente. Aborta em toda entrada de
+ * IDLE (H7).
  */
 
 #include <stdbool.h>
@@ -92,6 +98,7 @@
 #include "idle_engine.h"
 #include "emotion_core.h"
 #include "tiny_fsm.h"
+#include "grumpy_forgive.h"
 #include <math.h>
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
@@ -122,6 +129,13 @@
 #define NB_APP_MAIN_AUDIO_READ_CHUNK 256u /* VOICE.md §4: granularidade de streaming */
 #define NB_APP_MAIN_AUDIO_IO_TIMEOUT_MS 200u
 #define NB_APP_MAIN_AUDIO_LOG_PERIOD_US 5000000ll /* 5s, mesmo padrão do fps de face_demo */
+
+/* S3.8, item 4: pesos práticos de blend pro overlay visual dos beats de
+ * GRUMPY_FORGIVE (RFC não dá números -- retunar em bancada, mesma nota
+ * das variantes do S3.7). "ANGRY ~60%" já vem do próprio RFC. */
+#define NB_APP_MAIN_GRUMPY_ANGRY_BLEND 0.60f
+#define NB_APP_MAIN_GRUMPY_HAPPY_BLEND 0.30f
+#define NB_APP_MAIN_GRUMPY_GAZE_AWAY_OFFSET 0.15f
 
 static const char *TAG = "nb2";
 
@@ -179,6 +193,19 @@ static float nb_app_main_clamp01(float x)
 }
 #endif
 
+/* S3.8, item 4: observador do touch_sink de reflex_engine_shell -- só
+ * conta TAP (RFC: "≥3 TAP em 10s"), ignora os demais estímulos de toque.
+ * ctx é o próprio nb_grumpy_forgive_state_t da face_demo_task (chamado
+ * de dentro dela, síncrono, sem concorrência entre tasks). */
+static void nb_app_main_grumpy_touch_sink(nb_reflex_stimulus_t stimulus, uint32_t timestamp_ms,
+                                          void *ctx)
+{
+    if (stimulus != NB_REFLEX_STIMULUS_TOUCH_TAP) {
+        return;
+    }
+    (void)nb_grumpy_forgive_on_tap((nb_grumpy_forgive_state_t *)ctx, (uint64_t)timestamp_ms);
+}
+
 /* idle_engine (S2.4) sobrepõe motifs de VISUAL.md §3 à expressão-âncora
  * mais próxima do vetor do emotion_core (S2.5). S3.2: reflex_engine_shell
  * drena o event_bus (toque real, publicado por touch_service_shell) e
@@ -190,6 +217,7 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_idle_engine_t idle;
     nb_emotion_state_t emotion;
     nb_tiny_fsm_t fsm;
+    nb_grumpy_forgive_state_t grumpy;
     uint32_t fps_frame_count = 0;
     int64_t fps_window_start_us = esp_timer_get_time();
     int64_t logic_us_sum = 0;
@@ -209,6 +237,8 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_emotion_core_init(&emotion, esp_random());
     nb_tiny_fsm_init(&fsm);
     nb_tiny_fsm_apply_event(&fsm, NB_FSM_EVENT_BOOT_OK);
+    nb_grumpy_forgive_init(&grumpy);
+    nb_reflex_engine_shell_set_touch_sink(nb_app_main_grumpy_touch_sink, &grumpy);
 
     for (;;) {
         nb_idle_output_t idle_out;
@@ -232,6 +262,21 @@ static void nb_app_main_face_demo_task(void *arg)
         const nb_reflex_priority_t active_priority =
             nb_reflex_engine_shell_tick(&emotion, &fsm);
         nb_led_service_shell_tick(nb_tiny_fsm_get_state(&fsm), NB_APP_MAIN_FACE_DEMO_TICK_MS);
+
+        /* S3.8, item 4: on_tap() (via touch_sink acima) já decidiu se o
+         * arco inicia; aqui só avança o tempo. Bug real achado em
+         * bancada (2026-07-08): checar "FSM==IDLE -> abort()" a cada
+         * frame parecia seguro (abort() em IDLE já é no-op no arc_core),
+         * mas NB_FSM_STATE_TOUCH_REACTING volta pra IDLE via
+         * NB_FSM_EVENT_TOUCH_END assim que o dedo solta -- quase
+         * instantâneo, não é a "saída de verdade" que H7 pressupõe. Isso
+         * abortava o arco no frame seguinte ao 3º TAP, antes de qualquer
+         * beat aparecer. Removido até existir um sinal de IDLE "estável"
+         * de verdade (mesma lacuna documentada do
+         * nb_idle_engine_reset_transient(), gancho exposto e ainda não
+         * chamado por nenhuma casca desde o S3.7) -- o arco por enquanto
+         * só termina pelo próprio ciclo natural (~2.4s) + cooldown. */
+        nb_grumpy_forgive_tick(&grumpy, NB_APP_MAIN_FACE_DEMO_TICK_MS);
 
         /* S3.5: cada timer disparado aplica o reflexo local (emoção +
          * overlay de LED, dentro de apply_stimulus) e pede o envio de
@@ -258,6 +303,39 @@ static void nb_app_main_face_demo_task(void *arg)
         if (active_priority > NB_REFLEX_PRIORITY_HINT) {
             current.open_l *= idle_out.open_l;
             current.open_r *= idle_out.open_r;
+        }
+
+        /* S3.8, item 4: beat de GRUMPY_FORGIVE sobrepõe `current` por
+         * cima de tudo -- overlay temporário (não escreve em emotion_core,
+         * mesmo espírito do overlay de idle acima: nada de estado
+         * duplicado/permanente, some sozinho quando o arco termina ou
+         * aborta). Pesos/offset são valores práticos (RFC não dá números
+         * pra este blend) -- retunar em bancada. */
+        switch (nb_grumpy_forgive_current_beat(&grumpy)) {
+        case NB_GRUMPY_FORGIVE_BEAT_ANGRY: {
+            const nb_face_state_t *angry = nb_face_core_get_expression(NB_FACE_EXPR_ANGRY);
+            nb_face_core_lerp(&current, angry, NB_APP_MAIN_GRUMPY_ANGRY_BLEND, &current);
+            break;
+        }
+        case NB_GRUMPY_FORGIVE_BEAT_BLINK_GAZE_AWAY: {
+            /* Blink lento (fecha na 1ª metade dos 800ms, reabre na 2ª --
+             * envelope triangular) + gaze desviado (offset horizontal). */
+            const uint64_t elapsed_ms = grumpy.arc.now_ms - grumpy.arc.phase_started_ms;
+            const float t = (float)elapsed_ms / (float)NB_GRUMPY_FORGIVE_GAZE_MS;
+            const float blink_close = (t < 0.5f) ? (t / 0.5f) : (1.0f - (t - 0.5f) / 0.5f);
+            current.open_l *= (1.0f - blink_close);
+            current.open_r *= (1.0f - blink_close);
+            current.x_off += NB_APP_MAIN_GRUMPY_GAZE_AWAY_OFFSET;
+            break;
+        }
+        case NB_GRUMPY_FORGIVE_BEAT_NEUTRAL_HAPPY: {
+            const nb_face_state_t *happy = nb_face_core_get_expression(NB_FACE_EXPR_HAPPY);
+            nb_face_core_lerp(&current, happy, NB_APP_MAIN_GRUMPY_HAPPY_BLEND, &current);
+            break;
+        }
+        case NB_GRUMPY_FORGIVE_BEAT_NONE:
+        default:
+            break;
         }
 
         int64_t t1 = esp_timer_get_time();

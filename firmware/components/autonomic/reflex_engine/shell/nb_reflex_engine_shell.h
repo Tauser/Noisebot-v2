@@ -21,6 +21,15 @@ extern "C" {
 
 void nb_reflex_engine_shell_init(void);
 
+/* S3.8, item 4 (GRUMPY_FORGIVE): notifica um estímulo de toque bruto
+ * (timestamp do bus) toda vez que nb_reflex_engine_shell_tick() despacha
+ * um evento NB_EVENT_TYPE_TOUCH -- sem abrir um segundo leitor do bus
+ * (continua "único leitor", ARCHITECTURE.md §4), só um observador do que
+ * já foi lido. NULL desliga a notificação (default). */
+typedef void (*nb_reflex_engine_touch_sink_t)(nb_reflex_stimulus_t stimulus, uint32_t timestamp_ms,
+                                              void *ctx);
+void nb_reflex_engine_shell_set_touch_sink(nb_reflex_engine_touch_sink_t sink, void *ctx);
+
 /* Aplica a reação vencedora em *emotion (delta afetivo) e *fsm (evento),
  * zera a pilha de claims quando *fsm pousa em IDLE (invariante X->IDLE,
  * ARCHITECTURE.md §4). Retorna a prioridade ativa (P0-P6) pra quem chama
