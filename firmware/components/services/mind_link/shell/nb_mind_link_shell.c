@@ -14,6 +14,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nb_audio_playback_service_shell.h"
 #include "nb_event_bus_shell.h"
 #include "nb_mind_link_token_shell.h"
 #include "nbp2.h"
@@ -354,6 +355,7 @@ static void nb_mind_link_shell_publish_mind_hint(nb_mind_hint_kind_t kind, uint3
 static void nb_mind_link_shell_reset_downlink_say(bool publish_drop, uint32_t now_ms)
 {
     if (publish_drop && s_downlink_say_active) {
+        (void)nb_audio_playback_service_shell_on_server_drop();
         nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SERVER_DROPPED, s_downlink_say_turn_id,
                                              s_downlink_say_sample_rate,
                                              s_downlink_say_audio_samples, now_ms);
@@ -502,6 +504,11 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
             s_downlink_say_sample_rate = say_begin.sample_rate;
             s_downlink_say_audio_chunks = 0u;
             s_downlink_say_audio_samples = 0u;
+            if (!nb_audio_playback_service_shell_on_say_begin(say_begin.turn_id,
+                                                              say_begin.sample_rate)) {
+                ESP_LOGW(TAG, "falha ao iniciar playback turn=%u",
+                         (unsigned)say_begin.turn_id);
+            }
             nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_BEGIN, say_begin.turn_id,
                                                  say_begin.sample_rate, 0u, now_ms);
             ESP_LOGI(TAG, "SAY_BEGIN turn=%u sample_rate=%u",
@@ -514,12 +521,20 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
 
         if (nbp2_decode_say_audio(frame->payload, frame->payload_len, &say_audio) == NBP2_OK) {
             const uint32_t samples = (uint32_t)(say_audio.pcm_len / sizeof(int16_t));
+            const size_t written = nb_audio_playback_service_shell_on_say_audio(
+                say_audio.turn_id, say_audio.pcm, say_audio.pcm_len);
             s_downlink_say_active = true;
             s_downlink_say_turn_id = say_audio.turn_id;
             ++s_downlink_say_audio_chunks;
             s_downlink_say_audio_samples += samples;
             nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_AUDIO, say_audio.turn_id,
                                                  s_downlink_say_sample_rate, samples, now_ms);
+            if (written < samples) {
+                ESP_LOGW(TAG,
+                         "playback congestion turn=%u wrote=%u total=%u dropped_total=%u",
+                         (unsigned)say_audio.turn_id, (unsigned)written, (unsigned)samples,
+                         (unsigned)nb_audio_playback_service_shell_get_dropped_samples());
+            }
             if (s_downlink_say_audio_chunks == 1u || (s_downlink_say_audio_chunks % 16u) == 0u) {
                 ESP_LOGI(TAG, "SAY_AUDIO turn=%u chunks=%u samples_total=%u",
                          (unsigned)say_audio.turn_id, (unsigned)s_downlink_say_audio_chunks,
@@ -532,6 +547,7 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
         nbp2_msg_say_end_t say_end;
 
         if (nbp2_decode_say_end(frame->payload, frame->payload_len, &say_end) == NBP2_OK) {
+            (void)nb_audio_playback_service_shell_on_say_end(say_end.turn_id);
             nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_END, say_end.turn_id,
                                                  s_downlink_say_sample_rate,
                                                  s_downlink_say_audio_samples, now_ms);
@@ -546,6 +562,7 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
         nbp2_msg_say_cancel_t say_cancel;
 
         if (nbp2_decode_say_cancel(frame->payload, frame->payload_len, &say_cancel) == NBP2_OK) {
+            (void)nb_audio_playback_service_shell_on_say_cancel(say_cancel.turn_id);
             nb_mind_link_shell_publish_mind_hint(NB_MIND_HINT_SAY_CANCEL, say_cancel.turn_id,
                                                  s_downlink_say_sample_rate,
                                                  s_downlink_say_audio_samples, now_ms);
@@ -768,6 +785,10 @@ esp_err_t nb_mind_link_shell_init(void)
     }
 
     nb_mind_link_session_init(&s_session);
+    err = nb_audio_playback_service_shell_init();
+    if (err != ESP_OK) {
+        return err;
+    }
     s_voice_queue_head = 0u;
     s_voice_queue_tail = 0u;
     s_voice_queue_count = 0u;

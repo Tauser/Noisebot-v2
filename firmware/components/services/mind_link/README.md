@@ -35,7 +35,28 @@ telemetria/hint de turno (`NB_EVENT_TYPE_MIND_HINT`) para o corpo reagir ao
 início/fim/cancelamento da fala e limpar `RESPONDING` se o link cair no meio
 da resposta.
 
-**Ainda pendente:** playback real do `SAY_AUDIO` sem disputar o bring-up
-local do speaker, backpressure/fade quando o link cair no meio do stream,
-métricas de queue/drop para `STATUS`, e soak completo do fluxo contra um
-server fake ou a mente real.
+**Avanço S4.3 (2026-07-09, parcial):** `server/tests/test_nbp2_fake_server.py`
+agora valida no host o fluxo mínimo contra `tools/nbp2_fake_server.py`:
+`HELLO`/`HELLO_ACK`, uplink `LISTEN_START/LISTEN_AUDIO/LISTEN_END` e downlink
+`SAY_BEGIN/SAY_AUDIO/{SAY_END|SAY_CANCEL|drop}`. Isso não substitui a bancada,
+mas cria um gate executável para o wire protocol da fatia sem depender da
+Waveshare nem da mente real.
+
+**Avanço S4.3 (2026-07-09, parcial):** o downlink `SAY_*` agora também alimenta
+`audio_playback_service_shell`: `SAY_BEGIN` abre um turno local de playback,
+`SAY_AUDIO` entra em ring fixo com contagem explícita de drop por overflow, e
+`SAY_END`/`SAY_CANCEL`/queda de link fecham esse turno no serviço local. O
+speaker real ainda não toca nesta fatia, mas o `mind_link` deixou de ser só
+telemetria de turno e passou a abastecer o pipeline local que a próxima casca
+vai drenar para o `audio_hal`.
+
+**Fechamento S4.3 (2026-07-09):** a bancada em `COM5` contra o fake server
+validou `HELLO_ACK`/`READY`, sessão completa `LISTEN_*`, downlink
+`SAY_BEGIN/SAY_AUDIO` e reconexão após queda induzida do link no meio da
+fala. O fade local do drop ficou coberto pelo host-test do
+`audio_playback_service`, que agora drena o trecho já bufferizado antes do
+fade de 300 ms.
+
+**Ainda pendente para fases futuras:** substituir o writer temporário de
+`audio_bringup` por `audio_service` definitivo, expor métricas de queue/drop
+em `STATUS` e fazer soak prolongado contra a mente real.

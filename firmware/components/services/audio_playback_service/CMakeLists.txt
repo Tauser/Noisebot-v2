@@ -1,7 +1,7 @@
 idf_component_register(
-    SRCS "mind_link.c" "shell/nb_mind_link_shell.c" "shell/nb_mind_link_token_shell.c"
+    SRCS "audio_playback_service.c" "shell/nb_audio_playback_service_shell.c"
     INCLUDE_DIRS "." "shell"
-    REQUIRES nbp2 esp_timer nvs_flash esp_netif event_bus audio_playback_service
+    REQUIRES log
 )
 
 component_compile_options(

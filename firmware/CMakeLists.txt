@@ -21,6 +21,7 @@ set(EXTRA_COMPONENT_DIRS
     "components/hal/nb_hw_config"
     "components/hal/led_hal"
     "components/hal/audio_hal"
+    "components/services/audio_playback_service"
     "components/services/touch_service"
     "components/services/led_service"
     "components/services/wake_service"
