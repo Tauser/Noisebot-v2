@@ -2255,11 +2255,43 @@ doc):
    `STATUS` ganhou `rarity_sneeze_count`/`rarity_dream_count`/
    `rarity_stargaze_count` (`protocol/nbp2.yaml`, bump 0.1→0.2) — único
    item do plano que toca protocolo; golden test C↔Python atualizado e
-   verde. Host-tests: taxa nunca excede o teto em nenhuma das 3;
-   contador incrementa exatamente 1x por sucesso; `DREAM`/`STARGAZE`
-   independentes entre si. Suíte inteira verde; build limpo; server
-   tests OK. **Falta:** contador visível no dashboard e confirmação em
-   bancada — depende de casca/server ainda não escritos.
+   verde. Host-tests originais: taxa nunca excede o teto em nenhuma das
+   3; contador incrementa exatamente 1x por sucesso; `DREAM`/`STARGAZE`
+   independentes entre si.
+
+   **Emenda normativa (2026-07-08, decisão do usuário):** gatilho virou
+   processo de Poisson por hazard rate dentro do próprio núcleo
+   (`p = dt_ms × taxa`, memoryless) — antes o núcleo só arbitrava
+   taxa/contador sem decidir QUANDO tentar. Taxas nominais: `SNEEZE`
+   1/~20h (elegível: `IDLE` acordado sem `quiet_mode`); `DREAM` 1/~24h de
+   sono acumulado (elegível: `SLEEPING`); `STARGAZE` 1/~4h (elegível:
+   `NIGHT` + `IDLE` acordado). Propriedade central: taxa nominal < teto
+   pra `DREAM`/`STARGAZE` (esperado por sessão fica abaixo do limite —
+   "algumas noites nada acontece" é o típico); `SNEEZE` pode saturar o
+   teto de ~1 dia com mais frequência (taxa 20h < teto 24h), aceito como
+   parte da decisão. Host-tests novos: taxa empírica dentro de ±30% da
+   nominal (SNEEZE e STARGAZE, sob RNG contínuo — **achado real durante
+   o dev**: testar com estados/seeds novos a cada corrida expôs
+   correlação conhecida do xorshift32 com seeds sequenciais pequenas,
+   dando falso-negativo; corrigido pra um único stream de RNG contínuo
+   entre corridas, só resetando o rastreamento do teto quando
+   necessário); nada dispara fora do estado elegível; teto nunca
+   excedido mesmo com taxa favorecendo disparo mais cedo.
+
+   **Casca (`main.c`, 2026-07-08):** elegibilidade decidida na casca (lê
+   `fsm`/`circadian_core`, o núcleo não conhece nenhum dos dois); só log
+   de ativação (`ESP_LOGI(TAG, "rarity: SNEEZE/DREAM/STARGAZE ...")`) pra
+   observabilidade em bancada.
+
+   **Pendência explícita registrada (decisão do usuário, não construir
+   agora):** envio de `STATUS` continua **inexistente** —
+   `mind_link_shell` não monta/envia essa mensagem em lugar nenhum hoje
+   (confirmado por grep antes de decidir). `BEHAVIOR.md` §6 promete todo
+   estado em `STATUS`, e o gate do S3.8 (item 10) exige "contadores de
+   raridade visíveis no dashboard" — **nenhum dos dois é satisfeito
+   ainda**. Isso é um item de casca próprio (envio periódico de `STATUS`
+   + consumo no dashboard), fora do escopo do item 8. **O gate do S3.8
+   não pode fechar sem esse item existir.**
 9. **Limpeza das 6 âncoras mortas** — **`FEITO` (2026-07-08), confirmado
    pelo usuário antes de remover.** `CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/
    SURPRISED/ALARMED` e `nb_emotion_core_nearest_expression()` (vestigial,
@@ -2287,7 +2319,7 @@ server v1 (refactor).
 | S4.1 | `audio_hal` I2S full-duplex 16 kHz (mic+spk no mesmo barramento)                                                              | loopback limpo; zero underrun em 30 min com render ativo (re-valida S0.3 na árvore real)                                   | `PENDENTE` |
 | S4.1a | `display_hal`: otimizar flush SPI com staging SRAM suportado (dirty rects/filas medidas)                                    | medição registrada (fps/latência de flush/SRAM) antes×depois; soak sem regressão visual; fps ≥ 28 com áudio ativo; fatiamento documentado como solução permanente se mantido | `FEITO` |
 | S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests**                         | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-\* verdes                             | `PENDENTE` |
-| S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `PENDENTE` |
+| S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `FEITO` |
 | S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `PENDENTE` |
 | S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper                                                   | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
 | S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM                                                        | intents respondem com LLM desligada; latência < 1 s                                                                        | `PENDENTE` |
@@ -2469,6 +2501,56 @@ algo a remover por "DMA direto de PSRAM".
   `end`, `cancel`, `drop`). Isso ainda não prova playback no firmware nem
   fade físico do speaker, mas fecha uma evidência executável do protocolo
   ponta a ponta contra o fake server, sem depender da bancada.
+- Avanço incremental de S4.3 em 2026-07-09: criado
+  `firmware/components/services/audio_playback_service`, núcleo C17 puro do
+  playback local do downlink `SAY_*` (`VOICE.md` §5). A fatia fecha:
+  `SAY_BEGIN` abre turno e limpa estado antigo; `SAY_AUDIO` entra em ring
+  fixo injetado pela casca (PSRAM no firmware real), com drop explícito em
+  overflow; `SAY_END` drena em ordem; `SAY_CANCEL`/queda de link descartam o
+  ring e expõem fade curto determinístico para a casca consumir sem click
+  duro. Gate local executado: host-test dedicado compilado com `gcc` e
+  executado verde (`audio_playback_service host_test: ok`). Isso ainda não
+  liga o speaker real nem disputa o `audio_bringup`, mas transforma a
+  próxima fatia de integração em casca, não em lógica espalhada em `main.c`.
+- Avanço incremental de S4.3 em 2026-07-09: `mind_link_shell` passou a ligar
+  o downlink `SAY_*` ao `audio_playback_service_shell`. Na prática:
+  `SAY_BEGIN` abre o turno local, `SAY_AUDIO` traduz bytes→PCM16 e enfileira
+  no ring com log de congestionamento/drop, `SAY_END` fecha em modo drain,
+  `SAY_CANCEL` aciona fade local e queda de link chama o mesmo caminho de
+  `server_dropped`. Ainda falta o writer do `audio_hal` para tocar no speaker,
+  mas o caminho software `socket -> mind_link -> playback_service` já está
+  costurado. Validação executável disponível no ambiente atual: host-test do
+  núcleo de playback verde + suíte `server/tests/test_nbp2_fake_server.py`
+  verde; `idf.py build` ficou bloqueado por instalação local incompleta do
+  ESP-IDF (`espidf.constraints.v5.5.txt` ausente), não por erro confirmado do
+  código desta fatia.
+- Avanço incremental de S4.3 em 2026-07-09: a task temporária
+  `audio_bringup` de `main.c` agora prioriza o consumo do
+  `audio_playback_service_shell` no speaker: quando há `SAY_*` bufferizado,
+  o bloco de saída vem do playback local; sem isso, o tom de bancada continua
+  como fallback. Durante turno/fade sem amostras novas naquele loop, a saída
+  fica em silêncio curto em vez de voltar ao tom, evitando "vazamento" do
+  harness no meio da fala. Isso ainda não é o `audio_service` final nem fecha
+  o gate de playback físico em bancada, mas já costura o caminho software
+  completo `socket -> mind_link -> playback_service -> writer I2S temporário`.
+- Fechamento de S4.3 em 2026-07-09: bancada real em `COM5` contra
+  `tools/nbp2_fake_server.py --host 192.168.1.3 --port 8765
+  --send-say-after-listen-end --say-mode drop` confirmou o fluxo
+  `HELLO`/`HELLO_ACK` → `READY` → `EVENT_WAKE` → `LISTEN_START` →
+  `LISTEN_AUDIO*` → `LISTEN_END` → `SAY_BEGIN`/`SAY_AUDIO` → queda induzida
+  do link → reconexão automática. Evidência em
+  `scratch/bench_s43/monitor.log`: `sessao READY` (~16.9 s, ~56.1 s,
+  ~85.9 s, ~104.5 s, ~136.9 s), `listen_end` seguido de
+  `SAY_BEGIN`/`SAY_AUDIO` e `server fechou a conexao`
+  (~54.9 s, ~84.7 s, ~103.3 s, ~135.8 s). Evidência do lado host em
+  `scratch/bench_s43/nbp2_fake_server.out.log`: `LISTEN_END` com
+  `mode=drop` e novo `HELLO_ACK` após cada reconexão.
+- Fechamento complementar de S4.3 em 2026-07-09: o núcleo
+  `audio_playback_service` passou a tratar `server_drop` com áudio já
+  bufferizado como `drain + fade`, preservando o trecho já recebido antes do
+  fade local de 300 ms (`NB_AUDIO_PLAYBACK_DEFAULT_FADE_SAMPLES=4800` a
+  16 kHz). Gate local executado: `audio_playback_service host_test: ok`,
+  agora cobrindo explicitamente `server_drop_drains_buffer_then_fades`.
 - **Gates ainda pendentes para fechar S4.2:** produtor real de wake/VAD
   (WakeNet/ESP-SR ou harness de bancada equivalente), medição de wake em
   ambiente real (`>= 9/10`), falso wake `< 1/h`, overlay listening

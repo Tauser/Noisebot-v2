@@ -93,6 +93,13 @@
  * STIMULUS da mente). Sem pipeline de assets SVG->PBM ainda -- picos não
  * têm efeito visual de verdade nesta fatia, só log de ativação pra
  * observabilidade em bancada.
+ * S3.8, item 8 (emenda 2026-07-08, normativa do usuário): gatilho por
+ * processo de Poisson (hazard rate) dentro do próprio núcleo -- SNEEZE
+ * elegível em IDLE acordado sem quiet_mode; DREAM em SLEEPING; STARGAZE
+ * em NIGHT + IDLE acordado. Só log de ativação (ESP_LOGI) pra
+ * observabilidade -- envio de STATUS com os contadores é pendência
+ * separada (não construído; mind_link_shell não envia STATUS nenhum
+ * hoje, ver ROADMAP.md).
  */
 
 #include <stdbool.h>
@@ -120,6 +127,7 @@
 #include "nb_circadian_core_shell.h"
 #include "nb_schedule_core_shell.h"
 #include "nb_audio_hal_shell.h"
+#include "nb_audio_playback_service_shell.h"
 #include "nb_wake_service_shell.h"
 #include "audio_hal.h"
 #include "nb_hw_config.h"
@@ -130,6 +138,7 @@
 #include "reconcile.h"
 #include "search.h"
 #include "peak_core.h"
+#include "rarity_core.h"
 #include <math.h>
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
@@ -276,6 +285,7 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_search_state_t search;
     nb_peak_state_t peak;
     nb_peak_tears_trigger_t tears_trigger;
+    nb_rarity_state_t rarity;
     nb_peak_mechanism_t prev_peak_mechanism = NB_PEAK_MECHANISM_NONE;
     uint32_t last_touch_ms = 0;
     nb_app_main_touch_sink_ctx_t touch_sink_ctx;
@@ -308,6 +318,7 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_reflex_engine_shell_set_touch_sink(nb_app_main_touch_sink, &touch_sink_ctx);
     nb_peak_core_init(&peak);
     nb_peak_tears_trigger_init(&tears_trigger);
+    nb_rarity_core_init(&rarity, esp_random());
 
     for (;;) {
         nb_idle_output_t idle_out;
@@ -368,6 +379,34 @@ static void nb_app_main_face_demo_task(void *arg)
         nb_search_tick(&search, NB_APP_MAIN_FACE_DEMO_TICK_MS);
         if (boredom_ms >= NB_APP_MAIN_SEARCH_BOREDOM_THRESHOLD_MS) {
             (void)nb_search_trigger_boredom(&search, (uint64_t)now_ms);
+        }
+
+        /* S3.8, item 8: elegibilidade decidida aqui (a casca sabe de
+         * fsm/circadian_core, o núcleo não) -- SNEEZE em IDLE acordado
+         * sem quiet; DREAM em SLEEPING; STARGAZE em NIGHT + IDLE
+         * acordado. Só log de ativação -- envio de STATUS é pendência
+         * separada (ver ROADMAP.md). */
+        const nb_fsm_state_t rarity_fsm_state = nb_tiny_fsm_get_state(&fsm);
+        const bool rarity_sneeze_eligible =
+            rarity_fsm_state == NB_FSM_STATE_IDLE && !circadian.quiet_mode;
+        const bool rarity_is_sleeping = rarity_fsm_state == NB_FSM_STATE_SLEEPING;
+        const bool rarity_stargaze_eligible =
+            circadian.phase == NB_CIRCADIAN_PHASE_NIGHT && rarity_fsm_state == NB_FSM_STATE_IDLE;
+
+        if (nb_rarity_core_tick_sneeze(&rarity, NB_APP_MAIN_FACE_DEMO_TICK_MS,
+                                       rarity_sneeze_eligible, (uint64_t)now_ms)) {
+            ESP_LOGI(TAG, "rarity: SNEEZE (total=%u)",
+                    (unsigned)nb_rarity_core_count(&rarity, NB_RARITY_SNEEZE));
+        }
+        if (nb_rarity_core_tick_dream(&rarity, NB_APP_MAIN_FACE_DEMO_TICK_MS,
+                                      rarity_is_sleeping)) {
+            ESP_LOGI(TAG, "rarity: DREAM (total=%u)",
+                    (unsigned)nb_rarity_core_count(&rarity, NB_RARITY_DREAM));
+        }
+        if (nb_rarity_core_tick_stargaze(&rarity, NB_APP_MAIN_FACE_DEMO_TICK_MS,
+                                         rarity_stargaze_eligible)) {
+            ESP_LOGI(TAG, "rarity: STARGAZE (total=%u)",
+                    (unsigned)nb_rarity_core_count(&rarity, NB_RARITY_STARGAZE));
         }
 
         /* S3.5: cada timer disparado aplica o reflexo local (emoção +
@@ -612,6 +651,7 @@ static void nb_app_main_face_demo_task(void *arg)
 static void nb_app_main_audio_task(void *arg)
 {
     static int16_t tone[NB_APP_MAIN_AUDIO_TONE_SAMPLES];
+    static int16_t tx_buf[NB_APP_MAIN_AUDIO_TONE_SAMPLES];
     static int16_t mic_buf[NB_APP_MAIN_AUDIO_READ_CHUNK];
     int64_t next_log_us;
 #if CONFIG_NB_WAKE_BENCH_HARNESS
@@ -640,7 +680,32 @@ static void nb_app_main_audio_task(void *arg)
 
     for (;;) {
         size_t written = 0;
-        last_write_err = nb_audio_hal_shell_write(tone, NB_APP_MAIN_AUDIO_TONE_SAMPLES,
+        const nb_audio_playback_state_t playback_state =
+            nb_audio_playback_service_shell_get_state();
+        const size_t playback_samples =
+            nb_audio_playback_service_shell_consume(tx_buf, NB_APP_MAIN_AUDIO_TONE_SAMPLES);
+        const int16_t *tx_samples = tone;
+        size_t tx_sample_count = NB_APP_MAIN_AUDIO_TONE_SAMPLES;
+
+        if (playback_samples > 0u) {
+            /* S4.3: enquanto houver SAY_* local pronto, o speaker toca o
+             * playback vindo do mind_link; os samples restantes do bloco
+             * são zerados pra não "vazar" o tom de bancada no meio da fala. */
+            for (size_t i = playback_samples; i < NB_APP_MAIN_AUDIO_TONE_SAMPLES; ++i) {
+                tx_buf[i] = 0;
+            }
+            tx_samples = tx_buf;
+        } else if (playback_state != NB_AUDIO_PLAYBACK_STATE_IDLE) {
+            /* Fade/turno ativo sem samples novos neste exato loop: envia
+             * silêncio curto em vez do tom de bancada, preservando a
+             * prioridade do playback local sobre o harness de S4.1. */
+            for (size_t i = 0; i < NB_APP_MAIN_AUDIO_TONE_SAMPLES; ++i) {
+                tx_buf[i] = 0;
+            }
+            tx_samples = tx_buf;
+        }
+
+        last_write_err = nb_audio_hal_shell_write(tx_samples, tx_sample_count,
                                                   NB_APP_MAIN_AUDIO_IO_TIMEOUT_MS, &written);
 
         size_t read_count = 0;
@@ -682,8 +747,11 @@ static void nb_app_main_audio_task(void *arg)
                     (unsigned)read_count);
             loop_count = 0;
             ESP_LOGI(TAG,
-                    "audio_bringup: mic_rms=%.1f rx_ovf=%u tx_ovf=%u rx_timeout=%u tx_timeout=%u",
-                    (double)rms, (unsigned)nb_audio_hal_shell_get_rx_overflow_count(),
+                    "audio_bringup: mic_rms=%.1f playback_state=%d playback_buf=%u playback_drop=%u rx_ovf=%u tx_ovf=%u rx_timeout=%u tx_timeout=%u",
+                    (double)rms, (int)nb_audio_playback_service_shell_get_state(),
+                    (unsigned)nb_audio_playback_service_shell_get_buffered_samples(),
+                    (unsigned)nb_audio_playback_service_shell_get_dropped_samples(),
+                    (unsigned)nb_audio_hal_shell_get_rx_overflow_count(),
                     (unsigned)nb_audio_hal_shell_get_tx_overflow_count(),
                     (unsigned)nb_audio_hal_shell_get_rx_timeout_count(),
                     (unsigned)nb_audio_hal_shell_get_tx_timeout_count());
