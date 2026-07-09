@@ -11,8 +11,9 @@ STT/LLM/visão). Dashboard: React/Vite.
 
 - A mente faz tudo que exige **linguagem, memória ou raciocínio**; nunca
   participa de safety, render ou reflexos (isso é o corpo — `BEHAVIOR.md`).
-- **Local e privada**: STT, LLM (Ollama), TTS e visão rodam na máquina do
-  usuário. Nuvem só em tools explícitas e degradáveis (busca web).
+- **Local e privada por default**: STT, LLM local (Ollama/LM Studio), TTS e
+  visão rodam na máquina do usuário. LLM online por API é opcional e sempre
+  degradável; nuvem em tools continua explícita.
 - **Descartável em runtime**: a mente pode cair a qualquer momento; o corpo
   degrada suave (`fade ≤ 300 ms → IDLE + ícone`). Nenhum estado do corpo
   depende de resposta da mente.
@@ -77,9 +78,19 @@ consecutivas → aberto → half-open com sonda), e a regra de ouro do asyncio:
 | Provider | Implementação inicial | Notas herdadas do v1 |
 | --- | --- | --- |
 | STT | faster-whisper (`medium/cpu/int8`; alvo CUDA medido depois) | falha CUDA nunca degrada silenciosa p/ CPU; STT indisponível é estado explícito |
-| LLM | Ollama local (default) / OpenAI opcional | orçamento de contexto explícito (num_ctx); anexos longos não podem comer a janela |
+| LLM | Ollama local (default) / LM Studio local / APIs online (`chat/completions` ou Anthropic) | orçamento de contexto explícito (`num_ctx`/`max_tokens`); anexos longos não podem comer a janela |
 | TTS | Piper PT-BR + cache de sentenças | sentencizer alimenta MindOutput por frase (latência) |
 | Visão | (adiado) OpenCV pré-filtro + Ollama vision | volta com a fase S5 |
+
+Configuração inicial do LLM em runtime:
+
+- `NOISEBOT_LLM_PROVIDER=ollama|lmstudio|openai|api_chat|anthropic`
+- `NOISEBOT_LLM_MODEL=<modelo>`
+- `NOISEBOT_OLLAMA_BASE_URL` e `NOISEBOT_OLLAMA_NUM_CTX` para local via Ollama
+- `NOISEBOT_LMSTUDIO_BASE_URL` para local via LM Studio (`/v1`)
+- `OPENAI_API_KEY` + `NOISEBOT_OPENAI_BASE_URL` para GPT e compatíveis OpenAI oficiais
+- `NOISEBOT_API_CHAT_BASE_URL` + `NOISEBOT_API_CHAT_API_KEY` + `NOISEBOT_API_CHAT_LABEL` para qualquer API compatível com `chat/completions`
+- `ANTHROPIC_API_KEY` + `NOISEBOT_ANTHROPIC_BASE_URL` para APIs no formato Anthropic `messages`
 
 ## 5. SkillHost — tools e intents
 

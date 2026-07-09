@@ -7,6 +7,7 @@ import inspect
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from noisebot2.bus import EventBus
+from noisebot2.providers.tts import AbstractTtsProvider
 
 from .contracts import (
     ReplyReady,
@@ -98,6 +99,11 @@ class MindOutput:
                 self._active_turn_id = 0
 
     async def _iter_tts_chunks(self, text: str) -> AsyncIterator[bytes]:
+        if isinstance(self._tts_provider, AbstractTtsProvider):
+            async for chunk in self._tts_provider.synthesize(text):
+                yield chunk
+            return
+
         if self._tts_provider is None:
             yield text.encode("utf-8")
             return

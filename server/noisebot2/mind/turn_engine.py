@@ -9,6 +9,8 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from noisebot2.bus import EventBus
+from noisebot2.providers.circuit_breaker import CircuitOpenError
+from noisebot2.providers.llm import AbstractLlmProvider, LlmProviderError
 
 from .contracts import (
     BargeInDetected,
@@ -43,7 +45,7 @@ class TurnEngine:
         bus: EventBus,
         *,
         intent_resolver: IntentResolver | None = None,
-        llm_provider: LlmProvider | None = None,
+        llm_provider: LlmProvider | AbstractLlmProvider | None = None,
         fallback_reply: str = FALLBACK_REPLY,
     ) -> None:
         self._bus = bus
@@ -217,6 +219,11 @@ class TurnEngine:
     async def _generate_reply(self, text: str, session: SessionContext) -> str:
         if self._llm_provider is None:
             return self._fallback_reply
+        if isinstance(self._llm_provider, AbstractLlmProvider):
+            try:
+                return await self._llm_provider.generate_reply(text, {"turn_id": session.turn_id})
+            except (LlmProviderError, CircuitOpenError) as exc:
+                raise RuntimeError(str(exc)) from exc
         result = self._llm_provider(text, session)
         if inspect.isawaitable(result):
             return await result
