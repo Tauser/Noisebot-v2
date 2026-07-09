@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from noisebot2.config import LlmConfig, LlmProviderKind
+from noisebot2.config import (
+    LlmConfig,
+    LlmProviderKind,
+    SttConfig,
+    SttProviderKind,
+    TtsConfig,
+    TtsProviderKind,
+)
 
 from .llm import (
     AbstractLlmProvider,
@@ -10,6 +17,8 @@ from .llm import (
     ChatCompletionsLlmProvider,
     OllamaLlmProvider,
 )
+from .stt import AbstractSttProvider, FasterWhisperSttProvider
+from .tts import AbstractTtsProvider, PiperTtsProvider
 
 
 def build_llm_provider(config: LlmConfig) -> AbstractLlmProvider | None:
@@ -58,3 +67,31 @@ def build_llm_provider(config: LlmConfig) -> AbstractLlmProvider | None:
             max_output_tokens=config.max_output_tokens,
         )
     raise ValueError(f"provider LLM nao suportado: {config.provider.value}")
+
+
+def build_tts_provider(config: TtsConfig) -> AbstractTtsProvider | None:
+    if config.provider == TtsProviderKind.NONE:
+        return None
+    if config.provider == TtsProviderKind.PIPER:
+        return PiperTtsProvider(
+            executable=config.piper_executable,
+            model=config.piper_model,
+        )
+    raise ValueError(f"provider TTS nao suportado: {config.provider.value}")
+
+
+def build_stt_provider(config: SttConfig) -> AbstractSttProvider | None:
+    if config.provider == SttProviderKind.NONE:
+        return None
+    if config.provider == SttProviderKind.FASTER_WHISPER:
+        return FasterWhisperSttProvider(
+            model=config.faster_whisper_model,
+            device=config.faster_whisper_device,
+            compute_type=config.faster_whisper_compute_type,
+            cpu_threads=config.faster_whisper_cpu_threads,
+            num_workers=config.faster_whisper_num_workers,
+            language=config.faster_whisper_language,
+            beam_size=config.faster_whisper_beam_size,
+            timeout_s=config.timeout_s,
+        )
+    raise ValueError(f"provider STT nao suportado: {config.provider.value}")

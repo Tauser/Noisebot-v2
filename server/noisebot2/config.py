@@ -18,6 +18,16 @@ class LlmProviderKind(str, Enum):
     ANTHROPIC = "anthropic"
 
 
+class TtsProviderKind(str, Enum):
+    NONE = "none"
+    PIPER = "piper"
+
+
+class SttProviderKind(str, Enum):
+    NONE = "none"
+    FASTER_WHISPER = "faster_whisper"
+
+
 @dataclass(frozen=True)
 class LlmConfig:
     provider: LlmProviderKind
@@ -51,6 +61,46 @@ class LlmConfig:
             "anthropic_base_url": self.anthropic_base_url,
             "anthropic_api_key_configured": bool(self.anthropic_api_key),
             "ollama_num_ctx": self.ollama_num_ctx,
+        }
+
+
+@dataclass(frozen=True)
+class TtsConfig:
+    provider: TtsProviderKind
+    piper_executable: str
+    piper_model: str
+
+    def safe_dict(self) -> dict[str, object]:
+        return {
+            "provider": self.provider.value,
+            "piper_executable": self.piper_executable,
+            "piper_model_configured": bool(self.piper_model),
+        }
+
+
+@dataclass(frozen=True)
+class SttConfig:
+    provider: SttProviderKind
+    faster_whisper_model: str
+    faster_whisper_device: str
+    faster_whisper_compute_type: str
+    faster_whisper_cpu_threads: int
+    faster_whisper_num_workers: int
+    faster_whisper_language: str
+    faster_whisper_beam_size: int
+    timeout_s: float
+
+    def safe_dict(self) -> dict[str, object]:
+        return {
+            "provider": self.provider.value,
+            "faster_whisper_model": self.faster_whisper_model,
+            "faster_whisper_device": self.faster_whisper_device,
+            "faster_whisper_compute_type": self.faster_whisper_compute_type,
+            "faster_whisper_cpu_threads": self.faster_whisper_cpu_threads,
+            "faster_whisper_num_workers": self.faster_whisper_num_workers,
+            "faster_whisper_language": self.faster_whisper_language,
+            "faster_whisper_beam_size": self.faster_whisper_beam_size,
+            "timeout_s": self.timeout_s,
         }
 
 
@@ -148,4 +198,44 @@ def load_llm_config() -> LlmConfig:
         anthropic_base_url=_env("NOISEBOT_ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"),
         anthropic_api_key=_env("ANTHROPIC_API_KEY", ""),
         ollama_num_ctx=max(4096, _env_int("NOISEBOT_OLLAMA_NUM_CTX", 16384)),
+    )
+
+
+def load_tts_config() -> TtsConfig:
+    provider_raw = _env("NOISEBOT_TTS_PROVIDER", "none").lower()
+    try:
+        provider = TtsProviderKind(provider_raw)
+    except ValueError:
+        provider = TtsProviderKind.NONE
+
+    return TtsConfig(
+        provider=provider,
+        piper_executable=_env("NOISEBOT_PIPER_EXECUTABLE", "piper"),
+        piper_model=_env("NOISEBOT_PIPER_MODEL", ""),
+    )
+
+
+def load_stt_config() -> SttConfig:
+    provider_raw = _env("NOISEBOT_STT_PROVIDER", "none").lower()
+    aliases = {
+        "whisper": SttProviderKind.FASTER_WHISPER,
+        "faster-whisper": SttProviderKind.FASTER_WHISPER,
+    }
+    provider = aliases.get(provider_raw)
+    if provider is None:
+        try:
+            provider = SttProviderKind(provider_raw)
+        except ValueError:
+            provider = SttProviderKind.NONE
+
+    return SttConfig(
+        provider=provider,
+        faster_whisper_model=_env("NOISEBOT_FASTER_WHISPER_MODEL", "medium"),
+        faster_whisper_device=_env("NOISEBOT_FASTER_WHISPER_DEVICE", "cpu"),
+        faster_whisper_compute_type=_env("NOISEBOT_FASTER_WHISPER_COMPUTE_TYPE", "int8"),
+        faster_whisper_cpu_threads=max(1, _env_int("NOISEBOT_FASTER_WHISPER_CPU_THREADS", 4)),
+        faster_whisper_num_workers=max(1, _env_int("NOISEBOT_FASTER_WHISPER_NUM_WORKERS", 1)),
+        faster_whisper_language=_env("NOISEBOT_FASTER_WHISPER_LANGUAGE", "pt"),
+        faster_whisper_beam_size=max(1, _env_int("NOISEBOT_FASTER_WHISPER_BEAM_SIZE", 5)),
+        timeout_s=max(1.0, _env_float("NOISEBOT_STT_TIMEOUT_S", 30.0)),
     )

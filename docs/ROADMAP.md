@@ -2400,6 +2400,23 @@ server v1 (refactor).
 6. Evidência executada no host: `python -m pytest` em `server/` →
    `20 passed`, incluindo `test_provider_circuit_breaker.py`,
    `test_providers_runtime.py` e `test_llm_config_and_factory.py`.
+7. A camada de providers foi estendida para os três eixos previstos da
+   fase: `build_stt_provider()` para `faster-whisper`,
+   `build_llm_provider()` para local/nuvem, e `build_tts_provider()` para
+   `Piper`, todos selecionáveis por ambiente e expostos via
+   `MindRuntime.from_env()`.
+8. `PiperTtsProvider` ganhou cache simples por sentença e tratamento
+   explícito de falha/configuração ausente; `FasterWhisperSttProvider`
+   nasceu atrás de interface assíncrona, com import lazy, timeout
+   operacional e `CircuitBreaker`.
+9. Os providers HTTP da mente passaram a reutilizar `ClientSession` por
+   instância e expõem `close()` explícito; `MindRuntime.shutdown()`
+   agora fecha `LLM`/`STT`/`TTS` de forma determinística, evitando sessão
+   pendurada e preparando o server para operação contínua.
+10. Evidência adicional no host: `python -m pytest` em `server/` →
+    `32 passed`, incluindo `test_llm_provider_http.py` (reuso e reabertura
+    de sessão), `test_runtime_shutdown.py` (cleanup de providers) e
+    `test_runtime_from_env.py` (composição por ambiente).
 
 1. `nb_hw_config.h` ganha as constantes do barramento I2S compartilhado
    (`HARDWARE.md`: BCLK 40, WS/LRCK 41, mic DIN 39/INMP441, speaker DOUT

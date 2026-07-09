@@ -1,8 +1,21 @@
 from __future__ import annotations
 
-from noisebot2.config import LlmProviderKind, load_llm_config
-from noisebot2.providers import AnthropicLlmProvider, ChatCompletionsLlmProvider, OllamaLlmProvider
-from noisebot2.providers.factory import build_llm_provider
+from noisebot2.config import (
+    LlmProviderKind,
+    SttProviderKind,
+    TtsProviderKind,
+    load_llm_config,
+    load_stt_config,
+    load_tts_config,
+)
+from noisebot2.providers import (
+    AnthropicLlmProvider,
+    ChatCompletionsLlmProvider,
+    FasterWhisperSttProvider,
+    OllamaLlmProvider,
+    PiperTtsProvider,
+)
+from noisebot2.providers.factory import build_llm_provider, build_stt_provider, build_tts_provider
 
 
 def test_load_llm_config_reads_lmstudio_env(monkeypatch) -> None:
@@ -57,3 +70,46 @@ def test_build_llm_provider_supports_local_and_online_variants(monkeypatch) -> N
     monkeypatch.setenv("ANTHROPIC_API_KEY", "ak-test")
     anthropic = build_llm_provider(load_llm_config())
     assert isinstance(anthropic, AnthropicLlmProvider)
+
+
+def test_load_tts_config_reads_piper_env(monkeypatch) -> None:
+    monkeypatch.setenv("NOISEBOT_TTS_PROVIDER", "piper")
+    monkeypatch.setenv("NOISEBOT_PIPER_EXECUTABLE", "C:/tools/piper.exe")
+    monkeypatch.setenv("NOISEBOT_PIPER_MODEL", "C:/models/pt_BR.onnx")
+
+    config = load_tts_config()
+
+    assert config.provider == TtsProviderKind.PIPER
+    assert config.piper_executable == "C:/tools/piper.exe"
+    assert config.piper_model == "C:/models/pt_BR.onnx"
+
+
+def test_build_tts_provider_supports_piper(monkeypatch) -> None:
+    monkeypatch.setenv("NOISEBOT_TTS_PROVIDER", "piper")
+    monkeypatch.setenv("NOISEBOT_PIPER_MODEL", "C:/models/pt_BR.onnx")
+
+    provider = build_tts_provider(load_tts_config())
+
+    assert isinstance(provider, PiperTtsProvider)
+
+
+def test_load_stt_config_reads_faster_whisper_env(monkeypatch) -> None:
+    monkeypatch.setenv("NOISEBOT_STT_PROVIDER", "whisper")
+    monkeypatch.setenv("NOISEBOT_FASTER_WHISPER_MODEL", "large-v3")
+    monkeypatch.setenv("NOISEBOT_FASTER_WHISPER_DEVICE", "cuda")
+    monkeypatch.setenv("NOISEBOT_FASTER_WHISPER_COMPUTE_TYPE", "float16")
+
+    config = load_stt_config()
+
+    assert config.provider == SttProviderKind.FASTER_WHISPER
+    assert config.faster_whisper_model == "large-v3"
+    assert config.faster_whisper_device == "cuda"
+    assert config.faster_whisper_compute_type == "float16"
+
+
+def test_build_stt_provider_supports_faster_whisper(monkeypatch) -> None:
+    monkeypatch.setenv("NOISEBOT_STT_PROVIDER", "faster_whisper")
+
+    provider = build_stt_provider(load_stt_config())
+
+    assert isinstance(provider, FasterWhisperSttProvider)

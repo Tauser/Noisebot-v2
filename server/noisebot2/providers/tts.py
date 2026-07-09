@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+from .circuit_breaker import CircuitBreaker
+
 
 class TtsProviderError(RuntimeError):
     """Falha operacional de provider TTS."""
@@ -16,6 +18,10 @@ class AbstractTtsProvider(ABC):
     @abstractmethod
     async def synthesize(self, text: str) -> AsyncIterator[bytes]:
         ...
+
+    async def close(self) -> None:
+        """Libera recursos opcionais do provider."""
+        return None
 
 
 class StaticTtsProvider(AbstractTtsProvider):
@@ -34,13 +40,23 @@ class PiperTtsProvider(AbstractTtsProvider):
         *,
         executable: str = "piper",
         model: str,
+        use_cache: bool = True,
+        circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self._executable = executable
         self._model = model
+        self._use_cache = use_cache
+        self._cache: dict[str, bytes] = {}
+        self._breaker = circuit_breaker or CircuitBreaker(provider=f"piper/{Path(model).name}")
 
     async def synthesize(self, text: str) -> AsyncIterator[bytes]:
         if not text.strip():
             return
+        cached = self._cache.get(text)
+        if cached is not None:
+            yield cached
+            return
+        self._breaker.allow_request()
         if not Path(self._model).exists():
             raise TtsProviderError(f"modelo Piper nao encontrado: {self._model}")
         proc = await asyncio.create_subprocess_exec(
@@ -57,12 +73,23 @@ class PiperTtsProvider(AbstractTtsProvider):
         proc.stdin.write(text.encode("utf-8"))
         await proc.stdin.drain()
         proc.stdin.close()
+        audio = bytearray()
         while True:
             chunk = await proc.stdout.read(512)
             if not chunk:
                 break
-            yield chunk
+            audio.extend(chunk)
         stderr = await proc.stderr.read() if proc.stderr is not None else b""
         code = await proc.wait()
         if code != 0:
+            self._breaker.record_failure()
             raise TtsProviderError(f"piper saiu com codigo {code}: {stderr[:200].decode(errors='ignore')}")
+        rendered = bytes(audio)
+        if self._use_cache:
+            self._cache[text] = rendered
+        self._breaker.record_success()
+        if rendered:
+            yield rendered
+
+    async def close(self) -> None:
+        self._cache.clear()

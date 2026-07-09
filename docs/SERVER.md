@@ -92,6 +92,15 @@ Configuração inicial do LLM em runtime:
 - `NOISEBOT_API_CHAT_BASE_URL` + `NOISEBOT_API_CHAT_API_KEY` + `NOISEBOT_API_CHAT_LABEL` para qualquer API compatível com `chat/completions`
 - `ANTHROPIC_API_KEY` + `NOISEBOT_ANTHROPIC_BASE_URL` para APIs no formato Anthropic `messages`
 
+Configuração inicial do TTS/STT em runtime:
+
+- `NOISEBOT_TTS_PROVIDER=none|piper`
+- `NOISEBOT_PIPER_EXECUTABLE` + `NOISEBOT_PIPER_MODEL` para TTS local via Piper
+- `NOISEBOT_STT_PROVIDER=none|faster_whisper`
+- `NOISEBOT_FASTER_WHISPER_MODEL`, `NOISEBOT_FASTER_WHISPER_DEVICE`, `NOISEBOT_FASTER_WHISPER_COMPUTE_TYPE`
+- `NOISEBOT_FASTER_WHISPER_CPU_THREADS`, `NOISEBOT_FASTER_WHISPER_NUM_WORKERS`, `NOISEBOT_FASTER_WHISPER_LANGUAGE`, `NOISEBOT_FASTER_WHISPER_BEAM_SIZE`
+- `NOISEBOT_STT_TIMEOUT_S` para teto operacional do provider de transcrição
+
 ## 5. SkillHost — tools e intents
 
 - **Intents locais** (regex/regras PT-BR, zero LLM): hora/data, timer,

@@ -21,6 +21,10 @@ class AbstractLlmProvider(ABC):
     async def generate_reply(self, text: str, context: dict[str, Any]) -> str:
         ...
 
+    async def close(self) -> None:
+        """Libera recursos opcionais do provider."""
+        return None
+
 
 class StaticLlmProvider(AbstractLlmProvider):
     def __init__(self, reply: str) -> None:
@@ -31,7 +35,30 @@ class StaticLlmProvider(AbstractLlmProvider):
         return self._reply
 
 
-class ChatCompletionsLlmProvider(AbstractLlmProvider):
+class _SharedHttpSessionMixin:
+    def __init__(self, *, timeout_s: float, session_factory: Any | None = None) -> None:
+        self._timeout_s = timeout_s
+        self._session_factory = session_factory or aiohttp.ClientSession
+        self._session: Any | None = None
+
+    async def _get_session(self):
+        if self._session is None:
+            timeout = aiohttp.ClientTimeout(total=self._timeout_s)
+            self._session = self._session_factory(timeout=timeout)
+        return self._session
+
+    async def close(self) -> None:
+        if self._session is None:
+            return
+        close = getattr(self._session, "close", None)
+        if close is not None:
+            result = close()
+            if hasattr(result, "__await__"):
+                await result
+        self._session = None
+
+
+class ChatCompletionsLlmProvider(_SharedHttpSessionMixin, AbstractLlmProvider):
     def __init__(
         self,
         *,
@@ -44,13 +71,12 @@ class ChatCompletionsLlmProvider(AbstractLlmProvider):
         circuit_breaker: CircuitBreaker | None = None,
         session_factory: Any | None = None,
     ) -> None:
+        super().__init__(timeout_s=timeout_s, session_factory=session_factory)
         self._provider_label = provider_label
         self._model = model
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
-        self._timeout_s = timeout_s
         self._max_output_tokens = max_output_tokens
-        self._session_factory = session_factory or aiohttp.ClientSession
         self._breaker = circuit_breaker or CircuitBreaker(provider=f"{provider_label}/{model}")
 
     async def generate_reply(self, text: str, context: dict[str, Any]) -> str:
@@ -65,24 +91,23 @@ class ChatCompletionsLlmProvider(AbstractLlmProvider):
         }
         payload["max_tokens"] = int(context.get("max_output_tokens", self._max_output_tokens))
 
-        timeout = aiohttp.ClientTimeout(total=self._timeout_s)
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
         try:
-            async with self._session_factory(timeout=timeout) as session:
-                async with session.post(
-                    f"{self._base_url}/chat/completions",
-                    headers=headers,
-                    json=payload,
-                ) as response:
-                    if response.status >= 400:
-                        body = await response.text()
-                        raise LlmProviderError(
-                            f"{self._provider_label} status={response.status}: {body[:200]}"
-                        )
-                    data = await response.json()
+            session = await self._get_session()
+            async with session.post(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+            ) as response:
+                if response.status >= 400:
+                    body = await response.text()
+                    raise LlmProviderError(
+                        f"{self._provider_label} status={response.status}: {body[:200]}"
+                    )
+                data = await response.json()
             content = (
                 data.get("choices", [{}])[0]
                 .get("message", {})
@@ -99,7 +124,7 @@ class ChatCompletionsLlmProvider(AbstractLlmProvider):
             raise LlmProviderError(str(exc)) from exc
 
 
-class OllamaLlmProvider(AbstractLlmProvider):
+class OllamaLlmProvider(_SharedHttpSessionMixin, AbstractLlmProvider):
     def __init__(
         self,
         *,
@@ -108,10 +133,11 @@ class OllamaLlmProvider(AbstractLlmProvider):
         timeout_s: float = 10.0,
         num_ctx: int = 16384,
         circuit_breaker: CircuitBreaker | None = None,
+        session_factory: Any | None = None,
     ) -> None:
+        super().__init__(timeout_s=timeout_s, session_factory=session_factory)
         self._model = model
         self._base_url = base_url.rstrip("/")
-        self._timeout_s = timeout_s
         self._num_ctx = num_ctx
         self._breaker = circuit_breaker or CircuitBreaker(provider=f"ollama/{model}")
 
@@ -126,17 +152,16 @@ class OllamaLlmProvider(AbstractLlmProvider):
             "stream": False,
             "options": {"num_ctx": int(context.get("num_ctx", self._num_ctx))},
         }
-        timeout = aiohttp.ClientTimeout(total=self._timeout_s)
         try:
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    f"{self._base_url}/api/chat",
-                    json=payload,
-                ) as response:
-                    if response.status >= 400:
-                        body = await response.text()
-                        raise LlmProviderError(f"ollama status={response.status}: {body[:200]}")
-                    data = await response.json()
+            session = await self._get_session()
+            async with session.post(
+                f"{self._base_url}/api/chat",
+                json=payload,
+            ) as response:
+                if response.status >= 400:
+                    body = await response.text()
+                    raise LlmProviderError(f"ollama status={response.status}: {body[:200]}")
+                data = await response.json()
             content = data.get("message", {}).get("content", "")
             if not isinstance(content, str) or not content.strip():
                 raise LlmProviderError("ollama retornou resposta vazia")
@@ -149,7 +174,7 @@ class OllamaLlmProvider(AbstractLlmProvider):
             raise LlmProviderError(str(exc)) from exc
 
 
-class AnthropicLlmProvider(AbstractLlmProvider):
+class AnthropicLlmProvider(_SharedHttpSessionMixin, AbstractLlmProvider):
     def __init__(
         self,
         *,
@@ -161,12 +186,11 @@ class AnthropicLlmProvider(AbstractLlmProvider):
         circuit_breaker: CircuitBreaker | None = None,
         session_factory: Any | None = None,
     ) -> None:
+        super().__init__(timeout_s=timeout_s, session_factory=session_factory)
         self._model = model
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
-        self._timeout_s = timeout_s
         self._max_output_tokens = max_output_tokens
-        self._session_factory = session_factory or aiohttp.ClientSession
         self._breaker = circuit_breaker or CircuitBreaker(provider=f"anthropic/{model}")
 
     async def generate_reply(self, text: str, context: dict[str, Any]) -> str:
@@ -177,23 +201,22 @@ class AnthropicLlmProvider(AbstractLlmProvider):
             "system": "Responda em portugues do Brasil, de forma natural.",
             "messages": [{"role": "user", "content": text}],
         }
-        timeout = aiohttp.ClientTimeout(total=self._timeout_s)
         headers = {
             "x-api-key": self._api_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         }
         try:
-            async with self._session_factory(timeout=timeout) as session:
-                async with session.post(
-                    f"{self._base_url}/messages",
-                    headers=headers,
-                    json=payload,
-                ) as response:
-                    if response.status >= 400:
-                        body = await response.text()
-                        raise LlmProviderError(f"anthropic status={response.status}: {body[:200]}")
-                    data = await response.json()
+            session = await self._get_session()
+            async with session.post(
+                f"{self._base_url}/messages",
+                headers=headers,
+                json=payload,
+            ) as response:
+                if response.status >= 400:
+                    body = await response.text()
+                    raise LlmProviderError(f"anthropic status={response.status}: {body[:200]}")
+                data = await response.json()
             content_list = data.get("content", [])
             text_parts = [
                 item.get("text", "")
