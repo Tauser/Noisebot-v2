@@ -2339,13 +2339,45 @@ server v1 (refactor).
 | S4.1a | `display_hal`: otimizar flush SPI com staging SRAM suportado (dirty rects/filas medidas)                                    | medição registrada (fps/latência de flush/SRAM) antes×depois; soak sem regressão visual; fps ≥ 28 com áudio ativo; fatiamento documentado como solução permanente se mantido | `FEITO` |
 | S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests**                         | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-\* verdes                             | `PENDENTE` |
 | S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `FEITO` |
-| S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `PENDENTE` |
+| S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `FEITO` |
 | S4.5 | Providers ligados: faster-whisper, Ollama/OpenAI com circuit breaker, Piper                                                   | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
 | S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM                                                        | intents respondem com LLM desligada; latência < 1 s                                                                        | `PENDENTE` |
 | S4.7 | Gate de voz                                                                                                                   | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
 | S4.8 | **Máscara de latência** (`docs/RFC-VIDA-V2.md` §6): `THINKING`/`EUREKA`/`CONFUSED` sobre o gap `LISTEN_STOP`→`SAY_START`, inferido localmente pela temporização das mensagens de S4.3 (zero mudança de protocolo). Dependências: S4.3–S4.5 + S3.7 | p95 do gap fala→primeiro áudio sem face estática (medido); timeout/queda de mente → `CONFUSED` → IDLE limpo; golden test da inferência local de turno | `PENDENTE` |
 
 **Plano S4.1 (antes de implementar):**
+
+**Avanço S4.4 (2026-07-09, fechado):**
+
+1. O pacote `server/noisebot2/` ganhou a base definitiva da mente em
+   arquitetura por atores: `bus.py`, `mind/contracts.py`,
+   `mind/turn_engine.py`, `mind/mind_output.py` e `runtime.py`. O fluxo
+   agora é estritamente via event bus interno; `TurnEngine` não chama
+   `MindOutput` diretamente.
+2. `TurnEngine` herdou a FSM mínima do v1 com estados `IDLE`,
+   `LISTENING`, `COMMITTING`, `THINKING`, `SPEAKING`, `INTERRUPTED` e
+   `ERROR_RECOVERY`, mais eventos tipados de turno/cancelamento/fala em
+   `mind/contracts.py`.
+3. `MindOutput` virou ator próprio de saída: recebe `ReplyReady`,
+   sentenciza/publica `SentenceReady`, emite `SayBegin`/`SayAudio`/
+   `SayEnd` e converte cancelamento em `SayCancel`, sem acoplamento direto
+   ao dono da FSM.
+4. O gate principal da fase foi coberto por testes nomeados em
+   `server/tests/test_turn_engine.py`: invariantes `I-1`, `I-2`, `I-4` e
+   `I-5`, além do caso herdado do v1 em que `WakeDetected` durante
+   `SPEAKING` vira `BargeInDetected`.
+5. `server/tests/test_mind_output.py` travou a ordem observável do ator de
+   fala (`SentenceReady -> SAY_BEGIN -> SAY_AUDIO* -> SAY_END ->
+   SpeechDone`) e o caminho de cancelamento sem `SpeechDone` espúrio.
+6. A lacuna de persistência prevista em `docs/SERVER.md` para esta fase
+   também entrou: `server/noisebot2/stores/conversation_store.py` com
+   `ConversationStore` SQLite enxuto, mais testes portados em
+   `server/tests/test_conversation_store.py` cobrindo schema, conversa
+   ativa, idempotência de `begin_turn`, listagem de mensagens e recovery de
+   turnos `pending`.
+7. Evidência executada no host: `python -m pytest` em `server/` →
+   `16 passed` (`test_conversation_store.py`, `test_mind_output.py`,
+   `test_turn_engine.py`, `test_nbp2_fake_server.py`, `test_smoke.py`).
 
 1. `nb_hw_config.h` ganha as constantes do barramento I2S compartilhado
    (`HARDWARE.md`: BCLK 40, WS/LRCK 41, mic DIN 39/INMP441, speaker DOUT
