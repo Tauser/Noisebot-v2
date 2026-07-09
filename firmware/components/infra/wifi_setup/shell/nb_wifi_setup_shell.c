@@ -171,3 +171,12 @@ nb_wifi_setup_state_t nb_wifi_setup_shell_get_state(void)
 {
     return nb_wifi_setup_get_state(&s_setup);
 }
+
+int8_t nb_wifi_setup_shell_get_rssi(void)
+{
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) {
+        return -128;
+    }
+    return ap_info.rssi;
+}

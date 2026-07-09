@@ -2283,15 +2283,34 @@ doc):
    de ativação (`ESP_LOGI(TAG, "rarity: SNEEZE/DREAM/STARGAZE ...")`) pra
    observabilidade em bancada.
 
-   **Pendência explícita registrada (decisão do usuário, não construir
-   agora):** envio de `STATUS` continua **inexistente** —
-   `mind_link_shell` não monta/envia essa mensagem em lugar nenhum hoje
-   (confirmado por grep antes de decidir). `BEHAVIOR.md` §6 promete todo
-   estado em `STATUS`, e o gate do S3.8 (item 10) exige "contadores de
-   raridade visíveis no dashboard" — **nenhum dos dois é satisfeito
-   ainda**. Isso é um item de casca próprio (envio periódico de `STATUS`
-   + consumo no dashboard), fora do escopo do item 8. **O gate do S3.8
-   não pode fechar sem esse item existir.**
+   **Envio de `STATUS` construído (2026-07-08, decisão do usuário —
+   "construir os 2 agora" pros campos faltando + STATUS a cada
+   HEARTBEAT):**
+   - `bus_dropped`: **já existia** em `event_bus` (`nb_event_bus_stats_t.
+     dropped_normal/dropped_safety`, exposto via `nb_event_bus_shell_
+     get_stats()`) — só somei os dois campos, não precisou de contador
+     novo (procurei pela string errada, `"bus_dropped"`, no grep
+     original; o campo real chama `dropped_normal`/`dropped_safety`).
+   - `rssi`: novo — `nb_wifi_setup_shell_get_rssi()`
+     (`esp_wifi_sta_get_ap_info()`), sentinela `-128` se não conectado em
+     modo estação.
+   - `mind_link_shell` ganhou `nb_mind_link_shell_notify_status()`
+     (fire-and-forget, mesmo padrão de `notify_timer_fired`, protegido
+     por critical section em vez de só `volatile` — struct grande demais
+     pra copiar átomo com um campo só) + envio no mesmo ciclo do
+     `HEARTBEAT` (~1s, decisão do usuário — sem timer próprio).
+   - `main.c`: monta o snapshot a cada frame (`fsm`/`emotion`/`rarity`
+     já locais; `heap_caps_get_free_size()`/`nb_event_bus_shell_get_
+     stats()`/`nb_wifi_setup_shell_get_rssi()` chamados direto; `fps_x10`
+     reusa a última janela medida, sem recalcular por frame).
+   - Build ESP32 limpo (`-Wall -Wextra -Werror`); suíte de host-tests
+     dos componentes tocados (`rarity_core`/`event_bus`/`wifi_setup`)
+     verde -- suíte completa não rodou até o fim por uma falha
+     pré-existente em `audio_playback_service` (componente de outra
+     sessão em paralelo, não meu).
+   - **Falta:** consumo no dashboard (server/React) — fora de escopo do
+     firmware; confirmação em bancada de ponta a ponta (STATUS chegando
+     no server de fato).
 9. **Limpeza das 6 âncoras mortas** — **`FEITO` (2026-07-08), confirmado
    pelo usuário antes de remover.** `CURIOUS/SLEEPY/FOCUSED/SUSPICIOUS/
    SURPRISED/ALARMED` e `nb_emotion_core_nearest_expression()` (vestigial,

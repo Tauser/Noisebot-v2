@@ -3,6 +3,7 @@
 
 #include "esp_err.h"
 #include "mind_link.h"
+#include "nbp2.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,14 @@ bool nb_mind_link_shell_notify_listen_start(uint32_t session_id, uint32_t sample
 bool nb_mind_link_shell_notify_listen_audio(uint32_t session_id, const int16_t *pcm,
                                             uint32_t samples);
 bool nb_mind_link_shell_notify_listen_end(uint32_t session_id);
+
+/* S3.8, item 8: snapshot de STATUS pra enviar no próximo HEARTBEAT (não
+ * têm sessão própria -- fire-and-forget, mesmo padrão de notify_timer_
+ * fired; a task de mind_link reenvia o snapshot mais recente a cada
+ * HEARTBEAT enquanto READY, sem fila/reenvio dedicado). Chamada de fora
+ * da task de mind_link (main.c/face_demo_task), por isso não recebe o
+ * socket direto -- mesma nota de notify_timer_fired. */
+void nb_mind_link_shell_notify_status(const nbp2_msg_status_t *status);
 
 #ifdef __cplusplus
 }

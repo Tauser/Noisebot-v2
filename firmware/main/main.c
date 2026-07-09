@@ -140,6 +140,7 @@
 #include "peak_core.h"
 #include "rarity_core.h"
 #include <math.h>
+#include <string.h>
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
 #define NB_APP_MAIN_HEARTBEAT_MS 1000u
@@ -290,6 +291,7 @@ static void nb_app_main_face_demo_task(void *arg)
     uint32_t last_touch_ms = 0;
     nb_app_main_touch_sink_ctx_t touch_sink_ctx;
     uint32_t fps_frame_count = 0;
+    uint16_t last_fps_x10 = 0u; /* S3.8, item 8: última medição, reusada no STATUS a cada frame */
     int64_t fps_window_start_us = esp_timer_get_time();
     int64_t logic_us_sum = 0;
     int64_t draw_us_sum = 0;
@@ -624,6 +626,7 @@ static void nb_app_main_face_demo_task(void *arg)
         const int64_t elapsed_us = now_us - fps_window_start_us;
         if (elapsed_us >= NB_APP_MAIN_FPS_LOG_WINDOW_US) {
             const float fps = (float)fps_frame_count / ((float)elapsed_us / 1000000.0f);
+            last_fps_x10 = (uint16_t)(fps * 10.0f);
             ESP_LOGI(TAG,
                     "face_demo: fps=%.1f logic_ms=%.2f draw_ms=%.2f flush_ms=%.2f flush_kb=%.1f",
                     (double)fps, (double)logic_us_sum / fps_frame_count / 1000.0,
@@ -636,6 +639,30 @@ static void nb_app_main_face_demo_task(void *arg)
             draw_us_sum = 0;
             flush_us_sum = 0;
             flush_bytes_sum = 0;
+        }
+
+        /* S3.8, item 8: snapshot de STATUS a cada frame -- fire-and-forget,
+         * mind_link_shell reenvia o mais recente a cada HEARTBEAT (~1s,
+         * decisão do usuário). bus_dropped soma normal+safety (ambos
+         * indicam perda real, mesmo peso pro dashboard). */
+        {
+            nb_event_bus_stats_t bus_stats;
+            nb_event_bus_shell_get_stats(&bus_stats);
+
+            nbp2_msg_status_t status;
+            memset(&status, 0, sizeof(status));
+            status.state = (nbp2_fsm_state_t)nb_tiny_fsm_get_state(&fsm);
+            status.valence = emotion.valence;
+            status.arousal = emotion.arousal;
+            status.heap_free = (uint32_t)heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+            status.psram_free = (uint32_t)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+            status.fps_x10 = last_fps_x10;
+            status.bus_dropped = bus_stats.dropped_normal + bus_stats.dropped_safety;
+            status.rssi = nb_wifi_setup_shell_get_rssi();
+            status.rarity_sneeze_count = nb_rarity_core_count(&rarity, NB_RARITY_SNEEZE);
+            status.rarity_dream_count = nb_rarity_core_count(&rarity, NB_RARITY_DREAM);
+            status.rarity_stargaze_count = nb_rarity_core_count(&rarity, NB_RARITY_STARGAZE);
+            nb_mind_link_shell_notify_status(&status);
         }
 
         vTaskDelayUntil(&last_wake_tick, pdMS_TO_TICKS(NB_APP_MAIN_FACE_DEMO_TICK_MS));

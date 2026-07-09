@@ -45,6 +45,14 @@ static uint32_t s_downlink_say_audio_samples;
 static volatile bool s_pending_timer_fired;
 static volatile uint32_t s_pending_timer_fired_id;
 
+/* S3.8, item 8: snapshot de STATUS -- struct grande demais pra copiar com
+ * segurança só com `volatile` (sem garantia de atomicidade entre campos
+ * em multicore); usa o mesmo mecanismo de critical section já usado pra
+ * proteger a fila de voz abaixo (s_voice_mux), não um novo padrão. */
+static portMUX_TYPE s_status_mux = portMUX_INITIALIZER_UNLOCKED;
+static nbp2_msg_status_t s_pending_status_snapshot;
+static bool s_has_pending_status;
+
 typedef enum {
     NB_MIND_LINK_VOICE_ITEM_EVENT_WAKE = 0,
     NB_MIND_LINK_VOICE_ITEM_LISTEN_START = 1,
@@ -200,6 +208,20 @@ static bool nb_mind_link_shell_send_heartbeat(int sock, uint32_t counter, uint32
         return false;
     }
     return nb_mind_link_shell_send_frame(sock, NBP2_MSG_HEARTBEAT, seq, payload,
+                                         (uint16_t)payload_len);
+}
+
+/* S3.8, item 8: STATUS reaproveita o mesmo ciclo do HEARTBEAT (decisão do
+ * usuário, 2026-07-08 -- sem timer próprio). */
+static bool nb_mind_link_shell_send_status(int sock, const nbp2_msg_status_t *status, uint32_t seq)
+{
+    uint8_t payload[64];
+    size_t payload_len;
+
+    if (nbp2_encode_status(status, payload, sizeof(payload), &payload_len) != NBP2_OK) {
+        return false;
+    }
+    return nb_mind_link_shell_send_frame(sock, NBP2_MSG_STATUS, seq, payload,
                                          (uint16_t)payload_len);
 }
 
@@ -585,6 +607,17 @@ void nb_mind_link_shell_notify_timer_fired(uint32_t timer_id)
     s_pending_timer_fired = true;
 }
 
+void nb_mind_link_shell_notify_status(const nbp2_msg_status_t *status)
+{
+    if (status == NULL) {
+        return;
+    }
+    portENTER_CRITICAL(&s_status_mux);
+    s_pending_status_snapshot = *status;
+    s_has_pending_status = true;
+    portEXIT_CRITICAL(&s_status_mux);
+}
+
 bool nb_mind_link_shell_notify_event_wake(float score)
 {
     nb_mind_link_voice_item_t item;
@@ -687,6 +720,28 @@ static void nb_mind_link_shell_task(void *arg)
                     ESP_LOGW(TAG, "falha ao enviar HEARTBEAT");
                     nb_mind_link_session_on_disconnected(&s_session);
                     break;
+                }
+
+                /* S3.8, item 8: STATUS no mesmo ciclo do HEARTBEAT
+                 * (decisão do usuário) -- fire-and-forget, reenvia o
+                 * snapshot mais recente; sem snapshot ainda (face_demo_
+                 * task não chamou notify_status nenhuma vez), não manda
+                 * nada neste ciclo. */
+                if (nb_mind_link_session_get_state(&s_session) == NB_MIND_LINK_STATE_READY) {
+                    nbp2_msg_status_t status_to_send;
+                    bool has_status;
+
+                    portENTER_CRITICAL(&s_status_mux);
+                    has_status = s_has_pending_status;
+                    if (has_status) {
+                        status_to_send = s_pending_status_snapshot;
+                    }
+                    portEXIT_CRITICAL(&s_status_mux);
+
+                    if (has_status &&
+                        !nb_mind_link_shell_send_status(sock, &status_to_send, tx_seq++)) {
+                        ESP_LOGW(TAG, "falha ao enviar STATUS");
+                    }
                 }
             }
 
