@@ -92,3 +92,27 @@ bool nb_peak_core_blink_should_pause(const nb_peak_state_t *state)
 {
     return state != NULL && nb_peak_core_is_eye_glyph(state->active);
 }
+
+void nb_peak_tears_trigger_init(nb_peak_tears_trigger_t *trigger)
+{
+    if (trigger == NULL) {
+        return;
+    }
+    trigger->armed = true;
+}
+
+bool nb_peak_tears_trigger_tick(nb_peak_tears_trigger_t *trigger, bool is_sad_dominant,
+                                float intensity)
+{
+    if (trigger == NULL) {
+        return false;
+    }
+    if (intensity < NB_PEAK_TEARS_EXIT_INTENSITY) {
+        trigger->armed = true;
+    }
+    if (trigger->armed && is_sad_dominant && intensity >= NB_PEAK_TEARS_ENTER_INTENSITY) {
+        trigger->armed = false;
+        return true;
+    }
+    return false;
+}

@@ -163,6 +163,61 @@ static void test_null_is_safe(void)
     CHECK(!nb_peak_core_blink_should_pause(NULL));
 }
 
+/* S3.8, item 7, emenda 2026-07-08: TEARS dispara exatamente 1x ao cruzar
+ * >=0.70 com SAD dominante; retrigger com o vetor parado no fundo (sem
+ * cair abaixo de 0.60) não deve acontecer. */
+static void test_tears_fires_once_on_crossing_no_retrigger_at_bottom(void)
+{
+    nb_peak_tears_trigger_t t;
+    nb_peak_tears_trigger_init(&t);
+
+    CHECK(nb_peak_tears_trigger_tick(&t, true, 0.70f));
+    for (int i = 0; i < 20; ++i) {
+        CHECK(!nb_peak_tears_trigger_tick(&t, true, 0.90f)); /* vetor mora fundo -- sem retrigger */
+    }
+}
+
+/* Rearma só quando a intensidade cai abaixo de 0.60 -- entre 0.60 e 0.70
+ * ainda não rearma (histerese de verdade, não um limiar único). */
+static void test_tears_rearms_only_below_exit_threshold(void)
+{
+    nb_peak_tears_trigger_t t;
+    nb_peak_tears_trigger_init(&t);
+
+    CHECK(nb_peak_tears_trigger_tick(&t, true, 0.70f));
+    CHECK(!nb_peak_tears_trigger_tick(&t, true, 0.65f)); /* entre 0.60-0.70 -- ainda desarmado */
+    CHECK(!nb_peak_tears_trigger_tick(&t, true, 0.70f));
+
+    CHECK(!nb_peak_tears_trigger_tick(&t, true, 0.59f)); /* cruza o exit -- rearma, mas 0.59<0.70 não dispara */
+    CHECK(nb_peak_tears_trigger_tick(&t, true, 0.70f));  /* agora sim, novo cruzamento */
+}
+
+/* Sem hub SAD dominante, nunca dispara, mesmo em intensidade alta. */
+static void test_tears_never_fires_without_sad_dominant(void)
+{
+    nb_peak_tears_trigger_t t;
+    nb_peak_tears_trigger_init(&t);
+    for (int i = 0; i < 10; ++i) {
+        CHECK(!nb_peak_tears_trigger_tick(&t, false, 0.95f));
+    }
+}
+
+/* Abaixo do limiar de entrada, nunca dispara mesmo com SAD dominante. */
+static void test_tears_never_fires_below_enter_threshold(void)
+{
+    nb_peak_tears_trigger_t t;
+    nb_peak_tears_trigger_init(&t);
+    for (int i = 0; i < 10; ++i) {
+        CHECK(!nb_peak_tears_trigger_tick(&t, true, 0.69f));
+    }
+}
+
+static void test_tears_null_is_safe(void)
+{
+    nb_peak_tears_trigger_init(NULL);
+    CHECK(!nb_peak_tears_trigger_tick(NULL, true, 1.0f));
+}
+
 int main(void)
 {
     test_init_is_none();
@@ -175,6 +230,11 @@ int main(void)
     test_reset_transient_clears_any_mechanism();
     test_blink_pause_only_for_eye_glyphs();
     test_null_is_safe();
+    test_tears_fires_once_on_crossing_no_retrigger_at_bottom();
+    test_tears_rearms_only_below_exit_threshold();
+    test_tears_never_fires_without_sad_dominant();
+    test_tears_never_fires_below_enter_threshold();
+    test_tears_null_is_safe();
 
     if (failures == 0) {
         printf("peak_core host_test: ok\n");

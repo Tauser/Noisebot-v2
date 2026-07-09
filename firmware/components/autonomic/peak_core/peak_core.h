@@ -90,6 +90,33 @@ bool nb_peak_core_is_eye_glyph(nb_peak_mechanism_t mechanism);
 
 bool nb_peak_core_blink_should_pause(const nb_peak_state_t *state);
 
+/* Gatilho de TEARS por histerese sobre a intensidade do vetor (S3.8, item
+ * 7, emenda 2026-07-08 -- normativa): dispara 1x ao entrar em pico SAD
+ * (hub dominante == SAD && intensidade >= NB_PEAK_TEARS_ENTER_INTENSITY),
+ * rearma só quando a intensidade cai abaixo de
+ * NB_PEAK_TEARS_EXIT_INTENSITY -- evita retrigger em loop enquanto o
+ * vetor mora fundo no SAD (mesma técnica de apply_mouth_gate() em
+ * emotion_core). Estado separado de nb_peak_state_t (esse é só a
+ * exclusividade de slot; isto é a decisão de QUANDO pedir TEARS).
+ *
+ * dominant_hub/intensidade chegam como bool/float genéricos (não
+ * nb_face_expr_t) -- este núcleo continua sem conhecer emotion_core/
+ * renderer, "zero acoplamento cruzado" (ARCHITECTURE.md §2); a casca já
+ * sabe comparar dominant_hub==SAD antes de chamar. */
+#define NB_PEAK_TEARS_ENTER_INTENSITY 0.70f /* espelha NB_EMOTION_MOUTH_PEAK_INTENSITY (emotion_core.c, #define privado) -- não cunha número novo */
+#define NB_PEAK_TEARS_EXIT_INTENSITY 0.60f
+
+typedef struct {
+    bool armed;
+} nb_peak_tears_trigger_t;
+
+void nb_peak_tears_trigger_init(nb_peak_tears_trigger_t *trigger);
+
+/* Avalia o cruzamento neste frame. Retorna true só no instante exato em
+ * que dispara (não enquanto o vetor continua no pico). */
+bool nb_peak_tears_trigger_tick(nb_peak_tears_trigger_t *trigger, bool is_sad_dominant,
+                                float intensity);
+
 #ifdef __cplusplus
 }
 #endif

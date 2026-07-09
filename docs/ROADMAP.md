@@ -2219,9 +2219,34 @@ doc):
    glifo de olho (pausa) de adorno (não pausa). Host-tests: nunca 2 picos
    simultâneos; nada fora do pedido; expira no hold; envelope de fade
    correto; `ZZZ` sem timeout; `reset_transient` limpa qualquer
-   mecanismo. Suíte inteira verde; build limpo. **Falta:** desenho real
-   (pipeline SVG→PBM) e confirmação visual em bancada de cada
-   glifo/adorno — depende de casca ainda não escrita.
+   mecanismo. Suíte inteira verde; build limpo.
+
+   **Emenda normativa (2026-07-08, decisão do usuário):** só 3 mecanismos
+   entram nesta fatia: `HEART` (beat `CONTENT_SLOW_BLINK_HEART` do
+   `RECONCILE`), `TEARS` (histerese sobre a intensidade do vetor —
+   entra em `dominant_hub==SAD && intensidade>=0.70`, mesma constante do
+   gate da boca `NB_EMOTION_MOUTH_PEAK_INTENSITY` espelhada, não
+   cunhada de novo; rearma só abaixo de `0.60`), `ZZZ` (presente sse
+   `FSM==SLEEPING`). `LAUGH` e os 6 adornos ficam sem casca (aguardam
+   arco de gargalhada / `EUREKA`-`CONFUSED` do S4.8 / tag de `STIMULUS`
+   da mente). Núcleo novo `nb_peak_tears_trigger_t` (host-tests: dispara
+   1x por cruzamento sem retrigger no fundo; rearma só abaixo do exit,
+   não no meio da faixa 0.60-0.70; nunca dispara sem `SAD` dominante nem
+   abaixo do enter; null-safety).
+
+   **Casca (`main.c`, 2026-07-08):** prioridade arco (`HEART`) > vetor
+   (`TEARS`) > estado (`ZZZ`). **Achado real durante o dev, pego antes de
+   flashear:** a mesma classe de bug do `GRUMPY_FORGIVE` ia se repetir —
+   resetar a cada frame em que `FSM==IDLE` (nível, não borda) mataria
+   `TEARS` quase instantaneamente, já que IDLE é o estado padrão de
+   repouso e `TEARS` nasce puramente do vetor, tipicamente com o corpo já
+   parado. Corrigido pra detectar a transição de verdade
+   (`prev_state!=IDLE && atual==IDLE`) antes de flashear.
+
+   **Falta:** desenho real (pipeline SVG→PBM) e confirmação visual em
+   bancada — sem os assets, os 3 mecanismos só têm efeito de estado
+   (logado via `ESP_LOGI(TAG, "peak: mechanism=...")` pra observabilidade
+   em bancada), nenhum pixel de glifo aparece ainda.
 8. **Raridades** (`rarity_core`, novo núcleo) — **`FEITO` (2026-07-08).**
    `SNEEZE` (~1/dia, intervalo mínimo), `DREAM` (≤1/noite em `SLEEPING`),
    `STARGAZE` (≤1/noite em `NIGHT`) — `DREAM`/`STARGAZE` são "por sessão"
@@ -2434,6 +2459,16 @@ algo a remover por "DMA direto de PSRAM".
   insuficiente para o frame CBOR+CRC do chunk de áudio. Correção: elevar o
   buffer estático de envio ao mesmo teto do framing local e adicionar log
   explícito de falha em `encode_frame/send`.
+- Avanço incremental de S4.3 em 2026-07-09: adicionado
+  `server/tests/test_nbp2_fake_server.py`, teste host-side que sobe o
+  `tools/nbp2_fake_server.py` em subprocesso e valida o fluxo mínimo já
+  fechado da fatia: `HELLO`/`HELLO_ACK`, uplink
+  `LISTEN_START/LISTEN_AUDIO/LISTEN_END` e downlink sintético
+  `SAY_BEGIN/SAY_AUDIO/{SAY_END|SAY_CANCEL|drop}`. Gate local executado:
+  `python -m pytest server/tests/test_nbp2_fake_server.py` verde (3 casos:
+  `end`, `cancel`, `drop`). Isso ainda não prova playback no firmware nem
+  fade físico do speaker, mas fecha uma evidência executável do protocolo
+  ponta a ponta contra o fake server, sem depender da bancada.
 - **Gates ainda pendentes para fechar S4.2:** produtor real de wake/VAD
   (WakeNet/ESP-SR ou harness de bancada equivalente), medição de wake em
   ambiente real (`>= 9/10`), falso wake `< 1/h`, overlay listening

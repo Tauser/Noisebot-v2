@@ -84,6 +84,15 @@
  * ainda (calcular os padrões LATERAL/DIAGONAL/ORBIT é extensão do motor
  * de atenção, fora de escopo deste item -- deixado pro idle_engine
  * existente continuar).
+ * S3.8, item 7 (emenda 2026-07-08, normativa do usuário): só 3 mecanismos
+ * ligados -- HEART (beat CONTENT_SLOW_BLINK_HEART do RECONCILE), TEARS
+ * (nb_peak_tears_trigger_tick(), histerese 0.70/0.60 sobre
+ * dominant_hub==SAD), ZZZ (presente sse FSM==SLEEPING). Prioridade: arco
+ * (HEART) > vetor (TEARS) > estado (ZZZ). LAUGH e os adornos ficam sem
+ * casca (aguardam arco de gargalhada / EUREKA-CONFUSED do S4.8 / tag de
+ * STIMULUS da mente). Sem pipeline de assets SVG->PBM ainda -- picos não
+ * têm efeito visual de verdade nesta fatia, só log de ativação pra
+ * observabilidade em bancada.
  */
 
 #include <stdbool.h>
@@ -120,6 +129,7 @@
 #include "grumpy_forgive.h"
 #include "reconcile.h"
 #include "search.h"
+#include "peak_core.h"
 #include <math.h>
 
 #define NB_APP_MAIN_WATCHDOG_TIMEOUT_MS 10000u
@@ -264,6 +274,9 @@ static void nb_app_main_face_demo_task(void *arg)
     nb_grumpy_forgive_state_t grumpy;
     nb_reconcile_state_t reconcile;
     nb_search_state_t search;
+    nb_peak_state_t peak;
+    nb_peak_tears_trigger_t tears_trigger;
+    nb_peak_mechanism_t prev_peak_mechanism = NB_PEAK_MECHANISM_NONE;
     uint32_t last_touch_ms = 0;
     nb_app_main_touch_sink_ctx_t touch_sink_ctx;
     uint32_t fps_frame_count = 0;
@@ -278,6 +291,7 @@ static void nb_app_main_face_demo_task(void *arg)
      * dos 33ms (~30 fps) pretendidos. vTaskDelayUntil desconta o tempo já
      * gasto e mantém o período alvo. */
     TickType_t last_wake_tick = xTaskGetTickCount();
+    nb_fsm_state_t prev_fsm_state = NB_FSM_STATE_BOOT;
 
     (void)arg;
 
@@ -292,6 +306,8 @@ static void nb_app_main_face_demo_task(void *arg)
     touch_sink_ctx.grumpy = &grumpy;
     touch_sink_ctx.last_touch_ms = &last_touch_ms;
     nb_reflex_engine_shell_set_touch_sink(nb_app_main_touch_sink, &touch_sink_ctx);
+    nb_peak_core_init(&peak);
+    nb_peak_tears_trigger_init(&tears_trigger);
 
     for (;;) {
         nb_idle_output_t idle_out;
@@ -373,6 +389,46 @@ static void nb_app_main_face_demo_task(void *arg)
          * timer de easing artificial. */
         nb_face_state_t current;
         nb_emotion_core_resolve_face(&emotion, &current);
+
+        /* S3.8, item 7 (emenda 2026-07-08): TEARS avaliado sempre (mantém
+         * a histerese consistente mesmo quando HEART vence a arbitragem
+         * neste frame); prioridade arco > vetor > estado. Sem efeito
+         * visual ainda (sem assets) -- log de ativação só pra
+         * observabilidade em bancada. */
+        const float peak_intensity =
+            sqrtf(emotion.valence * emotion.valence + emotion.arousal * emotion.arousal);
+        const bool peak_is_sad_dominant =
+            emotion.has_dominant_hub && emotion.dominant_hub == NB_FACE_EXPR_SAD;
+        const bool peak_tears_requested =
+            nb_peak_tears_trigger_tick(&tears_trigger, peak_is_sad_dominant, peak_intensity);
+
+        nb_peak_mechanism_t peak_requested = NB_PEAK_MECHANISM_NONE;
+        if (nb_reconcile_current_beat(&reconcile) == NB_RECONCILE_BEAT_CONTENT_SLOW_BLINK_HEART) {
+            peak_requested = NB_PEAK_MECHANISM_HEART;
+        } else if (peak_tears_requested) {
+            peak_requested = NB_PEAK_MECHANISM_TEARS;
+        } else if (nb_tiny_fsm_get_state(&fsm) == NB_FSM_STATE_SLEEPING) {
+            peak_requested = NB_PEAK_MECHANISM_ZZZ;
+        }
+        nb_peak_core_tick(&peak, NB_APP_MAIN_FACE_DEMO_TICK_MS, peak_requested);
+        /* H7 é a TRANSIÇÃO X->IDLE, não "estar em IDLE" -- IDLE é o
+         * estado padrão de repouso; resetar a cada frame em que
+         * fsm==IDLE mataria TEARS (puramente dirigido por vetor, nasce
+         * com o corpo já parado em IDLE na maioria das vezes) assim que
+         * ele começasse. Mesma lição do bug do GRUMPY_FORGIVE, aqui pega
+         * antes de flashear: borda de verdade (prev!=IDLE &&
+         * atual==IDLE), não nível. */
+        const nb_fsm_state_t current_fsm_state = nb_tiny_fsm_get_state(&fsm);
+        if (current_fsm_state == NB_FSM_STATE_IDLE && prev_fsm_state != NB_FSM_STATE_IDLE) {
+            nb_peak_core_reset_transient(&peak);
+        }
+        prev_fsm_state = current_fsm_state;
+        const nb_peak_mechanism_t peak_active = nb_peak_core_active_mechanism(&peak);
+        if (peak_active != prev_peak_mechanism) {
+            ESP_LOGI(TAG, "peak: mechanism=%d", (int)peak_active);
+            prev_peak_mechanism = peak_active;
+        }
+
         /* P0-P3 (safety/touch/fala/hint) suprimem os motifs de idle sem
          * destruí-los -- ao expirar a claim, o overlay volta sozinho
          * (BEHAVIOR.md §3). */
