@@ -131,7 +131,9 @@ Avanço parcial de `S4.6` (2026-07-09):
   `.env`, fechando `ClientSession`/recursos ao final e retornando `exit 0`
   só quando os eixos solicitados passam. No estágio atual de `S4.5`, isso
   permite smoke parcial por `--only llm|tts|stt` para registrar evidência
-  incremental sem mascarar eixos ainda não ligados.
+  incremental sem mascarar eixos ainda não ligados. Para `TTS`, o smoke aceita
+  `--text`; para `STT`, aceita `--wav` mono PCM16LE quando não houver `TTS`
+  gerando áudio no mesmo fluxo.
 
 ## 5. SkillHost — tools e intents
 

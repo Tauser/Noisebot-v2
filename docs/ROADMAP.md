@@ -2490,6 +2490,13 @@ server v1 (refactor).
   `"Oi, como posso ajudar?"`; `tts` e `stt` seguiram explícitos como
   `provider nao configurado`.
 
+- Avanço incremental de `S4.5` em 2026-07-10: o smoke ganhou entrada
+  explícita para os eixos restantes sem depender do `LLM`: `--text` para
+  exercitar `TTS` isoladamente e `--wav` (mono PCM16LE) para exercitar `STT`
+  isoladamente quando `TTS` ainda não estiver ligado. Com isso, a evidência
+  incremental da fase fica reproduzível por eixo no host sem inventar atalhos
+  fora dos providers reais.
+
 - Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
   telemetria explícita de bancada (`wake_count`, `listen_start_count`,
   latência `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks

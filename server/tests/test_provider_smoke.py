@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import wave
+from pathlib import Path
+
 import pytest
 
 from noisebot2.provider_smoke import (
@@ -31,6 +34,14 @@ class ClosableProvider:
 
     async def close(self) -> None:
         self.closed = True
+
+
+def _write_test_wav(path: Path, frames: bytes) -> None:
+    with wave.open(str(path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(16000)
+        wav_file.writeframes(frames)
 
 
 @pytest.mark.asyncio
@@ -76,6 +87,23 @@ async def test_provider_smoke_can_scope_to_llm_only() -> None:
     assert report.active_axes == ("llm",)
     assert report.llm.ok is True
     assert report.tts.detail == "skipped"
+    assert report.stt.detail == "skipped"
+
+
+@pytest.mark.asyncio
+async def test_provider_smoke_can_scope_to_tts_only_with_explicit_text() -> None:
+    report = await run_provider_smoke(
+        llm_provider=None,
+        tts_provider=StaticTtsProvider(b"\x01\x02"),
+        stt_provider=None,
+        active_axes=("tts",),
+        tts_text="teste dedicado",
+    )
+
+    assert report.ok is True
+    assert report.active_axes == ("tts",)
+    assert report.llm.detail == "skipped"
+    assert report.tts.ok is True
     assert report.stt.detail == "skipped"
 
 
@@ -133,6 +161,36 @@ async def test_provider_smoke_from_env_passes_active_axes(monkeypatch) -> None:
     assert report.active_axes == ("llm",)
 
 
+@pytest.mark.asyncio
+async def test_provider_smoke_from_env_passes_stt_wav_pcm(monkeypatch, tmp_path: Path) -> None:
+    wav_path = tmp_path / "sample.wav"
+    _write_test_wav(wav_path, b"\x01\x02\x03\x04")
+
+    async def fake_run_provider_smoke(**kwargs) -> ProviderSmokeReport:
+        assert kwargs["active_axes"] == ("stt",)
+        assert kwargs["stt_pcm"] == b"\x01\x02\x03\x04"
+        return ProviderSmokeReport(
+            llm=ProviderSmokeResult("llm", False, "skipped"),
+            tts=ProviderSmokeResult("tts", False, "skipped"),
+            stt=ProviderSmokeResult("stt", True, "pt:teste"),
+            active_axes=("stt",),
+        )
+
+    monkeypatch.setattr("noisebot2.provider_smoke.load_dotenv", lambda path=None: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.load_llm_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.load_tts_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.load_stt_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.build_llm_provider", lambda _config: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.build_tts_provider", lambda _config: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.build_stt_provider", lambda _config: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.run_provider_smoke", fake_run_provider_smoke)
+
+    report = await run_provider_smoke_from_env(active_axes=("stt",), stt_wav_path=str(wav_path))
+
+    assert report.ok is True
+    assert report.active_axes == ("stt",)
+
+
 def test_format_provider_smoke_report_is_human_readable() -> None:
     report = ProviderSmokeReport(
         llm=ProviderSmokeResult("llm", True, "ok"),
@@ -154,9 +212,13 @@ def test_provider_smoke_main_returns_nonzero_on_failure(monkeypatch, capsys) -> 
         dotenv_path=None,
         prompt="",
         active_axes=(),
+        tts_text="",
+        stt_wav_path=None,
     ) -> ProviderSmokeReport:
         del dotenv_path, prompt
         assert active_axes == ("llm", "tts", "stt")
+        assert tts_text == "teste de voz"
+        assert stt_wav_path is None
         return ProviderSmokeReport(
             llm=ProviderSmokeResult("llm", False, "offline"),
             tts=ProviderSmokeResult("tts", False, "offline"),
@@ -176,9 +238,18 @@ def test_provider_smoke_main_returns_nonzero_on_failure(monkeypatch, capsys) -> 
 
 
 def test_provider_smoke_main_returns_zero_for_llm_only_success(monkeypatch, capsys) -> None:
-    async def fake_run_provider_smoke_from_env(*, dotenv_path=None, prompt="", active_axes=()) -> ProviderSmokeReport:
+    async def fake_run_provider_smoke_from_env(
+        *,
+        dotenv_path=None,
+        prompt="",
+        active_axes=(),
+        tts_text="",
+        stt_wav_path=None,
+    ) -> ProviderSmokeReport:
         del dotenv_path, prompt
         assert active_axes == ("llm",)
+        assert tts_text == "teste de voz"
+        assert stt_wav_path is None
         return ProviderSmokeReport(
             llm=ProviderSmokeResult("llm", True, "Oi, como posso ajudar?"),
             tts=ProviderSmokeResult("tts", False, "skipped"),
@@ -195,4 +266,39 @@ def test_provider_smoke_main_returns_zero_for_llm_only_success(monkeypatch, caps
         '{"ok": true, "active_axes": ["llm"], "llm": {"provider": "llm", "ok": true, "detail": "Oi, como posso ajudar?"}, '
         '"tts": {"provider": "tts", "ok": false, "detail": "skipped"}, '
         '"stt": {"provider": "stt", "ok": false, "detail": "skipped"}}'
+    )
+
+
+def test_provider_smoke_main_passes_text_and_wav_arguments(monkeypatch, tmp_path: Path, capsys) -> None:
+    wav_path = tmp_path / "sample.wav"
+    _write_test_wav(wav_path, b"\x01\x02")
+
+    async def fake_run_provider_smoke_from_env(
+        *,
+        dotenv_path=None,
+        prompt="",
+        active_axes=(),
+        tts_text="",
+        stt_wav_path=None,
+    ) -> ProviderSmokeReport:
+        del dotenv_path, prompt
+        assert active_axes == ("stt",)
+        assert tts_text == "fala alvo"
+        assert stt_wav_path == str(wav_path)
+        return ProviderSmokeReport(
+            llm=ProviderSmokeResult("llm", False, "skipped"),
+            tts=ProviderSmokeResult("tts", False, "skipped"),
+            stt=ProviderSmokeResult("stt", True, "pt:teste"),
+            active_axes=("stt",),
+        )
+
+    monkeypatch.setattr("noisebot2.provider_smoke.run_provider_smoke_from_env", fake_run_provider_smoke_from_env)
+
+    code = main(["--json", "--only", "stt", "--text", "fala alvo", "--wav", str(wav_path)])
+
+    assert code == 0
+    assert capsys.readouterr().out.strip() == (
+        '{"ok": true, "active_axes": ["stt"], "llm": {"provider": "llm", "ok": false, "detail": "skipped"}, '
+        '"tts": {"provider": "tts", "ok": false, "detail": "skipped"}, '
+        '"stt": {"provider": "stt", "ok": true, "detail": "pt:teste"}}'
     )

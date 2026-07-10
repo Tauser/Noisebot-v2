@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import wave
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Sequence
 
 from noisebot2.config import load_dotenv, load_llm_config, load_stt_config, load_tts_config
@@ -62,6 +64,8 @@ async def run_provider_smoke(
     stt_provider: AbstractSttProvider | None,
     prompt: str = "Responda com uma frase curta em portugues do Brasil.",
     active_axes: Sequence[ProviderAxis] = DEFAULT_AXES,
+    tts_text: str = "teste de voz",
+    stt_pcm: bytes | None = None,
 ) -> ProviderSmokeReport:
     resolved_axes = _normalize_axes(active_axes)
     llm_result = ProviderSmokeResult("llm", False, "skipped")
@@ -73,8 +77,10 @@ async def run_provider_smoke(
     if "llm" in resolved_axes:
         llm_result, llm_text = await _smoke_llm(llm_provider, prompt=prompt)
     if "tts" in resolved_axes:
-        tts_text = llm_text if "llm" in resolved_axes else "teste de voz"
-        tts_result, pcm = await _smoke_tts(tts_provider, text=tts_text or "teste de voz")
+        tts_input = llm_text if "llm" in resolved_axes else tts_text
+        tts_result, pcm = await _smoke_tts(tts_provider, text=tts_input or "teste de voz")
+    elif stt_pcm is not None:
+        pcm = stt_pcm
     if "stt" in resolved_axes:
         stt_result = await _smoke_stt(stt_provider, pcm=pcm)
     return ProviderSmokeReport(
@@ -90,11 +96,14 @@ async def run_provider_smoke_from_env(
     dotenv_path: str | None = None,
     prompt: str = "Responda com uma frase curta em portugues do Brasil.",
     active_axes: Sequence[ProviderAxis] = DEFAULT_AXES,
+    tts_text: str = "teste de voz",
+    stt_wav_path: str | None = None,
 ) -> ProviderSmokeReport:
     load_dotenv(dotenv_path)
     llm_provider = build_llm_provider(load_llm_config())
     tts_provider = build_tts_provider(load_tts_config())
     stt_provider = build_stt_provider(load_stt_config())
+    stt_pcm = _load_wav_pcm16le(stt_wav_path) if stt_wav_path else None
     try:
         return await run_provider_smoke(
             llm_provider=llm_provider,
@@ -102,6 +111,8 @@ async def run_provider_smoke_from_env(
             stt_provider=stt_provider,
             prompt=prompt,
             active_axes=active_axes,
+            tts_text=tts_text,
+            stt_pcm=stt_pcm,
         )
     finally:
         await _close_provider(llm_provider)
@@ -212,6 +223,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         dest="only_axes",
         help="Restringe o smoke a um eixo especifico; repita para combinar eixos.",
     )
+    parser.add_argument(
+        "--text",
+        default="teste de voz",
+        help="Texto usado no smoke de TTS quando LLM nao participa.",
+    )
+    parser.add_argument(
+        "--wav",
+        dest="stt_wav_path",
+        default=None,
+        help="Arquivo WAV mono PCM16LE usado no smoke de STT quando TTS nao participa.",
+    )
     return parser
 
 
@@ -222,6 +244,8 @@ async def _run_cli(argv: Sequence[str] | None = None) -> int:
         dotenv_path=args.dotenv_path,
         prompt=args.prompt,
         active_axes=active_axes,
+        tts_text=args.text,
+        stt_wav_path=args.stt_wav_path,
     )
     if args.json:
         print(json.dumps(report.to_dict(), ensure_ascii=True))
@@ -242,6 +266,18 @@ def _normalize_axes(active_axes: Sequence[ProviderAxis]) -> tuple[ProviderAxis, 
         if axis not in deduped:
             deduped.append(axis)
     return tuple(deduped)
+
+
+def _load_wav_pcm16le(path: str) -> bytes:
+    wav_path = Path(path)
+    if not wav_path.exists():
+        raise FileNotFoundError(f"arquivo WAV nao encontrado: {wav_path}")
+    with wave.open(str(wav_path), "rb") as wav_file:
+        channels = wav_file.getnchannels()
+        sample_width = wav_file.getsampwidth()
+        if channels != 1 or sample_width != 2:
+            raise ValueError("WAV deve ser mono PCM16LE")
+        return wav_file.readframes(wav_file.getnframes())
 
 
 if __name__ == "__main__":
