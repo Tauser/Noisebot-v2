@@ -45,6 +45,11 @@ $env:PATH                = "C:\Espressif\tools\cmake\3.30.2\bin;C:\Espressif\too
 - Para repetir a próxima rodada de bancada com o harness de S4.2 sem tocar
   no `sdkconfig` principal, usar o perfil dedicado:
   `sdkconfig.defaults;sdkconfig.s4_2_wake_bench.defaults`.
+- Desde 2026-07-09, a imagem também passa a logar telemetria explícita do
+  harness (`wake_state`, contagem de wakes, `LISTEN_START`, latência
+  `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks honestos e
+  motivos de `LISTEN_END`) pela própria task `audio_bringup`, facilitando a
+  próxima rodada de medição formal.
 - Como a validação prática de funcionalidade veio do usuário na bancada,
   esta rodada prova **boot funcional pós-flash**, mas **não** fecha ainda os
   budgets específicos do gate S4.2 (`wake >= 9/10`, falso wake `<1/h`,

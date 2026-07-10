@@ -14,6 +14,7 @@ static int16_t s_ring_storage[NB_AUDIO_PLAYBACK_SHELL_RING_SAMPLES];
 static int16_t s_convert_buf[NB_AUDIO_PLAYBACK_SHELL_CONVERT_SAMPLES];
 
 static size_t s_total_dropped_samples;
+static uint32_t s_volume_percent = 100u;
 
 static const char *nb_audio_playback_service_shell_state_name(nb_audio_playback_state_t state)
 {
@@ -51,6 +52,7 @@ esp_err_t nb_audio_playback_service_shell_init(void)
     }
 
     s_total_dropped_samples = 0u;
+    s_volume_percent = 100u;
     s_initialized = true;
     return ESP_OK;
 }
@@ -184,6 +186,8 @@ bool nb_audio_playback_service_shell_on_server_drop(void)
 size_t nb_audio_playback_service_shell_consume(int16_t *out_samples, size_t max_samples)
 {
     size_t consumed;
+    uint32_t volume_percent;
+    size_t i;
 
     if (!nb_audio_playback_service_shell_ensure_init()) {
         return 0u;
@@ -191,8 +195,62 @@ size_t nb_audio_playback_service_shell_consume(int16_t *out_samples, size_t max_
 
     portENTER_CRITICAL(&s_mux);
     consumed = nb_audio_playback_service_consume(&s_service, out_samples, max_samples);
+    volume_percent = s_volume_percent;
     portEXIT_CRITICAL(&s_mux);
+
+    if (volume_percent == 100u || consumed == 0u) {
+        return consumed;
+    }
+
+    if (volume_percent == 0u) {
+        for (i = 0u; i < consumed; ++i) {
+            out_samples[i] = 0;
+        }
+        return consumed;
+    }
+
+    for (i = 0u; i < consumed; ++i) {
+        const int32_t scaled = ((int32_t)out_samples[i] * (int32_t)volume_percent) / 100;
+        if (scaled > 32767) {
+            out_samples[i] = 32767;
+        } else if (scaled < -32768) {
+            out_samples[i] = -32768;
+        } else {
+            out_samples[i] = (int16_t)scaled;
+        }
+    }
     return consumed;
+}
+
+bool nb_audio_playback_service_shell_set_volume_percent(uint32_t volume_percent)
+{
+    if (volume_percent > 100u) {
+        return false;
+    }
+
+    if (!nb_audio_playback_service_shell_ensure_init()) {
+        return false;
+    }
+
+    portENTER_CRITICAL(&s_mux);
+    s_volume_percent = volume_percent;
+    portEXIT_CRITICAL(&s_mux);
+    ESP_LOGI(TAG, "volume local ajustado para %u%%", (unsigned)volume_percent);
+    return true;
+}
+
+uint32_t nb_audio_playback_service_shell_get_volume_percent(void)
+{
+    uint32_t volume_percent;
+
+    if (!nb_audio_playback_service_shell_ensure_init()) {
+        return 100u;
+    }
+
+    portENTER_CRITICAL(&s_mux);
+    volume_percent = s_volume_percent;
+    portEXIT_CRITICAL(&s_mux);
+    return volume_percent;
 }
 
 nb_audio_playback_state_t nb_audio_playback_service_shell_get_state(void)

@@ -101,11 +101,44 @@ Configuração inicial do TTS/STT em runtime:
 - `NOISEBOT_FASTER_WHISPER_CPU_THREADS`, `NOISEBOT_FASTER_WHISPER_NUM_WORKERS`, `NOISEBOT_FASTER_WHISPER_LANGUAGE`, `NOISEBOT_FASTER_WHISPER_BEAM_SIZE`
 - `NOISEBOT_STT_TIMEOUT_S` para teto operacional do provider de transcrição
 
+Avanço parcial de `S4.6` (2026-07-09):
+
+- `TurnEngine` agora nasce com `LocalIntentResolver` real por default, sem
+  depender de callback de teste para o caminho offline-first.
+- Regras locais já cobrem hora, data e status em PT-BR, todas sem tocar LLM.
+- `timer` com duração explícita e `alarme` por horário absoluto já são
+  resolvidos localmente, publicam `TimerSetRequested` e alcançam a borda
+  NBP/2; `volume` com percentual explícito e `modo silencioso` também já
+  publicam eventos tipados locais e seguem o mesmo caminho até o firmware.
+- `timer` local já pode ser criado na mente por regra PT-BR simples e virar
+  evento interno tipado; nesta fatia ele também já alcança a borda NBP/2 do
+  server, que responde `HELLO_ACK`/`TIME_SYNC`/`HEARTBEAT` e envia `TIMER_SET`
+  ao robô conectado.
+- `MindRuntime.from_env()` injeta um status operacional mínimo com o trio
+  configurado (`LLM`/`STT`/`TTS`) para a resposta de `status`.
+- Evidência de host fica no pytest desta fase (`test_local_intents.py` +
+  cobertura de integração do `TurnEngine`). Desde 2026-07-10, a suíte também
+  mede a latência observável `FinalTranscript -> SentenceReady/SpeechDone`
+  para intent local sem LLM e exige `< 1 s`.
+- `MindOutput` também publica `TurnBudgetReported` por turno com
+  `speech_to_first_audio_ms`, `reply_to_first_audio_ms` e `end_of_turn_ms`,
+  preparando o gate operacional de `S4.7` sem depender ainda do soak longo.
+- A mente também ganhou `provider_smoke.py`: um smoke host-side que exercita
+  `LLM` → `TTS` → `STT` pelos contratos reais dos providers e devolve
+  resultado explícito por eixo, útil para validar configuração de `S4.5`
+  sem hardware.
+
 ## 5. SkillHost — tools e intents
 
-- **Intents locais** (regex/regras PT-BR, zero LLM): hora/data, timer,
-  alarme, status do sistema, volume, modo silencioso. São o piso offline da
-  voz e resolvem antes de qualquer provider (I-5).
+- **Intents locais** (regex/regras PT-BR, zero LLM): hora/data e status do
+  sistema já respondem localmente na fatia atual de `S4.6`; `timer` com
+  duração explícita e `alarme` por horário absoluto também resolvem antes do
+  LLM e publicam `TimerSetRequested` para o corpo. `volume` com valor
+  explícito (`volume 40`) publica `VolumeSetRequested`, e `modo silencioso`
+  publica `QuietModeSetRequested`; ambos seguem por NBP/2 até o firmware.
+  Consultas vagas ou ajustes relativos ainda devolvem guidance honesta local,
+  sem cair em LLM. Esse é o piso offline atual da voz e ele sempre resolve
+  antes de qualquer provider (I-5).
 - **Tools da LLM** (two-step loop herdado: LLM pede tool → executa → LLM
   conclui), catálogo inicial portado do v1: `set_expression`,
   `show_message`, `create_timer`, `create_reminder`, `list_agenda`,

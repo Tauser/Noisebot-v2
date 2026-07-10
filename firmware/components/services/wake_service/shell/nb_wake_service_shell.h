@@ -16,6 +16,18 @@ typedef void (*nb_wake_service_shell_voice_sink_t)(const nb_wake_output_t *out,
                                                    const int16_t *pcm, uint32_t samples,
                                                    float wake_score, void *ctx);
 
+typedef struct {
+    uint32_t wake_count;
+    uint32_t listen_start_count;
+    uint32_t listen_budget_miss_count;
+    uint32_t last_listen_latency_ms;
+    uint32_t max_listen_latency_ms;
+    uint32_t feedback_vad_unavailable_count;
+    uint32_t feedback_no_route_count;
+    uint32_t listen_end_silence_count;
+    uint32_t listen_end_max_duration_count;
+} nb_wake_service_shell_stats_t;
+
 /*
  * Casca mínima do wake_service (S4.2): dona da instância única, publica os
  * eventos de voz no event_bus e deixa os produtores reais (WakeNet/ESP-SR,
@@ -41,6 +53,7 @@ void nb_wake_service_shell_on_audio_frame(const int16_t *pcm, bool vad_detected_
 void nb_wake_service_shell_tick(void);
 
 nb_wake_state_t nb_wake_service_shell_get_state(void);
+void nb_wake_service_shell_get_stats(nb_wake_service_shell_stats_t *out);
 
 #ifdef __cplusplus
 }

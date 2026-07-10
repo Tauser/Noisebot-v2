@@ -18,6 +18,7 @@ static uint32_t s_listen_budget_miss_count;
 static uint32_t s_listen_start_count;
 static nb_wake_service_shell_voice_sink_t s_voice_sink;
 static void *s_voice_sink_ctx;
+static nb_wake_service_shell_stats_t s_stats;
 
 static uint32_t nb_wake_service_shell_now_ms(void)
 {
@@ -60,6 +61,7 @@ static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, flo
     switch (out->action) {
     case NB_WAKE_ACTION_SESSION_ARMED:
         s_last_armed_at_ms = nb_wake_service_shell_now_ms();
+        ++s_stats.wake_count;
         ESP_LOGI(TAG, "wake armado -- session=%u score=%.2f", (unsigned)out->session_id,
                  (double)wake_score);
         nb_wake_service_shell_publish(NB_VOICE_EVENT_WAKE, out->session_id, 0u, wake_score, 0u);
@@ -75,8 +77,12 @@ static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, flo
                 s_max_listen_latency_ms = s_last_listen_latency_ms;
             }
             ++s_listen_start_count;
+            ++s_stats.listen_start_count;
+            s_stats.last_listen_latency_ms = s_last_listen_latency_ms;
+            s_stats.max_listen_latency_ms = s_max_listen_latency_ms;
             if (s_last_listen_latency_ms > NB_WAKE_LISTEN_BUDGET_MS) {
                 ++s_listen_budget_miss_count;
+                ++s_stats.listen_budget_miss_count;
                 ESP_LOGW(TAG,
                          "listen_start -- session=%u samples=%u latency_ms=%u budget_ms=%u miss=%u/%u",
                          (unsigned)out->session_id, (unsigned)out->samples,
@@ -111,6 +117,11 @@ static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, flo
         }
         break;
     case NB_WAKE_ACTION_LISTEN_END:
+        if (out->end_reason == NB_WAKE_END_REASON_SILENCE) {
+            ++s_stats.listen_end_silence_count;
+        } else if (out->end_reason == NB_WAKE_END_REASON_MAX_DURATION) {
+            ++s_stats.listen_end_max_duration_count;
+        }
         ESP_LOGI(TAG, "listen_end -- session=%u reason=%u samples=%u", (unsigned)out->session_id,
                  (unsigned)out->end_reason, (unsigned)out->samples);
         nb_wake_service_shell_publish(NB_VOICE_EVENT_LISTEN_END, out->session_id, out->samples,
@@ -120,6 +131,11 @@ static void nb_wake_service_shell_handle_output(const nb_wake_output_t *out, flo
         }
         break;
     case NB_WAKE_ACTION_FEEDBACK:
+        if (out->feedback == NB_WAKE_FEEDBACK_VAD_UNAVAILABLE) {
+            ++s_stats.feedback_vad_unavailable_count;
+        } else if (out->feedback == NB_WAKE_FEEDBACK_NO_ROUTE) {
+            ++s_stats.feedback_no_route_count;
+        }
         ESP_LOGW(TAG, "feedback honesto -- session=%u feedback=%u", (unsigned)out->session_id,
                  (unsigned)out->feedback);
         nb_wake_service_shell_publish(NB_VOICE_EVENT_FEEDBACK, out->session_id, 0u, 0.0f,
@@ -145,6 +161,7 @@ esp_err_t nb_wake_service_shell_init(void)
     s_listen_start_count = 0u;
     s_voice_sink = NULL;
     s_voice_sink_ctx = NULL;
+    memset(&s_stats, 0, sizeof(s_stats));
     s_initialized = true;
     return ESP_OK;
 }
@@ -223,4 +240,13 @@ void nb_wake_service_shell_tick(void)
 nb_wake_state_t nb_wake_service_shell_get_state(void)
 {
     return nb_wake_service_get_state(s_initialized ? &s_svc : NULL);
+}
+
+void nb_wake_service_shell_get_stats(nb_wake_service_shell_stats_t *out)
+{
+    if (out == NULL) {
+        return;
+    }
+
+    *out = s_stats;
 }

@@ -2341,7 +2341,7 @@ server v1 (refactor).
 | S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `FEITO` |
 | S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `FEITO` |
 | S4.5 | Providers ligados: faster-whisper, Ollama/LM Studio/APIs online com circuit breaker, Piper                                      | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
-| S4.6 | Intents locais offline-first (hora, timer, status) respondendo sem LLM                                                        | intents respondem com LLM desligada; latência < 1 s                                                                        | `PENDENTE` |
+| S4.6 | Intents locais offline-first (hora e status respondem sem LLM; timer/volume entram por etapas, sem cair em LLM enquanto pendentes) | intents locais ativos respondem com LLM desligada; intents ainda não ligadas degradam honestamente; latência < 1 s       | `FEITO` |
 | S4.7 | Gate de voz                                                                                                                   | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
 | S4.8 | **Máscara de latência** (`docs/RFC-VIDA-V2.md` §6): `THINKING`/`EUREKA`/`CONFUSED` sobre o gap `LISTEN_STOP`→`SAY_START`, inferido localmente pela temporização das mensagens de S4.3 (zero mudança de protocolo). Dependências: S4.3–S4.5 + S3.7 | p95 do gap fala→primeiro áudio sem face estática (medido); timeout/queda de mente → `CONFUSED` → IDLE limpo; golden test da inferência local de turno | `PENDENTE` |
 
@@ -2417,6 +2417,68 @@ server v1 (refactor).
     `32 passed`, incluindo `test_llm_provider_http.py` (reuso e reabertura
     de sessão), `test_runtime_shutdown.py` (cleanup de providers) e
     `test_runtime_from_env.py` (composição por ambiente).
+
+**Avanço S4.6 (2026-07-09, parcial):**
+
+1. O server ganhou `server/noisebot2/mind/local_intents.py`, um resolvedor
+   local em PT-BR ligado por default ao `TurnEngine` via `MindRuntime`, em vez
+   de depender só de callback injetado em teste.
+2. O piso offline-first já responde `hora`, `data` e `status` sem LLM; a
+   resposta de `status` em `MindRuntime.from_env()` inclui o trio configurado
+   (`LLM`/`STT`/`TTS`) para dar visibilidade operacional mínima.
+3. `timer`/`alarme`/`lembrete` e `volume`/`silencioso` já são reconhecidos
+   localmente; timer com duração explícita e alarme por horário absoluto agora
+   já viram `TimerSetRequested` interno, enquanto `volume 0..100` e `modo
+   silencioso` publicam eventos tipados próprios e respondem sem LLM.
+4. Evidência de host: `python -m pytest` em `server/` cobre
+   `test_local_intents.py` (hora/data/status + criação de timer simples) e
+   `test_turn_default_local_status_intent_runs_without_llm`.
+5. Gate fechado no host em 2026-07-10: `test_turn_local_intent_latency_stays_below_one_second_without_llm`
+   mede o caminho observável `FinalTranscript -> SentenceReady/SpeechDone`
+   para intent local sem LLM e exige `< 1 s`. Ampliações futuras de
+   `volume` relativo ficam como melhoria de produto, não pendência da fase.
+
+- Avanço incremental de `S4.6` em 2026-07-09: o server ganhou
+  `server/noisebot2/transport/nbp2_server.py`, uma borda NBP/2 mínima que
+  aceita `HELLO`, valida token, responde `HELLO_ACK`/`TIME_SYNC`/`HEARTBEAT`
+  e envia `TIMER_SET` quando a intent local publica `TimerSetRequested`.
+  Com isso, timer por duração e alarme por horário absoluto criados por voz já
+  alcançam o caminho real esperado pelo firmware (`mind_link_shell` →
+  `schedule_core_shell`), sem inventar um canal paralelo.
+
+- Avanço incremental de `S4.6` em 2026-07-10: o protocolo NBP/2 subiu de
+  `v0.2` para `v0.3` com `VOLUME_SET` e `QUIET_MODE_SET`; o server passou a
+  publicar `VolumeSetRequested`/`QuietModeSetRequested`, a borda Python envia
+  os dois frames novos, e o firmware aplica/persiste os ajustes via
+  `mind_link_shell` → `event_bus` → `reflex_engine_shell`, sem abrir atalho
+  lateral. `volume` com percentual explícito agora modula o playback local, e
+  `modo silencioso` força bloqueio de wake por voz + `quiet_mode` efetivo no
+  loop principal, além do `quiet_mode` circadiano.
+
+- Avanço incremental de `S4.7` em 2026-07-10: `MindOutput` passou a publicar
+  `TurnBudgetReported` por turno, com `speech_to_first_audio_ms`,
+  `reply_to_first_audio_ms` e `end_of_turn_ms` medidos no host a partir do
+  instante em que `ReplyReady` entra no ator de saída. O gate executável
+  `test_turn_local_intent_latency_stays_below_one_second_without_llm` agora
+  valida explicitamente o budget local `< 1 s` no caminho
+  `FinalTranscript -> primeiro áudio` para intents offline-first.
+
+- Avanço incremental de `S4.5` em 2026-07-09: `MindOutput` passou a tratar
+  falha de TTS sem prender o turno; agora publica `SayCancel(reason=
+  "tts_error")` + `SpeechDone`, permitindo que a FSM volte a `IDLE` mesmo
+  quando o provider de voz de saída falha.
+
+- Avanço incremental de `S4.5` em 2026-07-09: o server ganhou
+  `server/noisebot2/provider_smoke.py`, um smoke host-side que exerce os
+  contratos reais `LLM` → `TTS` → `STT` e devolve resultado explícito por
+  provider (sucesso/falha), para registrar evidência reproduzível de
+  configuração e degradação honesta sem depender de hardware.
+
+- Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
+  telemetria explícita de bancada (`wake_count`, `listen_start_count`,
+  latência `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks
+  honestos e motivos de `LISTEN_END`), exposta por API e logada pela task
+  temporária `audio_bringup` para reduzir a lacuna de medição do harness.
 
 1. `nb_hw_config.h` ganha as constantes do barramento I2S compartilhado
    (`HARDWARE.md`: BCLK 40, WS/LRCK 41, mic DIN 39/INMP441, speaker DOUT

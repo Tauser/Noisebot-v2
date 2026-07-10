@@ -30,6 +30,8 @@ bool nb_audio_playback_service_shell_on_say_cancel(uint32_t turn_id);
 bool nb_audio_playback_service_shell_on_server_drop(void);
 
 size_t nb_audio_playback_service_shell_consume(int16_t *out_samples, size_t max_samples);
+bool nb_audio_playback_service_shell_set_volume_percent(uint32_t volume_percent);
+uint32_t nb_audio_playback_service_shell_get_volume_percent(void);
 nb_audio_playback_state_t nb_audio_playback_service_shell_get_state(void);
 size_t nb_audio_playback_service_shell_get_buffered_samples(void);
 size_t nb_audio_playback_service_shell_get_dropped_samples(void);

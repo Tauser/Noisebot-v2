@@ -517,6 +517,46 @@ static void nb_mind_link_shell_handle_frame(const nb_mind_link_parsed_frame_t *f
         }
         break;
     }
+    case NBP2_MSG_VOLUME_SET: {
+        nbp2_msg_volume_set_t vs;
+
+        if (nbp2_decode_volume_set(frame->payload, frame->payload_len, &vs) == NBP2_OK) {
+            nb_event_t bus_event = {
+                .type = NB_EVENT_TYPE_DEVICE_CONFIG,
+                .priority = NB_EVENT_PRIORITY_NORMAL,
+                .timestamp_ms = now_ms,
+                .payload_len = (uint8_t)sizeof(nb_device_config_payload_t),
+            };
+            nb_device_config_payload_t config_payload = {
+                .value = vs.volume_percent,
+                .action = NB_DEVICE_CONFIG_ACTION_SET_VOLUME,
+                .reserved = {0u, 0u, 0u},
+            };
+            memcpy(bus_event.payload, &config_payload, sizeof(config_payload));
+            nb_event_bus_shell_publish(&bus_event);
+        }
+        break;
+    }
+    case NBP2_MSG_QUIET_MODE_SET: {
+        nbp2_msg_quiet_mode_set_t qs;
+
+        if (nbp2_decode_quiet_mode_set(frame->payload, frame->payload_len, &qs) == NBP2_OK) {
+            nb_event_t bus_event = {
+                .type = NB_EVENT_TYPE_DEVICE_CONFIG,
+                .priority = NB_EVENT_PRIORITY_NORMAL,
+                .timestamp_ms = now_ms,
+                .payload_len = (uint8_t)sizeof(nb_device_config_payload_t),
+            };
+            nb_device_config_payload_t config_payload = {
+                .value = qs.enabled != 0u ? 1u : 0u,
+                .action = NB_DEVICE_CONFIG_ACTION_SET_QUIET_MODE,
+                .reserved = {0u, 0u, 0u},
+            };
+            memcpy(bus_event.payload, &config_payload, sizeof(config_payload));
+            nb_event_bus_shell_publish(&bus_event);
+        }
+        break;
+    }
     case NBP2_MSG_SAY_BEGIN: {
         nbp2_msg_say_begin_t say_begin;
 

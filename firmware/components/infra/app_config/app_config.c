@@ -27,6 +27,22 @@ static const nb_config_descriptor_t s_descriptors[NB_CONFIG_KEY_COUNT] = {
         .min_value = { .u32 = 0u },
         .max_value = { .u32 = 0xffffffffu },
     },
+    [NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT] = {
+        .key = NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT,
+        .name = "audio_volume_percent",
+        .type = NB_CONFIG_TYPE_U32,
+        .default_value = { .u32 = 100u },
+        .min_value = { .u32 = 0u },
+        .max_value = { .u32 = 100u },
+    },
+    [NB_CONFIG_KEY_QUIET_MODE_ENABLED] = {
+        .key = NB_CONFIG_KEY_QUIET_MODE_ENABLED,
+        .name = "quiet_mode_enabled",
+        .type = NB_CONFIG_TYPE_U32,
+        .default_value = { .u32 = 0u },
+        .min_value = { .u32 = 0u },
+        .max_value = { .u32 = 1u },
+    },
 };
 
 void nb_config_init(nb_config_t *config)

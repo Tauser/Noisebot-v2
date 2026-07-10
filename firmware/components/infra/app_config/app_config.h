@@ -40,7 +40,13 @@ typedef enum {
      * `circadian_core` como fallback quando não há TIME_SYNC real ainda
      * (BEHAVIOR.md §5: "contador local + último horário NVS"). */
     NB_CONFIG_KEY_LAST_KNOWN_UNIX_TIME_S = 2,
-    NB_CONFIG_KEY_COUNT = 3,
+    /* Volume local de playback (0..100%) aplicado ao áudio SAY_* vindo da
+     * mente. */
+    NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT = 3,
+    /* Override explícito de modo silencioso vindo da mente (0/1), além do
+     * quiet_mode circadiano. */
+    NB_CONFIG_KEY_QUIET_MODE_ENABLED = 4,
+    NB_CONFIG_KEY_COUNT = 5,
 } nb_config_key_t;
 
 typedef union {

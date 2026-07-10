@@ -4,6 +4,8 @@
 
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "nb_app_config_shell.h"
+#include "nb_audio_playback_service_shell.h"
 #include "nb_circadian_core_shell.h"
 #include "nb_event_bus_shell.h"
 #include "nb_led_service_shell.h"
@@ -150,6 +152,24 @@ nb_reflex_priority_t nb_reflex_engine_shell_tick(nb_emotion_state_t *emotion, nb
                 nb_schedule_core_shell_handle_set(payload.timer_id, payload.fire_at_unix_ms);
             } else {
                 nb_schedule_core_shell_handle_cancel(payload.timer_id);
+            }
+            continue;
+        }
+
+        if (event.type == NB_EVENT_TYPE_DEVICE_CONFIG &&
+            event.payload_len == sizeof(nb_device_config_payload_t)) {
+            nb_device_config_payload_t payload;
+            memcpy(&payload, event.payload, sizeof(payload));
+            if (payload.action == NB_DEVICE_CONFIG_ACTION_SET_VOLUME) {
+                if (payload.value <= 100u &&
+                    nb_audio_playback_service_shell_set_volume_percent(payload.value)) {
+                    nb_app_config_shell_set_u32(NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT, payload.value);
+                    ESP_LOGI(TAG, "device_config volume=%u%%", (unsigned)payload.value);
+                }
+            } else if (payload.action == NB_DEVICE_CONFIG_ACTION_SET_QUIET_MODE) {
+                const uint32_t enabled = payload.value != 0u ? 1u : 0u;
+                nb_app_config_shell_set_u32(NB_CONFIG_KEY_QUIET_MODE_ENABLED, enabled);
+                ESP_LOGI(TAG, "device_config quiet_mode=%u", (unsigned)enabled);
             }
             continue;
         }

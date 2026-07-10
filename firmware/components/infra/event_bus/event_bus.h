@@ -44,6 +44,9 @@ typedef enum {
     /* S3.5: mind_link_shell publica TIMER_SET/TIMER_CANCEL aqui em vez de
      * chamar schedule_core (L4) direto -- mesma regra do TIME_SYNC. */
     NB_EVENT_TYPE_TIMER = 5,
+    /* S4.6: mind_link_shell publica ajustes remotos de quiet/volume aqui
+     * e reflex_engine_shell aplica nas cascas locais/persistencia. */
+    NB_EVENT_TYPE_DEVICE_CONFIG = 6,
 } nb_event_type_t;
 
 /* Payload de NB_EVENT_TYPE_VOICE -- definido aqui (L1 infra) pelo mesmo
@@ -111,6 +114,17 @@ typedef struct {
     uint32_t timer_id;
     nb_schedule_event_action_t action;
 } nb_schedule_event_payload_t;
+
+typedef enum {
+    NB_DEVICE_CONFIG_ACTION_SET_VOLUME = 0,
+    NB_DEVICE_CONFIG_ACTION_SET_QUIET_MODE = 1,
+} nb_device_config_action_t;
+
+typedef struct {
+    uint32_t value;
+    nb_device_config_action_t action;
+    uint8_t reserved[3];
+} nb_device_config_payload_t;
 
 typedef enum {
     NB_EVENT_AUDIT_PUBLISHED = 0,

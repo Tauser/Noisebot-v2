@@ -58,6 +58,7 @@ Semântica herdada do melhor do v1 (link engine):
 | S→R | `SNAPSHOT_REQ` | modo (qvga/qqvga) |
 | R→S | `SNAPSHOT_JPEG` | chunks (MEDIA), transfer_id, crc |
 | S→R | `TIMER_SET / TIMER_CANCEL` | agenda local espelhada no robô |
+| S→R | `VOLUME_SET / QUIET_MODE_SET` | preferências operacionais explícitas: volume local de playback e override de quiet |
 | R→S | `STATUS` | fsm state, emotion, heap, fps, contadores de drop, métricas |
 | S→R | `OTA_BEGIN / OTA_CHUNK / OTA_END` | imagem assinada; verificação antes de boot |
 

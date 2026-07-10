@@ -113,6 +113,7 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
+#include "nb_app_config_shell.h"
 #include "nb_boot_manager_shell.h"
 #include "nb_watchdog_shell.h"
 #include "nb_wifi_setup_shell.h"
@@ -193,6 +194,15 @@
 #define NB_APP_MAIN_SEARCH_SIGH_DROOP 0.20f
 
 static const char *TAG = "nb2";
+
+static bool nb_app_main_is_quiet_mode_forced(void)
+{
+    uint32_t enabled = 0u;
+    if (!nb_app_config_shell_get_u32(NB_CONFIG_KEY_QUIET_MODE_ENABLED, &enabled)) {
+        return false;
+    }
+    return enabled != 0u;
+}
 
 static nb_voice_audio_level_t nb_app_main_voice_level_from_rms(float rms)
 {
@@ -328,7 +338,8 @@ static void nb_app_main_face_demo_task(void *arg)
 
         const nb_circadian_output_t circadian =
             nb_circadian_core_shell_tick(NB_APP_MAIN_FACE_DEMO_TICK_MS, &fsm);
-        nb_idle_engine_set_mode(&idle, circadian.quiet_mode, NB_IDLE_ATTENTION_IDLE);
+        const bool effective_quiet_mode = circadian.quiet_mode || nb_app_main_is_quiet_mode_forced();
+        nb_idle_engine_set_mode(&idle, effective_quiet_mode, NB_IDLE_ATTENTION_IDLE);
 
         nb_emotion_core_tick(&emotion, NB_APP_MAIN_FACE_DEMO_TICK_MS);
         nb_idle_engine_tick(&idle, NB_APP_MAIN_FACE_DEMO_TICK_MS, &idle_out);
@@ -390,7 +401,7 @@ static void nb_app_main_face_demo_task(void *arg)
          * separada (ver ROADMAP.md). */
         const nb_fsm_state_t rarity_fsm_state = nb_tiny_fsm_get_state(&fsm);
         const bool rarity_sneeze_eligible =
-            rarity_fsm_state == NB_FSM_STATE_IDLE && !circadian.quiet_mode;
+            rarity_fsm_state == NB_FSM_STATE_IDLE && !effective_quiet_mode;
         const bool rarity_is_sleeping = rarity_fsm_state == NB_FSM_STATE_SLEEPING;
         const bool rarity_stargaze_eligible =
             circadian.phase == NB_CIRCADIAN_PHASE_NIGHT && rarity_fsm_state == NB_FSM_STATE_IDLE;
@@ -680,6 +691,7 @@ static void nb_app_main_audio_task(void *arg)
     static int16_t tone[NB_APP_MAIN_AUDIO_TONE_SAMPLES];
     static int16_t tx_buf[NB_APP_MAIN_AUDIO_TONE_SAMPLES];
     static int16_t mic_buf[NB_APP_MAIN_AUDIO_READ_CHUNK];
+    nb_wake_service_shell_stats_t wake_stats;
     int64_t next_log_us;
 #if CONFIG_NB_WAKE_BENCH_HARNESS
     uint32_t next_wake_allowed_ms = 0u;
@@ -707,6 +719,7 @@ static void nb_app_main_audio_task(void *arg)
 
     for (;;) {
         size_t written = 0;
+        const bool quiet_mode_forced = nb_app_main_is_quiet_mode_forced();
         const nb_audio_playback_state_t playback_state =
             nb_audio_playback_service_shell_get_state();
         const size_t playback_samples =
@@ -749,7 +762,8 @@ static void nb_app_main_audio_task(void *arg)
             const uint32_t now_ms = (uint32_t)(now_us / 1000);
             const bool speech_detected = rms >= (float)CONFIG_NB_WAKE_BENCH_VAD_RMS;
 
-            if (nb_wake_service_shell_get_state() == NB_WAKE_STATE_IDLE &&
+            if (!quiet_mode_forced &&
+                nb_wake_service_shell_get_state() == NB_WAKE_STATE_IDLE &&
                 rms >= (float)CONFIG_NB_WAKE_BENCH_WAKE_RMS &&
                 now_ms >= next_wake_allowed_ms) {
                 const float score = nb_app_main_clamp01(
@@ -761,8 +775,11 @@ static void nb_app_main_audio_task(void *arg)
             }
 
             if (nb_wake_service_shell_get_state() != NB_WAKE_STATE_IDLE) {
-                nb_wake_service_shell_on_audio_frame(mic_buf, speech_detected, (uint32_t)read_count,
-                                                     audio_level);
+                nb_wake_service_shell_on_audio_frame(
+                    mic_buf,
+                    quiet_mode_forced ? false : speech_detected,
+                    (uint32_t)read_count,
+                    quiet_mode_forced ? NB_VOICE_AUDIO_LEVEL_NONE : audio_level);
             }
 #endif
         }
@@ -782,6 +799,20 @@ static void nb_app_main_audio_task(void *arg)
                     (unsigned)nb_audio_hal_shell_get_tx_overflow_count(),
                     (unsigned)nb_audio_hal_shell_get_rx_timeout_count(),
                     (unsigned)nb_audio_hal_shell_get_tx_timeout_count());
+            nb_wake_service_shell_get_stats(&wake_stats);
+            ESP_LOGI(
+                TAG,
+                "audio_bringup: wake_state=%d wakes=%u listen_start=%u last_latency_ms=%u max_latency_ms=%u budget_miss=%u fb_vad=%u fb_route=%u end_silence=%u end_max=%u",
+                (int)nb_wake_service_shell_get_state(),
+                (unsigned)wake_stats.wake_count,
+                (unsigned)wake_stats.listen_start_count,
+                (unsigned)wake_stats.last_listen_latency_ms,
+                (unsigned)wake_stats.max_listen_latency_ms,
+                (unsigned)wake_stats.listen_budget_miss_count,
+                (unsigned)wake_stats.feedback_vad_unavailable_count,
+                (unsigned)wake_stats.feedback_no_route_count,
+                (unsigned)wake_stats.listen_end_silence_count,
+                (unsigned)wake_stats.listen_end_max_duration_count);
         }
     }
 }
@@ -915,6 +946,12 @@ void app_main(void)
     if (audio_err != ESP_OK) {
         ESP_LOGE(TAG, "audio_hal falhou (%s) -- seguindo sem audio", esp_err_to_name(audio_err));
     } else {
+        uint32_t persisted_volume_percent = 100u;
+        ESP_ERROR_CHECK(nb_audio_playback_service_shell_init());
+        if (nb_app_config_shell_get_u32(NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT,
+                                        &persisted_volume_percent)) {
+            (void)nb_audio_playback_service_shell_set_volume_percent(persisted_volume_percent);
+        }
         xTaskCreate(nb_app_main_audio_task, "audio_bringup", NB_APP_MAIN_AUDIO_STACK, NULL,
                    NB_APP_MAIN_AUDIO_PRIO, NULL);
     }

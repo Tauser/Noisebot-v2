@@ -33,6 +33,13 @@ ao transporte. Isso prepara o streaming NBP/2 de S4.3 preservando o
 contrato do núcleo puro (`wake_service.c`) e a regra "task do socket é dona
 exclusiva do send()".
 
+Também expõe estatísticas explícitas de bancada por
+`nb_wake_service_shell_get_stats()`: contadores de wake, `LISTEN_START`,
+misses do budget de 250 ms, feedbacks honestos por motivo e motivos de
+`LISTEN_END`. A task temporária `audio_bringup` loga esses números
+periodicamente para reduzir a lacuna entre "funcionou no bench" e medição
+repetível do harness.
+
 `main/Kconfig.projbuild` agora também expõe um **harness explícito de
 bancada** (`CONFIG_NB_WAKE_BENCH_HARNESS`), desligado por padrão: a task
 temporária `audio_bringup` pode emular wake/VAD por RMS do microfone para

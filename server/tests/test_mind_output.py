@@ -103,3 +103,32 @@ async def test_mind_output_cancel_emits_say_cancel_without_speech_done() -> None
     finally:
         release_audio.set()
         await actor.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_mind_output_tts_error_emits_cancel_and_speech_done() -> None:
+    bus = EventBus()
+
+    async def tts_provider(_text: str) -> AsyncIterator[bytes]:
+        raise RuntimeError("tts offline")
+        yield b""
+
+    actor = MindOutput(bus, tts_provider=tts_provider)
+    events = bus.subscribe(SentenceReady, SayBegin, SayCancel, SpeechDone, maxsize=64)
+    await actor.start()
+
+    try:
+        await bus.publish(ReplyReady(turn_id=11, text="resposta", source="llm"))
+
+        sentence = await _wait_for_event(events, SentenceReady)
+        begin = await _wait_for_event(events, SayBegin)
+        cancelled = await _wait_for_event(events, SayCancel)
+        done = await _wait_for_event(events, SpeechDone)
+
+        assert sentence.turn_id == 11
+        assert begin.turn_id == 11
+        assert cancelled.turn_id == 11
+        assert cancelled.reason == "tts_error"
+        assert done.turn_id == 11
+    finally:
+        await actor.shutdown()

@@ -120,6 +120,40 @@ class IntentResolved:
 
 
 @dataclass(frozen=True)
+class TimerSetRequested:
+    turn_id: int
+    timer_id: int
+    fire_at_unix_ms: int
+    label: str
+    duration_ms: int
+    t: float = field(default_factory=_now)
+
+
+@dataclass(frozen=True)
+class VolumeSetRequested:
+    turn_id: int
+    volume_percent: int
+    t: float = field(default_factory=_now)
+
+
+@dataclass(frozen=True)
+class QuietModeSetRequested:
+    turn_id: int
+    enabled: bool
+    t: float = field(default_factory=_now)
+
+
+@dataclass(frozen=True)
+class TurnBudgetReported:
+    turn_id: int
+    source: str
+    speech_to_first_audio_ms: int | None = None
+    reply_to_first_audio_ms: int | None = None
+    end_of_turn_ms: int | None = None
+    t: float = field(default_factory=_now)
+
+
+@dataclass(frozen=True)
 class ReplyReady:
     turn_id: int
     text: str

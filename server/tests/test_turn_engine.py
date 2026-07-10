@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
+from datetime import datetime
+from time import perf_counter
 
 import pytest
 
@@ -10,6 +12,10 @@ from noisebot2.mind import (
     BargeInDetected,
     FinalTranscript,
     IntentResolved,
+    QuietModeSetRequested,
+    TimerSetRequested,
+    TurnBudgetReported,
+    VolumeSetRequested,
     SayBegin,
     SayCancel,
     SentenceReady,
@@ -20,6 +26,7 @@ from noisebot2.mind import (
     TurnStateChanged,
     WakeDetected,
 )
+from noisebot2.mind.local_intents import LocalIntentResolver
 from noisebot2.runtime import MindRuntime
 
 
@@ -228,5 +235,164 @@ async def test_turn_i5_local_intent_runs_before_llm() -> None:
         assert sentence.sentence == "Estou operacional."
         assert done.turn_id == started.turn_id
         assert llm_calls == 0
+    finally:
+        await runtime.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_turn_default_local_status_intent_runs_without_llm() -> None:
+    bus = EventBus()
+    runtime = MindRuntime(bus=bus, llm_provider=None)
+    events = bus.subscribe(SessionStarted, SentenceReady, SpeechDone, maxsize=64)
+    await runtime.start()
+
+    try:
+        await bus.publish(WakeDetected())
+        started = await _wait_for_event(events, SessionStarted)
+        await bus.publish(FinalTranscript(turn_id=started.turn_id, text="status do sistema"))
+
+        sentence = await _wait_for_event(events, SentenceReady)
+        done = await _wait_for_event(events, SpeechDone)
+
+        assert sentence.turn_id == started.turn_id
+        assert "operacional" in sentence.sentence
+        assert done.turn_id == started.turn_id
+    finally:
+        await runtime.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_turn_default_local_timer_intent_emits_request_without_llm() -> None:
+    bus = EventBus()
+    runtime = MindRuntime(bus=bus, llm_provider=None)
+    events = bus.subscribe(SessionStarted, SentenceReady, SpeechDone, TimerSetRequested, maxsize=64)
+    await runtime.start()
+
+    try:
+        await bus.publish(WakeDetected())
+        started = await _wait_for_event(events, SessionStarted)
+        await bus.publish(FinalTranscript(turn_id=started.turn_id, text="crie um timer de 5 minutos"))
+
+        timer_event = await _wait_for_event(events, TimerSetRequested)
+        sentence = await _wait_for_event(events, SentenceReady)
+        done = await _wait_for_event(events, SpeechDone)
+
+        assert timer_event.turn_id == started.turn_id
+        assert timer_event.duration_ms == 300000
+        assert sentence.turn_id == started.turn_id
+        assert "Timer de 5 minutos criado" in sentence.sentence
+        assert done.turn_id == started.turn_id
+    finally:
+        await runtime.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_turn_default_local_alarm_intent_emits_request_without_llm() -> None:
+    bus = EventBus()
+    runtime = MindRuntime(
+        bus=bus,
+        llm_provider=None,
+        intent_resolver=LocalIntentResolver(
+            clock=lambda: datetime(2026, 7, 9, 14, 35),
+            event_publisher=bus.publish_nowait,
+        ),
+    )
+    events = bus.subscribe(SessionStarted, SentenceReady, SpeechDone, TimerSetRequested, maxsize=64)
+    await runtime.start()
+
+    try:
+        await bus.publish(WakeDetected())
+        started = await _wait_for_event(events, SessionStarted)
+        await bus.publish(FinalTranscript(turn_id=started.turn_id, text="crie um alarme para as 16:45"))
+
+        timer_event = await _wait_for_event(events, TimerSetRequested)
+        sentence = await _wait_for_event(events, SentenceReady)
+        done = await _wait_for_event(events, SpeechDone)
+
+        assert timer_event.turn_id == started.turn_id
+        assert timer_event.label == "alarme 16:45"
+        assert timer_event.duration_ms == 7_800_000
+        assert sentence.turn_id == started.turn_id
+        assert sentence.sentence == "Alarme criado para 16:45."
+        assert done.turn_id == started.turn_id
+    finally:
+        await runtime.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_turn_default_local_volume_intent_emits_request_without_llm() -> None:
+    bus = EventBus()
+    runtime = MindRuntime(bus=bus, llm_provider=None)
+    events = bus.subscribe(SessionStarted, SentenceReady, SpeechDone, VolumeSetRequested, maxsize=64)
+    await runtime.start()
+
+    try:
+        await bus.publish(WakeDetected())
+        started = await _wait_for_event(events, SessionStarted)
+        await bus.publish(FinalTranscript(turn_id=started.turn_id, text="volume 40"))
+
+        volume_event = await _wait_for_event(events, VolumeSetRequested)
+        sentence = await _wait_for_event(events, SentenceReady)
+        done = await _wait_for_event(events, SpeechDone)
+
+        assert volume_event.turn_id == started.turn_id
+        assert volume_event.volume_percent == 40
+        assert sentence.turn_id == started.turn_id
+        assert sentence.sentence == "Volume ajustado para 40%."
+        assert done.turn_id == started.turn_id
+    finally:
+        await runtime.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_turn_default_local_quiet_mode_intent_emits_request_without_llm() -> None:
+    bus = EventBus()
+    runtime = MindRuntime(bus=bus, llm_provider=None)
+    events = bus.subscribe(SessionStarted, SentenceReady, SpeechDone, QuietModeSetRequested, maxsize=64)
+    await runtime.start()
+
+    try:
+        await bus.publish(WakeDetected())
+        started = await _wait_for_event(events, SessionStarted)
+        await bus.publish(FinalTranscript(turn_id=started.turn_id, text="ative modo silencioso"))
+
+        quiet_event = await _wait_for_event(events, QuietModeSetRequested)
+        sentence = await _wait_for_event(events, SentenceReady)
+        done = await _wait_for_event(events, SpeechDone)
+
+        assert quiet_event.turn_id == started.turn_id
+        assert quiet_event.enabled is True
+        assert sentence.turn_id == started.turn_id
+        assert sentence.sentence == "Modo silencioso ativado."
+        assert done.turn_id == started.turn_id
+    finally:
+        await runtime.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_turn_local_intent_latency_stays_below_one_second_without_llm() -> None:
+    bus = EventBus()
+    runtime = MindRuntime(bus=bus, llm_provider=None)
+    events = bus.subscribe(SessionStarted, SentenceReady, SpeechDone, TurnBudgetReported, maxsize=64)
+    await runtime.start()
+
+    try:
+        await bus.publish(WakeDetected())
+        started = await _wait_for_event(events, SessionStarted)
+
+        t0 = perf_counter()
+        await bus.publish(FinalTranscript(turn_id=started.turn_id, text="status do sistema"))
+
+        sentence = await _wait_for_event(events, SentenceReady)
+        done = await _wait_for_event(events, SpeechDone)
+        budget = await _wait_for_event(events, TurnBudgetReported)
+        elapsed_s = perf_counter() - t0
+
+        assert sentence.turn_id == started.turn_id
+        assert done.turn_id == started.turn_id
+        assert budget.turn_id == started.turn_id
+        assert budget.speech_to_first_audio_ms is not None
+        assert budget.speech_to_first_audio_ms < 1000
+        assert elapsed_s < 1.0
     finally:
         await runtime.shutdown()

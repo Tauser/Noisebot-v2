@@ -18,6 +18,7 @@ from .contracts import (
     SentenceReady,
     SpeechCancellationRequested,
     SpeechDone,
+    TurnBudgetReported,
 )
 
 TtsProvider = Callable[[str], AsyncIterator[bytes] | Awaitable[AsyncIterator[bytes]]]
@@ -82,21 +83,53 @@ class MindOutput:
 
     async def _speak(self, event: ReplyReady) -> None:
         await self._bus.publish(SentenceReady(turn_id=event.turn_id, sentence=event.text, index=0))
-        await self._bus.publish(SayBegin(turn_id=event.turn_id))
+        say_begin = SayBegin(turn_id=event.turn_id)
+        await self._bus.publish(say_begin)
 
         try:
             index = 0
+            first_audio_t: float | None = None
             async for chunk in self._iter_tts_chunks(event.text):
-                await self._bus.publish(SayAudio(turn_id=event.turn_id, pcm=chunk, index=index))
+                say_audio = SayAudio(turn_id=event.turn_id, pcm=chunk, index=index)
+                await self._bus.publish(say_audio)
+                if first_audio_t is None:
+                    first_audio_t = say_audio.t
                 index += 1
             await self._bus.publish(SayEnd(turn_id=event.turn_id))
             await self._bus.publish(SpeechDone(turn_id=event.turn_id))
+            await self._publish_budget_report(event, say_begin.t, first_audio_t)
         except asyncio.CancelledError:
             await self._bus.publish(SayCancel(turn_id=event.turn_id, reason="barge_in"))
             raise
+        except Exception:
+            await self._bus.publish(SayCancel(turn_id=event.turn_id, reason="tts_error"))
+            await self._bus.publish(SpeechDone(turn_id=event.turn_id))
+            await self._publish_budget_report(event, say_begin.t, None)
         finally:
             if self._active_turn_id == event.turn_id:
                 self._active_turn_id = 0
+
+    async def _publish_budget_report(
+        self,
+        event: ReplyReady,
+        say_begin_t: float,
+        first_audio_t: float | None,
+    ) -> None:
+        speech_to_first_audio_ms = None
+        reply_to_first_audio_ms = None
+        if first_audio_t is not None:
+            speech_to_first_audio_ms = max(0, int((first_audio_t - event.t) * 1000))
+            reply_to_first_audio_ms = max(0, int((first_audio_t - say_begin_t) * 1000))
+        end_of_turn_ms = max(0, int((asyncio.get_running_loop().time() - event.t) * 1000))
+        await self._bus.publish(
+            TurnBudgetReported(
+                turn_id=event.turn_id,
+                source=event.source,
+                speech_to_first_audio_ms=speech_to_first_audio_ms,
+                reply_to_first_audio_ms=reply_to_first_audio_ms,
+                end_of_turn_ms=end_of_turn_ms,
+            )
+        )
 
     async def _iter_tts_chunks(self, text: str) -> AsyncIterator[bytes]:
         if isinstance(self._tts_provider, AbstractTtsProvider):

@@ -29,6 +29,20 @@ class SttProviderKind(str, Enum):
 
 
 @dataclass(frozen=True)
+class Nbp2TransportConfig:
+    bind_host: str
+    bind_port: int
+    robot_token: bytes
+
+    def safe_dict(self) -> dict[str, object]:
+        return {
+            "bind_host": self.bind_host,
+            "bind_port": self.bind_port,
+            "robot_token_configured": bool(self.robot_token),
+        }
+
+
+@dataclass(frozen=True)
 class LlmConfig:
     provider: LlmProviderKind
     model: str
@@ -238,4 +252,29 @@ def load_stt_config() -> SttConfig:
         faster_whisper_language=_env("NOISEBOT_FASTER_WHISPER_LANGUAGE", "pt"),
         faster_whisper_beam_size=max(1, _env_int("NOISEBOT_FASTER_WHISPER_BEAM_SIZE", 5)),
         timeout_s=max(1.0, _env_float("NOISEBOT_STT_TIMEOUT_S", 30.0)),
+    )
+
+
+def load_nbp2_transport_config() -> Nbp2TransportConfig:
+    token_hex = _env("NOISEBOT_NBP2_TOKEN_HEX", "")
+    token = b""
+    if token_hex:
+        try:
+            token = bytes.fromhex(token_hex)
+        except ValueError:
+            token = b""
+    else:
+        token_path = Path.home() / ".noisebot2" / "robot_token"
+        if token_path.exists():
+            raw = token_path.read_text(encoding="utf-8").strip()
+            if raw:
+                try:
+                    token = bytes.fromhex(raw)
+                except ValueError:
+                    token = raw.encode("utf-8")[:32]
+
+    return Nbp2TransportConfig(
+        bind_host=_env("NOISEBOT_NBP2_BIND_HOST", "127.0.0.1"),
+        bind_port=max(1, _env_int("NOISEBOT_NBP2_BIND_PORT", 9100)),
+        robot_token=token[:32],
     )

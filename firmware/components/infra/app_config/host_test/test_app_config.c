@@ -23,6 +23,10 @@ static void test_get_returns_default_when_never_set(void)
     CHECK(value == 1u);
     CHECK(nb_config_get_u32(&config, NB_CONFIG_KEY_BOOT_FAIL_STREAK, &value));
     CHECK(value == 0u);
+    CHECK(nb_config_get_u32(&config, NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT, &value));
+    CHECK(value == 100u);
+    CHECK(nb_config_get_u32(&config, NB_CONFIG_KEY_QUIET_MODE_ENABLED, &value));
+    CHECK(value == 0u);
 }
 
 static void test_set_valid_value_is_read_back(void)
@@ -47,6 +51,8 @@ static void test_set_out_of_range_is_rejected_and_keeps_previous(void)
     CHECK(nb_config_set_u32(&config, NB_CONFIG_KEY_LOG_MIN_LEVEL, 2u));
     CHECK(!nb_config_set_u32(&config, NB_CONFIG_KEY_LOG_MIN_LEVEL, 5u));
     CHECK(!nb_config_set_u32(&config, NB_CONFIG_KEY_BOOT_FAIL_STREAK, 256u));
+    CHECK(!nb_config_set_u32(&config, NB_CONFIG_KEY_AUDIO_VOLUME_PERCENT, 101u));
+    CHECK(!nb_config_set_u32(&config, NB_CONFIG_KEY_QUIET_MODE_ENABLED, 2u));
 
     CHECK(nb_config_get_u32(&config, NB_CONFIG_KEY_LOG_MIN_LEVEL, &value));
     CHECK(value == 2u);
