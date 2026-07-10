@@ -2504,6 +2504,17 @@ server v1 (refactor).
   válido para STT). Isso reduz tentativa-e-erro operacional sem desviar do
   contrato da fase, porque continua auditando exatamente os providers reais.
 
+- Avanço incremental de `S4.5` em 2026-07-10: `piper-tts` deixou de ser
+  resolvido por acidente via `PATH` de um venv não relacionado ao projeto
+  (PlatformIO) e ganhou extra próprio `tts` em `server/pyproject.toml`
+  (`piper-tts>=1.4`). Server agora instala em venv dedicado
+  (`server/.venv`, via `pip install -e .[dev,stt,tts]`), com
+  `NOISEBOT_PIPER_EXECUTABLE` apontando para o binário do próprio venv.
+  `provider_smoke --doctor` e a suíte de testes (63 passed) confirmam o
+  ambiente reprodutível; fase segue `PENDENTE` porque o gate exige conversa
+  fim-a-fim em PT-BR e degradação honesta de falha de LLM, ainda não
+  medidas.
+
 - Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
   telemetria explícita de bancada (`wake_count`, `listen_start_count`,
   latência `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks
