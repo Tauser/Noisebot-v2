@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from noisebot2.provider_smoke import run_provider_smoke
+from noisebot2.provider_smoke import (
+    ProviderSmokeReport,
+    ProviderSmokeResult,
+    format_provider_smoke_report,
+    main,
+    run_provider_smoke,
+    run_provider_smoke_from_env,
+)
 from noisebot2.providers import AbstractSttProvider, StaticLlmProvider, StaticTtsProvider, SttTranscript
 
 
@@ -16,6 +23,14 @@ class FailingSttProvider(AbstractSttProvider):
     async def transcribe_pcm16le(self, pcm: bytes, *, sample_rate_hz: int = 16000) -> SttTranscript:
         del pcm, sample_rate_hz
         raise RuntimeError("stt offline")
+
+
+class ClosableProvider:
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def close(self) -> None:
+        self.closed = True
 
 
 @pytest.mark.asyncio
@@ -46,3 +61,67 @@ async def test_provider_smoke_reports_explicit_failures() -> None:
     assert report.tts.ok is True
     assert report.stt.ok is False
     assert report.stt.detail == "stt offline"
+
+
+@pytest.mark.asyncio
+async def test_provider_smoke_from_env_builds_and_closes_providers(monkeypatch) -> None:
+    llm = StaticLlmProvider("fala curta")
+    tts = StaticTtsProvider(b"\x01\x02")
+    stt = StaticSttProvider()
+    llm_close = ClosableProvider()
+    tts_close = ClosableProvider()
+    stt_close = ClosableProvider()
+    llm.close = llm_close.close  # type: ignore[method-assign]
+    tts.close = tts_close.close  # type: ignore[method-assign]
+    stt.close = stt_close.close  # type: ignore[method-assign]
+
+    monkeypatch.setattr("noisebot2.provider_smoke.load_dotenv", lambda path=None: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.load_llm_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.load_tts_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.load_stt_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.build_llm_provider", lambda _config: llm)
+    monkeypatch.setattr("noisebot2.provider_smoke.build_tts_provider", lambda _config: tts)
+    monkeypatch.setattr("noisebot2.provider_smoke.build_stt_provider", lambda _config: stt)
+
+    report = await run_provider_smoke_from_env(prompt="teste")
+
+    assert report.ok is True
+    assert llm_close.closed is True
+    assert tts_close.closed is True
+    assert stt_close.closed is True
+
+
+def test_format_provider_smoke_report_is_human_readable() -> None:
+    report = ProviderSmokeReport(
+        llm=ProviderSmokeResult("llm", True, "ok"),
+        tts=ProviderSmokeResult("tts", False, "tts offline"),
+        stt=ProviderSmokeResult("stt", False, "sem pcm"),
+    )
+
+    assert format_provider_smoke_report(report) == (
+        "provider smoke: FAIL\n"
+        "- llm: OK - ok\n"
+        "- tts: FAIL - tts offline\n"
+        "- stt: FAIL - sem pcm"
+    )
+
+
+def test_provider_smoke_main_returns_nonzero_on_failure(monkeypatch, capsys) -> None:
+    async def fake_run_provider_smoke_from_env(*, dotenv_path=None, prompt="") -> ProviderSmokeReport:
+        del dotenv_path, prompt
+        return ProviderSmokeReport(
+            llm=ProviderSmokeResult("llm", False, "offline"),
+            tts=ProviderSmokeResult("tts", False, "offline"),
+            stt=ProviderSmokeResult("stt", False, "offline"),
+        )
+
+    monkeypatch.setattr("noisebot2.provider_smoke.run_provider_smoke_from_env", fake_run_provider_smoke_from_env)
+
+    code = main(["--json"])
+
+    assert code == 1
+    assert capsys.readouterr().out.strip() == (
+        '{"ok": false, "llm": {"provider": "llm", "ok": false, "detail": "offline"}, '
+        '"tts": {"provider": "tts", "ok": false, "detail": "offline"}, '
+        '"stt": {"provider": "stt", "ok": false, "detail": "offline"}}'
+    )

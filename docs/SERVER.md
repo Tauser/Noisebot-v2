@@ -126,7 +126,10 @@ Avanço parcial de `S4.6` (2026-07-09):
 - A mente também ganhou `provider_smoke.py`: um smoke host-side que exercita
   `LLM` → `TTS` → `STT` pelos contratos reais dos providers e devolve
   resultado explícito por eixo, útil para validar configuração de `S4.5`
-  sem hardware.
+  sem hardware. Desde 2026-07-10, ele também roda como comando real
+  (`python -m noisebot2.provider_smoke [--json]`), montando providers via
+  `.env`, fechando `ClientSession`/recursos ao final e retornando `exit 0`
+  só quando os três eixos passam.
 
 ## 5. SkillHost — tools e intents
 

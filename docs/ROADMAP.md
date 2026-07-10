@@ -2474,6 +2474,13 @@ server v1 (refactor).
   provider (sucesso/falha), para registrar evidência reproduzível de
   configuração e degradação honesta sem depender de hardware.
 
+- Avanço incremental de `S4.5` em 2026-07-10: `provider_smoke.py` passou a
+  funcionar também como CLI real (`python -m noisebot2.provider_smoke`),
+  montando `LLM`/`TTS`/`STT` via `.env`, emitindo relatório legível ou JSON
+  por provider, fechando recursos determinísticamente e retornando `exit 1`
+  quando qualquer eixo falha. Evidência de host: `pytest tests/test_provider_smoke.py`
+  → `5 passed`.
+
 - Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
   telemetria explícita de bancada (`wake_count`, `listen_start_count`,
   latência `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks
