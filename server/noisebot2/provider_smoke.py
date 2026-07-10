@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib.util
 import json
+import shutil
 import wave
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +35,32 @@ class ProviderSmokeResult:
 
 @dataclass(frozen=True)
 class ProviderSmokeReport:
+    llm: ProviderSmokeResult
+    tts: ProviderSmokeResult
+    stt: ProviderSmokeResult
+    active_axes: tuple[ProviderAxis, ...] = DEFAULT_AXES
+
+    @property
+    def ok(self) -> bool:
+        results = {
+            "llm": self.llm.ok,
+            "tts": self.tts.ok,
+            "stt": self.stt.ok,
+        }
+        return all(results[axis] for axis in self.active_axes)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "ok": self.ok,
+            "active_axes": list(self.active_axes),
+            "llm": _result_to_dict(self.llm),
+            "tts": _result_to_dict(self.tts),
+            "stt": _result_to_dict(self.stt),
+        }
+
+
+@dataclass(frozen=True)
+class ProviderDoctorReport:
     llm: ProviderSmokeResult
     tts: ProviderSmokeResult
     stt: ProviderSmokeResult
@@ -127,6 +155,41 @@ def format_provider_smoke_report(report: ProviderSmokeReport) -> str:
         provider_status = "OK" if result.ok else "FAIL"
         lines.append(f"- {result.provider}: {provider_status} - {result.detail}")
     return "\n".join(lines)
+
+
+def format_provider_doctor_report(report: ProviderDoctorReport) -> str:
+    status = "OK" if report.ok else "FAIL"
+    lines = [f"provider doctor: {status} ({', '.join(report.active_axes)})"]
+    for result in (report.llm, report.tts, report.stt):
+        provider_status = "OK" if result.ok else "FAIL"
+        lines.append(f"- {result.provider}: {provider_status} - {result.detail}")
+    return "\n".join(lines)
+
+
+def run_provider_doctor_from_env(
+    *,
+    dotenv_path: str | None = None,
+    active_axes: Sequence[ProviderAxis] = DEFAULT_AXES,
+    stt_wav_path: str | None = None,
+) -> ProviderDoctorReport:
+    load_dotenv(dotenv_path)
+    resolved_axes = _normalize_axes(active_axes)
+    llm_config = load_llm_config()
+    tts_config = load_tts_config()
+    stt_config = load_stt_config()
+    llm_result = _doctor_llm(llm_config) if "llm" in resolved_axes else ProviderSmokeResult("llm", False, "skipped")
+    tts_result = _doctor_tts(tts_config) if "tts" in resolved_axes else ProviderSmokeResult("tts", False, "skipped")
+    stt_result = (
+        _doctor_stt(stt_config, stt_wav_path=stt_wav_path)
+        if "stt" in resolved_axes
+        else ProviderSmokeResult("stt", False, "skipped")
+    )
+    return ProviderDoctorReport(
+        llm=llm_result,
+        tts=tts_result,
+        stt=stt_result,
+        active_axes=resolved_axes,
+    )
 
 
 async def _smoke_llm(
@@ -234,12 +297,28 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Arquivo WAV mono PCM16LE usado no smoke de STT quando TTS nao participa.",
     )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Valida pre-requisitos/configuracao dos providers sem executar o fluxo completo.",
+    )
     return parser
 
 
 async def _run_cli(argv: Sequence[str] | None = None) -> int:
     args = _build_arg_parser().parse_args(list(argv) if argv is not None else None)
     active_axes = tuple(args.only_axes) if args.only_axes else DEFAULT_AXES
+    if args.doctor:
+        report = run_provider_doctor_from_env(
+            dotenv_path=args.dotenv_path,
+            active_axes=active_axes,
+            stt_wav_path=args.stt_wav_path,
+        )
+        if args.json:
+            print(json.dumps(report.to_dict(), ensure_ascii=True))
+        else:
+            print(format_provider_doctor_report(report))
+        return 0 if report.ok else 1
     report = await run_provider_smoke_from_env(
         dotenv_path=args.dotenv_path,
         prompt=args.prompt,
@@ -278,6 +357,64 @@ def _load_wav_pcm16le(path: str) -> bytes:
         if channels != 1 or sample_width != 2:
             raise ValueError("WAV deve ser mono PCM16LE")
         return wav_file.readframes(wav_file.getnframes())
+
+
+def _doctor_llm(config) -> ProviderSmokeResult:
+    provider = config.provider.value
+    if provider == "none":
+        return ProviderSmokeResult("llm", False, "provider nao configurado")
+    if provider == "lmstudio":
+        return ProviderSmokeResult("llm", True, f"lmstudio configurado em {config.lmstudio_base_url}")
+    if provider == "ollama":
+        return ProviderSmokeResult("llm", True, f"ollama configurado em {config.ollama_base_url}")
+    if provider == "openai":
+        ok = bool(config.openai_api_key)
+        detail = "OPENAI_API_KEY configurada" if ok else "OPENAI_API_KEY ausente"
+        return ProviderSmokeResult("llm", ok, detail)
+    if provider == "api_chat":
+        ok = bool(config.api_chat_base_url and config.api_chat_api_key)
+        detail = "api_chat configurado" if ok else "NOISEBOT_API_CHAT_BASE_URL/API_KEY ausentes"
+        return ProviderSmokeResult("llm", ok, detail)
+    if provider == "anthropic":
+        ok = bool(config.anthropic_api_key)
+        detail = "ANTHROPIC_API_KEY configurada" if ok else "ANTHROPIC_API_KEY ausente"
+        return ProviderSmokeResult("llm", ok, detail)
+    return ProviderSmokeResult("llm", True, f"{provider} configurado")
+
+
+def _doctor_tts(config) -> ProviderSmokeResult:
+    if config.provider.value == "none":
+        return ProviderSmokeResult("tts", False, "provider nao configurado")
+    executable = _resolve_executable(config.piper_executable)
+    if executable is None:
+        return ProviderSmokeResult("tts", False, f"executavel Piper nao encontrado: {config.piper_executable}")
+    model_path = Path(config.piper_model) if config.piper_model else None
+    if model_path is None or not model_path.exists():
+        return ProviderSmokeResult("tts", False, f"modelo Piper nao encontrado: {config.piper_model or '<vazio>'}")
+    return ProviderSmokeResult("tts", True, f"piper pronto ({executable}; modelo {model_path.name})")
+
+
+def _doctor_stt(config, *, stt_wav_path: str | None) -> ProviderSmokeResult:
+    if config.provider.value == "none":
+        return ProviderSmokeResult("stt", False, "provider nao configurado")
+    if importlib.util.find_spec("faster_whisper") is None:
+        return ProviderSmokeResult("stt", False, "faster-whisper nao instalado")
+    if stt_wav_path:
+        try:
+            _load_wav_pcm16le(stt_wav_path)
+        except Exception as exc:
+            return ProviderSmokeResult("stt", False, str(exc))
+        return ProviderSmokeResult("stt", True, f"faster-whisper pronto; wav valido: {Path(stt_wav_path).name}")
+    return ProviderSmokeResult("stt", True, "faster-whisper pronto; faltando apenas WAV de entrada")
+
+
+def _resolve_executable(executable: str) -> str | None:
+    if not executable:
+        return None
+    candidate = Path(executable)
+    if candidate.is_file():
+        return str(candidate)
+    return shutil.which(executable)
 
 
 if __name__ == "__main__":

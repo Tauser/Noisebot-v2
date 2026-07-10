@@ -8,9 +8,12 @@ import pytest
 from noisebot2.provider_smoke import (
     ProviderSmokeReport,
     ProviderSmokeResult,
+    ProviderDoctorReport,
+    format_provider_doctor_report,
     format_provider_smoke_report,
     main,
     run_provider_smoke,
+    run_provider_doctor_from_env,
     run_provider_smoke_from_env,
 )
 from noisebot2.providers import AbstractSttProvider, StaticLlmProvider, StaticTtsProvider, SttTranscript
@@ -206,6 +209,50 @@ def test_format_provider_smoke_report_is_human_readable() -> None:
     )
 
 
+def test_format_provider_doctor_report_is_human_readable() -> None:
+    report = ProviderDoctorReport(
+        llm=ProviderSmokeResult("llm", True, "lmstudio configurado"),
+        tts=ProviderSmokeResult("tts", False, "modelo ausente"),
+        stt=ProviderSmokeResult("stt", False, "skipped"),
+        active_axes=("llm", "tts"),
+    )
+
+    assert format_provider_doctor_report(report) == (
+        "provider doctor: FAIL (llm, tts)\n"
+        "- llm: OK - lmstudio configurado\n"
+        "- tts: FAIL - modelo ausente\n"
+        "- stt: FAIL - skipped"
+    )
+
+
+def test_provider_doctor_from_env_checks_llm_and_missing_tts(monkeypatch) -> None:
+    monkeypatch.setenv("NOISEBOT_LLM_PROVIDER", "lmstudio")
+    monkeypatch.setenv("NOISEBOT_LLM_MODEL", "google/gemma-4-12b-qat")
+    monkeypatch.setenv("NOISEBOT_LMSTUDIO_BASE_URL", "http://192.168.0.10:1234/v1")
+    monkeypatch.setenv("NOISEBOT_TTS_PROVIDER", "piper")
+    monkeypatch.setenv("NOISEBOT_PIPER_EXECUTABLE", "piper.exe")
+    monkeypatch.setenv("NOISEBOT_PIPER_MODEL", "C:/missing/model.onnx")
+
+    report = run_provider_doctor_from_env(active_axes=("llm", "tts"))
+
+    assert report.llm.ok is True
+    assert "lmstudio configurado" in report.llm.detail
+    assert report.tts.ok is False
+    assert "modelo Piper nao encontrado" in report.tts.detail
+
+
+def test_provider_doctor_from_env_checks_stt_with_valid_wav(monkeypatch, tmp_path: Path) -> None:
+    wav_path = tmp_path / "sample.wav"
+    _write_test_wav(wav_path, b"\x01\x02\x03\x04")
+    monkeypatch.setenv("NOISEBOT_STT_PROVIDER", "faster_whisper")
+    monkeypatch.setattr("noisebot2.provider_smoke.importlib.util.find_spec", lambda name: object() if name == "faster_whisper" else None)
+
+    report = run_provider_doctor_from_env(active_axes=("stt",), stt_wav_path=str(wav_path))
+
+    assert report.ok is True
+    assert "wav valido" in report.stt.detail
+
+
 def test_provider_smoke_main_returns_nonzero_on_failure(monkeypatch, capsys) -> None:
     async def fake_run_provider_smoke_from_env(
         *,
@@ -301,4 +348,27 @@ def test_provider_smoke_main_passes_text_and_wav_arguments(monkeypatch, tmp_path
         '{"ok": true, "active_axes": ["stt"], "llm": {"provider": "llm", "ok": false, "detail": "skipped"}, '
         '"tts": {"provider": "tts", "ok": false, "detail": "skipped"}, '
         '"stt": {"provider": "stt", "ok": true, "detail": "pt:teste"}}'
+    )
+
+
+def test_provider_doctor_main_returns_nonzero_on_missing_tts(monkeypatch, capsys) -> None:
+    def fake_doctor(*, dotenv_path=None, active_axes=(), stt_wav_path=None) -> ProviderDoctorReport:
+        del dotenv_path, stt_wav_path
+        assert active_axes == ("tts",)
+        return ProviderDoctorReport(
+            llm=ProviderSmokeResult("llm", False, "skipped"),
+            tts=ProviderSmokeResult("tts", False, "modelo Piper nao encontrado: C:/missing.onnx"),
+            stt=ProviderSmokeResult("stt", False, "skipped"),
+            active_axes=("tts",),
+        )
+
+    monkeypatch.setattr("noisebot2.provider_smoke.run_provider_doctor_from_env", fake_doctor)
+
+    code = main(["--json", "--doctor", "--only", "tts"])
+
+    assert code == 1
+    assert capsys.readouterr().out.strip() == (
+        '{"ok": false, "active_axes": ["tts"], "llm": {"provider": "llm", "ok": false, "detail": "skipped"}, '
+        '"tts": {"provider": "tts", "ok": false, "detail": "modelo Piper nao encontrado: C:/missing.onnx"}, '
+        '"stt": {"provider": "stt", "ok": false, "detail": "skipped"}}'
     )

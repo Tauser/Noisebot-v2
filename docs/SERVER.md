@@ -133,7 +133,9 @@ Avanço parcial de `S4.6` (2026-07-09):
   permite smoke parcial por `--only llm|tts|stt` para registrar evidência
   incremental sem mascarar eixos ainda não ligados. Para `TTS`, o smoke aceita
   `--text`; para `STT`, aceita `--wav` mono PCM16LE quando não houver `TTS`
-  gerando áudio no mesmo fluxo.
+  gerando áudio no mesmo fluxo. Quando a dúvida é ambiente e não fluxo, o
+  mesmo utilitário aceita `--doctor` para validar pré-requisitos/configuração
+  dos eixos ativos sem executar chamada real ao provider.
 
 ## 5. SkillHost — tools e intents
 

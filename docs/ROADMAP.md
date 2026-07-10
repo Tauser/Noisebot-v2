@@ -2497,6 +2497,13 @@ server v1 (refactor).
   incremental da fase fica reproduzível por eixo no host sem inventar atalhos
   fora dos providers reais.
 
+- Avanço incremental de `S4.5` em 2026-07-10: o mesmo utilitário passou a
+  aceitar `--doctor`, que valida pré-requisitos de configuração por eixo
+  antes do smoke real (ex.: `LM Studio` configurado, `piper.exe` resolvido +
+  modelo `.onnx` presente, `faster-whisper` importável, WAV mono PCM16LE
+  válido para STT). Isso reduz tentativa-e-erro operacional sem desviar do
+  contrato da fase, porque continua auditando exatamente os providers reais.
+
 - Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
   telemetria explícita de bancada (`wake_count`, `listen_start_count`,
   latência `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks
