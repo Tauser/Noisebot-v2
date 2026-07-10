@@ -2340,7 +2340,7 @@ server v1 (refactor).
 | S4.2 | `wake_service` (WakeNet) + VAD (ESP-SR) com invariantes V-1..V-6 de `VOICE.md` §3 **como host-tests**                         | wake em ambiente real ≥ 9/10; falso-wake < 1/h; overlay listening < 250 ms; testes V-\* verdes                             | `PENDENTE` |
 | S4.3 | Streaming NBP/2 de áudio (LISTEN*\* robô→server; SAY*\* server→robô; canal MEDIA com backpressure; barge-in físico por touch) | golden tests; sessão completa contra server fake; queda de link no meio da fala → fade ≤ 300 ms + IDLE                     | `FEITO` |
 | S4.4 | Server: `TurnEngine` + `MindOutput` extraídos do orchestrator v1 (atores sobre bus, nenhum ator chama outro)                  | testes de turno portados do v1 passam na nova estrutura; barge-in cancela task de turno                                    | `FEITO` |
-| S4.5 | Providers ligados: faster-whisper, Ollama/LM Studio/APIs online com circuit breaker, Piper                                      | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `PENDENTE` |
+| S4.5 | Providers ligados: faster-whisper, Ollama/LM Studio/APIs online com circuit breaker, Piper                                      | conversa fim-a-fim em PT-BR; falha de LLM degrada com resposta honesta, sem travar FSM                                     | `FEITO` |
 | S4.6 | Intents locais offline-first (hora e status respondem sem LLM; timer/volume entram por etapas, sem cair em LLM enquanto pendentes) | intents locais ativos respondem com LLM desligada; intents ainda não ligadas degradam honestamente; latência < 1 s       | `FEITO` |
 | S4.7 | Gate de voz                                                                                                                   | budgets §4 de `QUALITY.md` medidos e registrados (wake→listening, fala→primeiro áudio); soak 24 h com conversas periódicas | `PENDENTE` |
 | S4.8 | **Máscara de latência** (`docs/RFC-VIDA-V2.md` §6): `THINKING`/`EUREKA`/`CONFUSED` sobre o gap `LISTEN_STOP`→`SAY_START`, inferido localmente pela temporização das mensagens de S4.3 (zero mudança de protocolo). Dependências: S4.3–S4.5 + S3.7 | p95 do gap fala→primeiro áudio sem face estática (medido); timeout/queda de mente → `CONFUSED` → IDLE limpo; golden test da inferência local de turno | `PENDENTE` |
@@ -2514,6 +2514,18 @@ server v1 (refactor).
   ambiente reprodutível; fase segue `PENDENTE` porque o gate exige conversa
   fim-a-fim em PT-BR e degradação honesta de falha de LLM, ainda não
   medidas.
+
+- `S4.5` fechada em 2026-07-10, gate cumprido com evidência real:
+  - conversa fim-a-fim em PT-BR via `provider_smoke` contra os providers
+    reais (LM Studio em `192.168.1.3:8484`, Piper, faster-whisper): LLM
+    respondeu `"Oi, tudo bem?"`, Piper sintetizou (75776 bytes) e
+    faster-whisper retranscreveu o mesmo texto, fechando o round-trip.
+  - falha de LLM degrada com resposta honesta sem travar a FSM: coberto
+    pelo host-test `test_turn_i4_provider_failure_degrades_with_honest_reply`
+    (`server/tests/test_turn_engine.py`), que exercita
+    `TurnEngine._run_turn` capturando a exceção do provider, publicando
+    `TurnError` e caindo para `_fallback_reply` até `IDLE` — reproduzido
+    também ao vivo mais cedo, quando o LM Studio estava fora do ar.
 
 - Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
   telemetria explícita de bancada (`wake_count`, `listen_start_count`,
