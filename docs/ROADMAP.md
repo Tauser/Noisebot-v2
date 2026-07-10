@@ -2481,6 +2481,15 @@ server v1 (refactor).
   quando qualquer eixo falha. Evidência de host: `pytest tests/test_provider_smoke.py`
   → `5 passed`.
 
+- Avanço incremental de `S4.5` em 2026-07-10: o smoke passou a aceitar
+  escopo parcial por eixo (`--only llm|tts|stt`), mantendo o mesmo contrato
+  e a mesma degradação honesta, mas permitindo que uma evidência incremental
+  de `LLM` local funcional não fique mascarada por `TTS`/`STT` ainda
+  desligados. Evidência real da bancada host-side: `LM Studio` em
+  `http://192.168.116.29:8484/v1` com `google/gemma-4-12b-qat` respondeu
+  `"Oi, como posso ajudar?"`; `tts` e `stt` seguiram explícitos como
+  `provider nao configurado`.
+
 - Avanço incremental de `S4.2` em 2026-07-09: `wake_service_shell` ganhou
   telemetria explícita de bancada (`wake_count`, `listen_start_count`,
   latência `WAKE`→`LISTEN_START`, misses do budget de 250 ms, feedbacks

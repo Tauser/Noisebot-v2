@@ -129,7 +129,9 @@ Avanço parcial de `S4.6` (2026-07-09):
   sem hardware. Desde 2026-07-10, ele também roda como comando real
   (`python -m noisebot2.provider_smoke [--json]`), montando providers via
   `.env`, fechando `ClientSession`/recursos ao final e retornando `exit 0`
-  só quando os três eixos passam.
+  só quando os eixos solicitados passam. No estágio atual de `S4.5`, isso
+  permite smoke parcial por `--only llm|tts|stt` para registrar evidência
+  incremental sem mascarar eixos ainda não ligados.
 
 ## 5. SkillHost — tools e intents
 

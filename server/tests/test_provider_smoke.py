@@ -64,6 +64,22 @@ async def test_provider_smoke_reports_explicit_failures() -> None:
 
 
 @pytest.mark.asyncio
+async def test_provider_smoke_can_scope_to_llm_only() -> None:
+    report = await run_provider_smoke(
+        llm_provider=StaticLlmProvider("fala curta"),
+        tts_provider=None,
+        stt_provider=None,
+        active_axes=("llm",),
+    )
+
+    assert report.ok is True
+    assert report.active_axes == ("llm",)
+    assert report.llm.ok is True
+    assert report.tts.detail == "skipped"
+    assert report.stt.detail == "skipped"
+
+
+@pytest.mark.asyncio
 async def test_provider_smoke_from_env_builds_and_closes_providers(monkeypatch) -> None:
     llm = StaticLlmProvider("fala curta")
     tts = StaticTtsProvider(b"\x01\x02")
@@ -91,6 +107,32 @@ async def test_provider_smoke_from_env_builds_and_closes_providers(monkeypatch) 
     assert stt_close.closed is True
 
 
+@pytest.mark.asyncio
+async def test_provider_smoke_from_env_passes_active_axes(monkeypatch) -> None:
+    async def fake_run_provider_smoke(**kwargs) -> ProviderSmokeReport:
+        assert kwargs["active_axes"] == ("llm",)
+        return ProviderSmokeReport(
+            llm=ProviderSmokeResult("llm", True, "ok"),
+            tts=ProviderSmokeResult("tts", False, "skipped"),
+            stt=ProviderSmokeResult("stt", False, "skipped"),
+            active_axes=("llm",),
+        )
+
+    monkeypatch.setattr("noisebot2.provider_smoke.load_dotenv", lambda path=None: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.load_llm_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.load_tts_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.load_stt_config", lambda: object())
+    monkeypatch.setattr("noisebot2.provider_smoke.build_llm_provider", lambda _config: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.build_tts_provider", lambda _config: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.build_stt_provider", lambda _config: None)
+    monkeypatch.setattr("noisebot2.provider_smoke.run_provider_smoke", fake_run_provider_smoke)
+
+    report = await run_provider_smoke_from_env(active_axes=("llm",))
+
+    assert report.ok is True
+    assert report.active_axes == ("llm",)
+
+
 def test_format_provider_smoke_report_is_human_readable() -> None:
     report = ProviderSmokeReport(
         llm=ProviderSmokeResult("llm", True, "ok"),
@@ -99,7 +141,7 @@ def test_format_provider_smoke_report_is_human_readable() -> None:
     )
 
     assert format_provider_smoke_report(report) == (
-        "provider smoke: FAIL\n"
+        "provider smoke: FAIL (llm, tts, stt)\n"
         "- llm: OK - ok\n"
         "- tts: FAIL - tts offline\n"
         "- stt: FAIL - sem pcm"
@@ -107,8 +149,14 @@ def test_format_provider_smoke_report_is_human_readable() -> None:
 
 
 def test_provider_smoke_main_returns_nonzero_on_failure(monkeypatch, capsys) -> None:
-    async def fake_run_provider_smoke_from_env(*, dotenv_path=None, prompt="") -> ProviderSmokeReport:
+    async def fake_run_provider_smoke_from_env(
+        *,
+        dotenv_path=None,
+        prompt="",
+        active_axes=(),
+    ) -> ProviderSmokeReport:
         del dotenv_path, prompt
+        assert active_axes == ("llm", "tts", "stt")
         return ProviderSmokeReport(
             llm=ProviderSmokeResult("llm", False, "offline"),
             tts=ProviderSmokeResult("tts", False, "offline"),
@@ -121,7 +169,30 @@ def test_provider_smoke_main_returns_nonzero_on_failure(monkeypatch, capsys) -> 
 
     assert code == 1
     assert capsys.readouterr().out.strip() == (
-        '{"ok": false, "llm": {"provider": "llm", "ok": false, "detail": "offline"}, '
+        '{"ok": false, "active_axes": ["llm", "tts", "stt"], "llm": {"provider": "llm", "ok": false, "detail": "offline"}, '
         '"tts": {"provider": "tts", "ok": false, "detail": "offline"}, '
         '"stt": {"provider": "stt", "ok": false, "detail": "offline"}}'
+    )
+
+
+def test_provider_smoke_main_returns_zero_for_llm_only_success(monkeypatch, capsys) -> None:
+    async def fake_run_provider_smoke_from_env(*, dotenv_path=None, prompt="", active_axes=()) -> ProviderSmokeReport:
+        del dotenv_path, prompt
+        assert active_axes == ("llm",)
+        return ProviderSmokeReport(
+            llm=ProviderSmokeResult("llm", True, "Oi, como posso ajudar?"),
+            tts=ProviderSmokeResult("tts", False, "skipped"),
+            stt=ProviderSmokeResult("stt", False, "skipped"),
+            active_axes=("llm",),
+        )
+
+    monkeypatch.setattr("noisebot2.provider_smoke.run_provider_smoke_from_env", fake_run_provider_smoke_from_env)
+
+    code = main(["--json", "--only", "llm"])
+
+    assert code == 0
+    assert capsys.readouterr().out.strip() == (
+        '{"ok": true, "active_axes": ["llm"], "llm": {"provider": "llm", "ok": true, "detail": "Oi, como posso ajudar?"}, '
+        '"tts": {"provider": "tts", "ok": false, "detail": "skipped"}, '
+        '"stt": {"provider": "stt", "ok": false, "detail": "skipped"}}'
     )
